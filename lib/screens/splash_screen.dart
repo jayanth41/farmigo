@@ -1,6 +1,4 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
-import 'login_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -14,12 +12,6 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    Timer(const Duration(seconds: 2), () {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
-      );
-    });
   }
 
   @override
@@ -33,8 +25,8 @@ class _SplashScreenState extends State<SplashScreen> {
 
             // LOGO - F Symbol
             Container(
-              width: 140,
-              height: 140,
+              width: 240,
+              height: 240,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: LinearGradient(
@@ -43,7 +35,7 @@ class _SplashScreenState extends State<SplashScreen> {
                   colors: [
                     const Color(0xFF7CB342),
                     const Color(0xFF4CAF50),
-                    const Color(0xFF2E7D32),
+                    const Color.fromARGB(255, 12, 57, 14),
                   ],
                 ),
                 boxShadow: [
