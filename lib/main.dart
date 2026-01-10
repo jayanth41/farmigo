@@ -39,7 +39,6 @@ class AuthStateHandler extends StatefulWidget {
 }
 
 class _AuthStateHandlerState extends State<AuthStateHandler> {
-  final bool _isCheckingAuth = true;
 
   @override
   void initState() {
