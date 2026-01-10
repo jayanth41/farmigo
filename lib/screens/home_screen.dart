@@ -16,12 +16,13 @@ class _HomeScreenState extends State<HomeScreen> {
   // Dummy farmhouse data
   static const List<Map<String, dynamic>> farmhouses = [
     {
-      'name': 'Green Valley Farmhouse',
-      'location': 'Shamshabad, Telangana',
-      'price': 2500.0,
-      'distance': '12 km away',
-      'imageUrl':
-          'https://images.unsplash.com/photo-1500595046891-cb5b2a5b2e6d?w=500&h=300',
+      'name': 'The Night Garden Stay',
+      'location': 'Anajpur, Hyderabad',
+      'price': 10000.0,
+      'distance': '15 km away',
+      'imageUrl': 
+        'https://raw.githubusercontent.com/jayanth41/images/main/view2.jpeg',
+       // 'https://raw.githubusercontent.com/jayanth41/images/main/dyning.jpeg',
     },
     {
       'name': 'Serene Hills Resort',
@@ -120,7 +121,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text(
-                      'Discover',
+                      'FARMIGO',
                       style: TextStyle(
                         fontSize: 32,
                         fontWeight: FontWeight.bold,
@@ -229,14 +230,18 @@ class _HomeScreenState extends State<HomeScreen> {
               icon: Icon(Icons.home),
               label: 'Home',
             ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.favorite_border),
-              label: 'Favorites',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.search),
-              label: 'Filters',
-            ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.favorite),
+            label: 'Favorites',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.calendar_today),
+            label: 'Bookings',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.tune_outlined),
+            label: 'Filters',
+          ),
             BottomNavigationBarItem(
               icon: Icon(Icons.person),
               label: 'Profile',
