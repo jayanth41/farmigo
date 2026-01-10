@@ -36,6 +36,8 @@ dependencies:
   cupertino_icons: ^1.0.8
   firebase_core: ^2.27.0
   firebase_auth: ^4.17.0
+  get: ^4.7.3
+  pinput: ^6.0.1
 
 dev_dependencies:
   flutter_test:
@@ -63,8 +65,9 @@ flutter:
   # assets:
   #   - images/a_dot_burr.jpeg
   #   - images/a_dot_ham.jpeg
-
-  # An image asset can refer to one or more resolution-specific "variants", see
+  #assets:
+  #   - images/dyning.jpeg
+ # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 
   # For details regarding adding assets from package dependencies, see
