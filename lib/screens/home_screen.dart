@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:get/get.dart';
 import '../widgets/farmhouse_card.dart';
+import '../controllers/favorites_controller.dart';
+import 'favorites_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -12,6 +15,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   final TextEditingController _searchController = TextEditingController();
+  late FavoritesController favoritesController;
 
   // Dummy farmhouse data
   static const List<Map<String, dynamic>> farmhouses = [
@@ -80,6 +84,16 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    // Initialize or get existing FavoritesController
+    if (!Get.isRegistered<FavoritesController>()) {
+      Get.put(FavoritesController());
+    }
+    favoritesController = Get.find<FavoritesController>();
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
@@ -116,7 +130,7 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header with Logout Button
+                // Header with Logout Button and Favorites
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -128,13 +142,66 @@ class _HomeScreenState extends State<HomeScreen> {
                         color: Colors.white,
                       ),
                     ),
-                    IconButton(
-                      icon: const Icon(
-                        Icons.logout,
-                        color: Colors.white,
-                      ),
-                      onPressed: _logout,
-                      tooltip: 'Logout',
+                    Row(
+                      children: [
+                        // Favorites Icon with Badge
+                        Obx(
+                          () => Stack(
+                            children: [
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.favorite,
+                                  color: Colors.white,
+                                ),
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          const FavoritesScreen(),
+                                    ),
+                                  );
+                                },
+                                tooltip: 'Favorites',
+                              ),
+                              if (favoritesController.getFavoriteCount() > 0)
+                                Positioned(
+                                  top: 8,
+                                  right: 8,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(2),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red,
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    constraints: const BoxConstraints(
+                                      minWidth: 18,
+                                      minHeight: 18,
+                                    ),
+                                    child: Text(
+                                      '${favoritesController.getFavoriteCount()}',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                        // Logout Button
+                        IconButton(
+                          icon: const Icon(
+                            Icons.logout,
+                            color: Colors.white,
+                          ),
+                          onPressed: _logout,
+                          tooltip: 'Logout',
+                        ),
+                      ],
                     ),
                   ],
                 ),

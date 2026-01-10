@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import '../screens/farmhouse_details_screen.dart';
+import '../models/farmhouse_model.dart';
+import '../controllers/favorites_controller.dart';
 
 class FarmhouseCard extends StatefulWidget {
   final String name;
@@ -7,6 +10,7 @@ class FarmhouseCard extends StatefulWidget {
   final double price;
   final String distance;
   final String imageUrl;
+  final String? id;
 
   const FarmhouseCard({
     super.key,
@@ -15,6 +19,7 @@ class FarmhouseCard extends StatefulWidget {
     required this.price,
     required this.distance,
     required this.imageUrl,
+    this.id,
   });
 
   @override
@@ -22,7 +27,22 @@ class FarmhouseCard extends StatefulWidget {
 }
 
 class _FarmhouseCardState extends State<FarmhouseCard> {
-  bool _isFavorite = false;
+  late FavoritesController favoritesController;
+  late FarmhouseModel farmhouse;
+
+  @override
+  void initState() {
+    super.initState();
+    favoritesController = Get.find<FavoritesController>();
+    farmhouse = FarmhouseModel(
+      id: widget.id ?? widget.name,
+      name: widget.name,
+      location: widget.location,
+      price: widget.price,
+      distance: widget.distance,
+      imageUrl: widget.imageUrl,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,6 +58,7 @@ class _FarmhouseCardState extends State<FarmhouseCard> {
               price: widget.price,
               distance: widget.distance,
               imageUrl: widget.imageUrl,
+              id: widget.id ?? widget.name,
             ),
           ),
         );
@@ -101,28 +122,32 @@ class _FarmhouseCardState extends State<FarmhouseCard> {
               Positioned(
                 top: 12,
                 right: 12,
-                child: GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _isFavorite = !_isFavorite;
-                    });
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.15),
-                          blurRadius: 8,
-                        ),
-                      ],
-                    ),
-                    child: Icon(
-                      _isFavorite ? Icons.favorite : Icons.favorite_border,
-                      color: _isFavorite ? Colors.red : Colors.grey[700],
-                      size: 22,
+                child: Obx(
+                  () => GestureDetector(
+                    onTap: () {
+                      favoritesController.toggleFavorite(farmhouse);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.15),
+                            blurRadius: 8,
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        favoritesController.isFavorited(farmhouse.id)
+                            ? Icons.favorite
+                            : Icons.favorite_border,
+                        color: favoritesController.isFavorited(farmhouse.id)
+                            ? Colors.red
+                            : Colors.grey[700],
+                        size: 22,
+                      ),
                     ),
                   ),
                 ),
