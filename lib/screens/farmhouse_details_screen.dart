@@ -32,7 +32,6 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
   late FavoritesController favoritesController;
   late FarmhouseModel farmhouse;
 
-  // Price mapping based on people range
   final Map<String, double> pricePerRange = {
     'Below 10': 8000,
     '10–15': 10000,
@@ -42,7 +41,6 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
 
   double get calculatedPrice => pricePerRange[selectedPeopleRange] ?? 3000;
 
-  // Dummy amenities data
   static const List<Map<String, dynamic>> amenities = [
     {'icon': Icons.wifi, 'name': 'Free WiFi'},
     {'icon': Icons.kitchen, 'name': 'Full Kitchen'},
@@ -54,7 +52,6 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
     {'icon': Icons.restaurant, 'name': 'Restaurant'},
   ];
 
-  // Dummy guest photos
   static const List<String> guestPhotos = [
     'https://via.placeholder.com/150',
     'https://via.placeholder.com/150',
@@ -62,7 +59,6 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
     'https://via.placeholder.com/150',
   ];
 
-  // Dummy similar farmhouses
   static const List<Map<String, dynamic>> similarFarmhouses = [
     {
       'name': 'Green Valley Farmhouse',
@@ -90,8 +86,13 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
   @override
   void initState() {
     super.initState();
-    favoritesController = Get.find<FavoritesController>();
-    // Create farmhouse model with generated ID
+    try {
+      favoritesController = Get.find<FavoritesController>();
+    } catch (e) {
+      // Controller not found, initialize it
+      Get.put(FavoritesController());
+      favoritesController = Get.find<FavoritesController>();
+    }
     farmhouse = FarmhouseModel(
       id: widget.id ?? widget.name,
       name: widget.name,
@@ -109,7 +110,6 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Large Image with Back Button
             Stack(
               children: [
                 Image.network(
@@ -130,7 +130,6 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                     );
                   },
                 ),
-                // Back Button and Heart Icon
                 Positioned(
                   top: 16,
                   left: 16,
@@ -138,7 +137,6 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // Back Button
                       GestureDetector(
                         onTap: () => Navigator.pop(context),
                         child: Container(
@@ -160,7 +158,6 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                           ),
                         ),
                       ),
-                      // Heart Icon (Favorite)
                       Obx(
                         () => GestureDetector(
                           onTap: () {
@@ -205,13 +202,11 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                 ),
               ],
             ),
-            // Details Section
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Name
                   Text(
                     widget.name,
                     style: const TextStyle(
@@ -221,8 +216,6 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-
-                  // Google Location
                   Row(
                     children: [
                       const Icon(
@@ -244,31 +237,12 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                               ),
                             ),
                             const SizedBox(height: 2),
-                            Row(
-                              children: [
-                                Text(
-                                  widget.distance,
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                const Icon(
-                                  Icons.open_in_new,
-                                  size: 12,
-                                  color: Colors.blue,
-                                ),
-                                const SizedBox(width: 4),
-                                const Text(
-                                  'Open in Google Maps',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.blue,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
+                            Text(
+                              widget.distance,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
                             ),
                           ],
                         ),
@@ -276,8 +250,6 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                     ],
                   ),
                   const SizedBox(height: 20),
-
-                  // Check-in Box
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -297,7 +269,6 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                           ),
                         ),
                         const SizedBox(height: 16),
-                        // Check-in Date
                         GestureDetector(
                           onTap: () async {
                             final DateTime? picked = await showDatePicker(
@@ -311,7 +282,6 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                             if (picked != null) {
                               setState(() {
                                 selectedCheckInDate = picked;
-                                // Reset check-out date when check-in changes
                                 selectedCheckOutDate = null;
                               });
                             }
@@ -362,7 +332,6 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        // Check-out Date
                         GestureDetector(
                           onTap: selectedCheckInDate != null
                               ? () async {
@@ -435,7 +404,6 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        // People Range Dropdown
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 12,
@@ -466,27 +434,7 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                             ].map<DropdownMenuItem<String>>((String value) {
                               return DropdownMenuItem<String>(
                                 value: value,
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    const Text(
-                                      'Number of People',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey,
-                                      ),
-                                    ),
-                                    Text(
-                                      value,
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w500,
-                                        color: Colors.black,
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                                child: Text(value),
                               );
                             }).toList(),
                             onChanged: (String? newValue) {
@@ -502,8 +450,6 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                     ),
                   ),
                   const SizedBox(height: 20),
-
-                  // Price Section
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
@@ -546,8 +492,6 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                     ),
                   ),
                   const SizedBox(height: 28),
-
-                  // Amenities Title
                   const Text(
                     'Amenities',
                     style: TextStyle(
@@ -557,7 +501,6 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  // Amenities Grid
                   GridView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
@@ -600,8 +543,6 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                     },
                   ),
                   const SizedBox(height: 28),
-
-                  // Description and Ratings
                   const Text(
                     'Description',
                     style: TextStyle(
@@ -620,8 +561,6 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                     ),
                   ),
                   const SizedBox(height: 20),
-
-                  // Ratings Section
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -692,8 +631,6 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                     ),
                   ),
                   const SizedBox(height: 28),
-
-                  // Guest Photos Section
                   const Text(
                     'Guest Photos',
                     style: TextStyle(
@@ -785,8 +722,6 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                     ),
                   ),
                   const SizedBox(height: 28),
-
-                  // Similar Farmhouses Section
                   const Text(
                     'Similar Farmhouses',
                     style: TextStyle(
@@ -916,7 +851,6 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
           ],
         ),
       ),
-      // Book Now Button
       bottomNavigationBar: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -931,45 +865,33 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
         ),
         child: ElevatedButton(
           onPressed: () {
-            // Check if dates are selected
             if (selectedCheckInDate == null || selectedCheckOutDate == null) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text(
-                    'Please select both check-in and check-out dates to proceed with booking',
+                    'Please select both check-in and check-out dates',
                   ),
-                  duration: Duration(seconds: 3),
+                  duration: Duration(seconds: 2),
                   backgroundColor: Colors.red,
                 ),
               );
               return;
             }
 
-            // Calculate number of nights
             final nights = selectedCheckOutDate!
                 .difference(selectedCheckInDate!)
                 .inDays;
             final totalPrice = calculatedPrice * nights;
 
-            // Booking confirmation
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(
-                  'Booking Summary:\n${widget.name}\nGuests: $selectedPeopleRange\nCheck-in: ${selectedCheckInDate!.day}/${selectedCheckInDate!.month}/${selectedCheckInDate!.year}\nCheck-out: ${selectedCheckOutDate!.day}/${selectedCheckOutDate!.month}/${selectedCheckOutDate!.year}\nPrice: ₹${calculatedPrice.toStringAsFixed(0)}/night × $nights nights = ₹${totalPrice.toStringAsFixed(0)}',
+                  'Booking Confirmed!\nTotal: ₹${totalPrice.toStringAsFixed(0)}',
                 ),
-                duration: const Duration(seconds: 4),
+                duration: const Duration(seconds: 2),
                 backgroundColor: Colors.green,
               ),
             );
-
-            print('Booking Details:');
-            print('Farmhouse: ${widget.name}');
-            print('People Range: $selectedPeopleRange');
-            print('Check-in: ${selectedCheckInDate!.day}/${selectedCheckInDate!.month}/${selectedCheckInDate!.year}');
-            print('Check-out: ${selectedCheckOutDate!.day}/${selectedCheckOutDate!.month}/${selectedCheckOutDate!.year}');
-            print('Price per night: ₹${calculatedPrice.toStringAsFixed(0)}');
-            print('Total nights: $nights');
-            print('Total price: ₹${totalPrice.toStringAsFixed(0)}');
           },
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.green,

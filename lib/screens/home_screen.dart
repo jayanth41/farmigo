@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+//import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
 import '../widgets/farmhouse_card.dart';
 import '../controllers/favorites_controller.dart';
+//import 'favorites_screen.dart';
 import 'favorites_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -25,7 +26,7 @@ class _HomeScreenState extends State<HomeScreen> {
   double _maxDistance = 100; // in km
   bool _luxuryOnly = false;
   double _minRating = 0;
-  Map<String, bool> _amenities = {
+  final Map<String, bool> _amenities = {
     'Pool': false,
     'WiFi': false,
     'Kitchen': false,
@@ -51,12 +52,12 @@ class _HomeScreenState extends State<HomeScreen> {
     {
       'name': 'Serene Hills Resort',
       'location': 'Hyderabad, Telangana',
-      'price': 3500.0,
+      'price': 13500.0,
       'distance': '8 km away',
       'rating': 4.4,
       'amenities': ['WiFi', 'Breakfast'],
       'imageUrl':
-          'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=500&h=300',
+          'https://raw.githubusercontent.com/jayanth41/images/blob/main/lawn.jpeg',
     },
     {
       'name': 'Organic Farm Retreat',
@@ -66,7 +67,7 @@ class _HomeScreenState extends State<HomeScreen> {
       'rating': 4.0,
       'amenities': ['Kitchen', 'Breakfast'],
       'imageUrl':
-          'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=500&h=300',
+          'https://raw.githubusercontent.com/jayanth41/images/blob/main/lawn.jpeg',
     },
     {
       'name': 'Riverside Farmhouse',
@@ -76,7 +77,7 @@ class _HomeScreenState extends State<HomeScreen> {
       'rating': 3.9,
       'amenities': ['WiFi', 'Kitchen'],
       'imageUrl':
-          'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=500&h=300',
+          'https://images.unsplash.com/photo-1561501900-3701fa6a0864?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8bHV4dXJ5JTIwaG90ZWx8ZW58MHx8MHx8fDA%3D',
     },
     {
       'name': 'Heritage Farm Stay',
@@ -86,17 +87,17 @@ class _HomeScreenState extends State<HomeScreen> {
       'rating': 4.2,
       'amenities': ['Breakfast', 'Kitchen'],
       'imageUrl':
-          'https://images.unsplash.com/photo-1469022563149-aa64dbd37dda?w=500&h=300',
+          'https://plus.unsplash.com/premium_photo-1661923725782-f73c990fbddf?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NXx8bHV4dXJ5JTIwaG90ZWx8ZW58MHx8MHx8fDA%3D',
     },
     {
       'name': 'Premium Agri Resort',
       'location': 'Narayankhed, Telangana',
-      'price': 4000.0,
+      'price': 14000.0,
       'distance': '60 km away',
       'rating': 4.6,
       'amenities': ['Pool', 'WiFi'],
       'imageUrl':
-          'https://images.unsplash.com/photo-1494783367193-149034c05e41?w=500&h=300',
+          'https://unsplash.com/photos/a-grassy-field-with-a-building-in-the-background-pRXi1TbtyiQ',
     },
   ];
 
@@ -105,11 +106,6 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _filteredFarmhouses = List.from(farmhouses);
     _searchController.addListener(_onSearchChanged);
-  }
-
-  @override
-  void initState() {
-    super.initState();
     // Initialize or get existing FavoritesController
     if (!Get.isRegistered<FavoritesController>()) {
       Get.put(FavoritesController());
@@ -125,7 +121,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _logout() async {
     try {
-      await FirebaseAuth.instance.signOut();
+      // TODO: Uncomment when Firebase Auth is working
+      // await FirebaseAuth.instance.signOut();
       if (mounted) Navigator.pushReplacementNamed(context, '/login');
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error logging out: $e')));
@@ -150,7 +147,7 @@ class _HomeScreenState extends State<HomeScreen> {
         // Quick chip filters
         bool matchesFilter;
         switch (_selectedFilter) {
-          case 'Under ₹2000':
+          case 'Under ₹8000':
             matchesFilter = price <= 2000;
             break;
           case 'Within 20km':
@@ -206,179 +203,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[50],
-//<<<<<<< HEAD
-      body: Column(
-        children: [
-          // Custom AppBar
-          Container(
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [
-                  Color(0xFF2D5016),
-                  Color(0xFF4A7023),
-                ],
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 8,
-                ),
-              ],
-            ),
-            padding: const EdgeInsets.only(
-              top: 16,
-              left: 16,
-              right: 16,
-              bottom: 20,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header with Logout Button and Favorites
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'FARMIGO',
-                      style: TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    Row(
-                      children: [
-                        // Favorites Icon with Badge
-                        Obx(
-                          () => Stack(
-                            children: [
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.favorite,
-                                  color: Colors.white,
-                                ),
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) =>
-                                          const FavoritesScreen(),
-                                    ),
-                                  );
-                                },
-                                tooltip: 'Favorites',
-                              ),
-                              if (favoritesController.getFavoriteCount() > 0)
-                                Positioned(
-                                  top: 8,
-                                  right: 8,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(2),
-                                    decoration: BoxDecoration(
-                                      color: Colors.red,
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    constraints: const BoxConstraints(
-                                      minWidth: 18,
-                                      minHeight: 18,
-                                    ),
-                                    child: Text(
-                                      '${favoritesController.getFavoriteCount()}',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                        // Logout Button
-                        IconButton(
-                          icon: const Icon(
-                            Icons.logout,
-                            color: Colors.white,
-                          ),
-                          onPressed: _logout,
-                          tooltip: 'Logout',
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                const Text(
-                  'Find your perfect farmhouse retreat',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.white70,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                // Search Bar
-                TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    hintText: 'Search farmhouses...',
-                    hintStyle: TextStyle(color: Colors.grey[400]),
-                    prefixIcon: const Icon(
-                      Icons.search,
-                      color: Color(0xFF4A7023),
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                    filled: true,
-                    fillColor: Colors.white,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // Filter chips
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              children: [
-                _buildFilterChip('All', true),
-                _buildFilterChip('Under ₹2000', false),
-                _buildFilterChip('Within 20km', false),
-                _buildFilterChip('Luxury', false),
-              ],
-            ),
-          ),
-          // Farmhouse List
-          Expanded(
-            child: ListView.builder(
-              itemCount: farmhouses.length,
-              padding: const EdgeInsets.only(bottom: 20),
-              itemBuilder: (context, index) {
-                final farmhouse = farmhouses[index];
-                return FarmhouseCard(
-                  name: farmhouse['name'],
-                  location: farmhouse['location'],
-                  price: farmhouse['price'],
-                  distance: farmhouse['distance'],
-                  imageUrl: farmhouse['imageUrl'],
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-      // Bottom Navigation Bar
-
       body: _buildBody(),
-//>>>>>>> 10abcf62c9054fd7d4351cec8c5cac9731bad31c
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           boxShadow: [
@@ -408,21 +233,20 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildBody() {
-    if (_selectedIndex == 0) return _homePage();
-    if (_selectedIndex == 3) return _filtersPage();
+  if (_selectedIndex == 0) return _homePage();
+  if (_selectedIndex == 1) return const FavoritesScreen();
+  if (_selectedIndex == 3) return _filtersPage();
 
-    // placeholders for other tabs
-    return Center(
-      child: Text(
-        _selectedIndex == 1
-            ? 'Favorites (not implemented yet)'
-            : _selectedIndex == 2
-                ? 'Bookings (not implemented yet)'
-                : 'Profile (not implemented yet)',
-        style: const TextStyle(fontSize: 18, color: Colors.grey),
-      ),
-    );
-  }
+  // placeholders for other tabs
+  return Center(
+    child: Text(
+      _selectedIndex == 2
+          ? 'Bookings (not implemented yet)'
+          : 'Profile (not implemented yet)',
+      style: const TextStyle(fontSize: 18, color: Colors.grey),
+    ),
+  );
+}
 
   Widget _homePage() {
     return Column(
@@ -620,7 +444,7 @@ class _HomeScreenState extends State<HomeScreen> {
               min: 0,
               max: 5,
               divisions: 5,
-              label: '${_minRating.toStringAsFixed(1)}',
+              label: _minRating.toStringAsFixed(1),
               onChanged: (v) => setState(() => _minRating = v),
             ),
 
@@ -663,8 +487,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       _applyFilters();
                       setState(() => _selectedIndex = 0);
                     },
-                    child: const Text('Apply'),
                     style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4A7023)),
+                    child: const Text('Apply'),
                   ),
                 ),
                 const SizedBox(width: 12),

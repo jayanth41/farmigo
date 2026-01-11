@@ -5,7 +5,6 @@ class FarmhouseModel {
   final double price;
   final String distance;
   final String imageUrl;
-  final double? rating;
 
   FarmhouseModel({
     required this.id,
@@ -14,10 +13,9 @@ class FarmhouseModel {
     required this.price,
     required this.distance,
     required this.imageUrl,
-    this.rating,
   });
 
-  // Convert to JSON for storage
+  // Convert to JSON
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -26,29 +24,26 @@ class FarmhouseModel {
       'price': price,
       'distance': distance,
       'imageUrl': imageUrl,
-      'rating': rating,
     };
   }
 
   // Create from JSON
   factory FarmhouseModel.fromJson(Map<String, dynamic> json) {
     return FarmhouseModel(
-      id: json['id'] ?? '',
-      name: json['name'] ?? '',
-      location: json['location'] ?? '',
-      price: (json['price'] ?? 0.0).toDouble(),
-      distance: json['distance'] ?? '',
-      imageUrl: json['imageUrl'] ?? '',
-      rating: json['rating'] != null ? (json['rating'] as num).toDouble() : null,
+      id: json['id'] as String,
+      name: json['name'] as String,
+      location: json['location'] as String,
+      price: (json['price'] as num).toDouble(),
+      distance: json['distance'] as String,
+      imageUrl: json['imageUrl'] as String,
     );
   }
 
   @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is FarmhouseModel &&
-          runtimeType == other.runtimeType &&
-          id == other.id;
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is FarmhouseModel && other.id == id;
+  }
 
   @override
   int get hashCode => id.hashCode;

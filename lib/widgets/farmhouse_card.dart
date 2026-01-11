@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../screens/farmhouse_details_screen.dart';
 import '../models/farmhouse_model.dart';
 import '../controllers/favorites_controller.dart';
+import '../screens/farmhouse_details_screen.dart';
 
 class FarmhouseCard extends StatefulWidget {
   final String name;
@@ -48,20 +48,26 @@ class _FarmhouseCardState extends State<FarmhouseCard> {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        print('Tapped: ${widget.name}');
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => FarmhouseDetailsScreen(
-              name: widget.name,
-              location: widget.location,
-              price: widget.price,
-              distance: widget.distance,
-              imageUrl: widget.imageUrl,
-              id: widget.id ?? widget.name,
+        try {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => FarmhouseDetailsScreen(
+                name: widget.name,
+                location: widget.location,
+                price: widget.price,
+                distance: widget.distance,
+                imageUrl: widget.imageUrl,
+                id: widget.id ?? widget.name,
+              ),
             ),
-          ),
-        );
+          );
+        } catch (e) {
+          print('Navigation error: $e');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error opening details: $e')),
+          );
+        }
       },
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -126,6 +132,16 @@ class _FarmhouseCardState extends State<FarmhouseCard> {
                   () => GestureDetector(
                     onTap: () {
                       favoritesController.toggleFavorite(farmhouse);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            favoritesController.isFavorited(farmhouse.id)
+                                ? '❤️ Added to favorites'
+                                : '💔 Removed from favorites',
+                          ),
+                          duration: const Duration(seconds: 1),
+                        ),
+                      );
                     },
                     child: Container(
                       padding: const EdgeInsets.all(8),
