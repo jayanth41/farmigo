@@ -57,7 +57,7 @@ class _HomeScreenState extends State<HomeScreen> {
       'rating': 4.4,
       'amenities': ['WiFi', 'Breakfast'],
       'imageUrl':
-          'https://raw.githubusercontent.com/jayanth41/images/blob/main/lawn.jpeg',
+          'https://raw.githubusercontent.com/jayanth41/images/refs/heads/main/lawn.jpeg',
     },
     {
       'name': 'Organic Farm Retreat',
@@ -67,7 +67,7 @@ class _HomeScreenState extends State<HomeScreen> {
       'rating': 4.0,
       'amenities': ['Kitchen', 'Breakfast'],
       'imageUrl':
-          'https://raw.githubusercontent.com/jayanth41/images/blob/main/lawn.jpeg',
+          'https://raw.githubusercontent.com/jayanth41/images/refs/heads/main/lawn.jpeg',
     },
     {
       'name': 'Riverside Farmhouse',
@@ -97,7 +97,7 @@ class _HomeScreenState extends State<HomeScreen> {
       'rating': 4.6,
       'amenities': ['Pool', 'WiFi'],
       'imageUrl':
-          'https://unsplash.com/photos/a-grassy-field-with-a-building-in-the-background-pRXi1TbtyiQ',
+          'https://images.unsplash.com/photo-1549294413-26f195200c16?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTJ8fGx1eHVyeSUyMGhvdGVsfGVufDB8fDB8fHww',
     },
   ];
 
