@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+//import 'package:firebase_auth/firebase_auth.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -39,24 +39,33 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    await FirebaseAuth.instance.verifyPhoneNumber(
-      phoneNumber: phoneNumber,
-      verificationCompleted: (PhoneAuthCredential credential) async {
-        await FirebaseAuth.instance.signInWithCredential(credential);
-      },
-      verificationFailed: (FirebaseAuthException e) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e.message!)));
-      },
-      codeSent: (String verId, int? resendToken) {
-        setState(() {
-          verificationId = verId;
-          otpSent = true;
-        });
-      },
-      codeAutoRetrievalTimeout: (String verId) {
-        verificationId = verId;
-      },
+    // TODO: Uncomment when Firebase Auth is working
+    // await FirebaseAuth.instance.verifyPhoneNumber(
+    //   phoneNumber: phoneNumber,
+    //   verificationCompleted: (PhoneAuthCredential credential) async {
+    //     await FirebaseAuth.instance.signInWithCredential(credential);
+    //   },
+    //   verificationFailed: (FirebaseAuthException e) {
+    //     ScaffoldMessenger.of(context)
+    //         .showSnackBar(SnackBar(content: Text(e.message!)));
+    //   },
+    //   codeSent: (String verId, int? resendToken) {
+    //     setState(() {
+    //       verificationId = verId;
+    //       otpSent = true;
+    //     });
+    //   },
+    //   codeAutoRetrievalTimeout: (String verId) {
+    //     verificationId = verId;
+    //   },
+    // );
+
+    // Temporary: Just show OTP field
+    setState(() {
+      otpSent = true;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+       SnackBar(content: Text("OTP sent to $phoneNumber (Firebase disabled)")),
     );
   }
 
@@ -70,26 +79,35 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    try {
-      PhoneAuthCredential credential = PhoneAuthProvider.credential(
-        verificationId: verificationId,
-        smsCode: otp,
-      );
+    // TODO: Uncomment when Firebase Auth is working
+    // try {
+    //   PhoneAuthCredential credential = PhoneAuthProvider.credential(
+    //     verificationId: verificationId,
+    //     smsCode: otp,
+    //   );
+    //
+    //   await FirebaseAuth.instance.signInWithCredential(credential);
+    //
+    //   ScaffoldMessenger.of(context).showSnackBar(
+    //     const SnackBar(content: Text("Login Successful")),
+    //   );
+    //
+    //   // Navigate to home screen after successful login
+    //   if (mounted) {
+    //     Navigator.pushReplacementNamed(context, '/home');
+    //   }
+    // } on FirebaseAuthException catch (e) {
+    //   ScaffoldMessenger.of(context).showSnackBar(
+    //     SnackBar(content: Text("Error: ${e.message}")),
+    //   );
+    // }
 
-      await FirebaseAuth.instance.signInWithCredential(credential);
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Login Successful")),
-      );
-
-      // Navigate to home screen after successful login
-      if (mounted) {
-        Navigator.pushReplacementNamed(context, '/home');
-      }
-    } on FirebaseAuthException catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: ${e.message}")),
-      );
+    // Temporary: Just navigate to home
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Login Successful (Firebase disabled)")),
+    );
+    if (mounted) {
+      Navigator.pushReplacementNamed(context, '/home');
     }
   }
 
