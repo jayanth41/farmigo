@@ -3,9 +3,11 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:get/get.dart';
 import 'firebase_options.dart';
 import 'controllers/favorites_controller.dart';
+import 'controllers/bookings_controller.dart';
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/profile_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -14,12 +16,14 @@ void main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+    print('Firebase initialized successfully');
   } catch (e) {
     print('Firebase initialization error: $e');
   }
   
-  // Initialize FavoritesController FIRST
+  // Initialize Controllers
   Get.put<FavoritesController>(FavoritesController());
+  Get.put<BookingsController>(BookingsController());
   
   runApp(const MyApp());
 }
@@ -31,6 +35,26 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return GetMaterialApp(
       debugShowCheckedModeBanner: false,
+      title: 'Farmigo',
+      theme: ThemeData(
+        primaryColor: const Color(0xFF4A7023),
+        useMaterial3: true,
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFF4A7023),
+          foregroundColor: Colors.white,
+          elevation: 0,
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF4A7023),
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+        ),
+      ),
       home: const AuthStateHandler(),
       getPages: [
         GetPage(name: '/home', page: () => const HomeScreen()),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../models/farmhouse_model.dart';
 import '../controllers/favorites_controller.dart';
+import '../widgets/farmhouse_image_slider.dart';
 
 class FarmhouseDetailsScreen extends StatefulWidget {
   final String name;
@@ -9,6 +10,7 @@ class FarmhouseDetailsScreen extends StatefulWidget {
   final double price;
   final String distance;
   final String imageUrl;
+  final List<String>? images;
   final String? id;
 
   const FarmhouseDetailsScreen({
@@ -18,7 +20,8 @@ class FarmhouseDetailsScreen extends StatefulWidget {
     required this.price,
     required this.distance,
     required this.imageUrl,
-    this.id,
+    this.images,
+    required this.id,
   });
 
   @override
@@ -53,10 +56,10 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
   ];
 
   static const List<String> guestPhotos = [
-    'https://via.placeholder.com/150',
-    'https://via.placeholder.com/150',
-    'https://via.placeholder.com/150',
-    'https://via.placeholder.com/150',
+    'https://media.istockphoto.com/id/162137765/photo/summer-swimming-pool.jpg?s=612x612&w=0&k=20&c=Wv3DeS8S-yygZpJ6eE90iu7861DRVd177MlGTZVWd1I=',
+    'https://media.istockphoto.com/id/514102692/photo/udaipur-city-palace-in-rajasthan-state-of-india.jpg?s=612x612&w=0&k=20&c=bYRDPOuf6nFgghl6VAnCn__22SFyu_atC_fiSCzVNtY=',
+    'https://media.istockphoto.com/id/476988858/photo/white-architecture-on-santorini-island-greece.jpg?s=612x612&w=0&k=20&c=4M7lL6LvueQDiJtbUkIDT2AqV7kphss6O9YpFYsxTQc=',
+    'https://media.istockphoto.com/id/2156753581/photo/creative-composition-of-living-room-interior-with-kitchen-space-and-lobby-in-the-modern.jpg?s=612x612&w=0&k=20&c=ysbREUGzXC0IeNko4TLj4_RFiZnGlq7tjqOXr2Liu3Q=',
   ];
 
   static const List<Map<String, dynamic>> similarFarmhouses = [
@@ -65,21 +68,21 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
       'price': 3500,
       'rating': 4.8,
       'reviews': 156,
-      'image': 'https://via.placeholder.com/200x150'
+      'image': 'https://media.istockphoto.com/id/1483523217/photo/a-woman-in-white-dress-walks-down-a-pier-over-turquoise-ocean-in-the-maldives-during-sunset.webp?a=1&b=1&s=612x612&w=0&k=20&c=dh6Ic9mGAR4P_Ol3_KWdRx1i-imb-2FZQVF67TRNvvk='
     },
     {
       'name': 'Countryside Retreat',
       'price': 4200,
       'rating': 4.6,
       'reviews': 89,
-      'image': 'https://via.placeholder.com/200x150'
+      'image': 'https://media.istockphoto.com/id/1302442919/photo/luxury-beach-villa-at-night.webp?a=1&b=1&s=612x612&w=0&k=20&c=b0GO1cEmtHSuwmdlmkJGZVhiBoAtn-gNp6LYcPg12AQ='
     },
     {
       'name': 'Rural Paradise',
       'price': 3800,
       'rating': 4.9,
       'reviews': 234,
-      'image': 'https://via.placeholder.com/200x150'
+      'image': 'https://media.istockphoto.com/id/146765403/photo/a-luxurious-florida-beach-hotel-during-sunrise.jpg?s=612x612&w=0&k=20&c=pxw9Q78KbvqV6_pS_C-v_m6S_WQjKWLBSdqgRtqMUUg='
     },
   ];
 

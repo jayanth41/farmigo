@@ -5,6 +5,7 @@ class FarmhouseModel {
   final double price;
   final String distance;
   final String imageUrl;
+  final List<String> images;
 
   FarmhouseModel({
     required this.id,
@@ -13,6 +14,7 @@ class FarmhouseModel {
     required this.price,
     required this.distance,
     required this.imageUrl,
+    this.images = const [],
   });
 
   // Convert to JSON
