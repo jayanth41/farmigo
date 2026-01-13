@@ -10,6 +10,7 @@ class FarmhouseCard extends StatefulWidget {
   final double price;
   final String distance;
   final String imageUrl;
+  final List<String>? images;
   final String? id;
 
   const FarmhouseCard({
@@ -19,6 +20,7 @@ class FarmhouseCard extends StatefulWidget {
     required this.price,
     required this.distance,
     required this.imageUrl,
+    this.images,
     this.id,
   });
 
@@ -30,10 +32,18 @@ class _FarmhouseCardState extends State<FarmhouseCard> {
   late FavoritesController favoritesController;
   late FarmhouseModel farmhouse;
 
+  int _currentImageIndex = 0;
+
   @override
   void initState() {
     super.initState();
+
+    if (!Get.isRegistered<FavoritesController>()) {
+      Get.put(FavoritesController());
+    }
+
     favoritesController = Get.find<FavoritesController>();
+
     farmhouse = FarmhouseModel(
       id: widget.id ?? widget.name,
       name: widget.name,
@@ -46,69 +56,86 @@ class _FarmhouseCardState extends State<FarmhouseCard> {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        try {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => FarmhouseDetailsScreen(
-                name: widget.name,
-                location: widget.location,
-                price: widget.price,
-                distance: widget.distance,
-                imageUrl: widget.imageUrl,
-                id: widget.id ?? widget.name,
-              ),
-            ),
-          );
-        } catch (e) {
-          print('Navigation error: $e');
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error opening details: $e')),
-          );
-        }
-      },
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 12,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(16),
-          child: Stack(
-            children: [
-              // Image
-              Image.network(
-                widget.imageUrl,
-                height: 240,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    height: 240,
-                    width: double.infinity,
-                    color: Colors.grey[300],
-                    child: const Icon(
-                      Icons.image_not_supported,
-                      size: 60,
-                      color: Colors.grey,
+    final images = (widget.images != null && widget.images!.isNotEmpty)
+        ? widget.images!
+        : [widget.imageUrl];
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.12),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Stack(
+          children: [
+            // ================= IMAGE SLIDER (SWIPE ENABLED) =================
+            SizedBox(
+              height: 240,
+              width: double.infinity,
+              child: PageView.builder(
+                itemCount: images.length,
+                onPageChanged: (index) {
+                  setState(() {
+                    _currentImageIndex = index;
+                  });
+                },
+                itemBuilder: (context, index) {
+                  return Image.network(
+                    images[index],
+                    fit: BoxFit.cover,
+                    loadingBuilder: (context, child, progress) {
+                      if (progress == null) return child;
+                      return const Center(child: CircularProgressIndicator());
+                    },
+                    errorBuilder: (_, __, ___) => Container(
+                      color: Colors.grey[300],
+                      child: const Icon(Icons.broken_image, size: 60),
                     ),
                   );
                 },
               ),
-              // Gradient overlay at bottom
+            ),
+
+            // ================= DOT INDICATOR =================
+            if (images.length > 1)
               Positioned(
-                bottom: 0,
+                bottom: 120,
                 left: 0,
                 right: 0,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(
+                    images.length,
+                    (index) => AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      width: _currentImageIndex == index ? 10 : 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: _currentImageIndex == index
+                            ? Colors.white
+                            : Colors.white54,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+            // ================= DARK GRADIENT (DO NOT BLOCK TOUCH) =================
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: IgnorePointer(
                 child: Container(
                   height: 140,
                   decoration: BoxDecoration(
@@ -116,7 +143,7 @@ class _FarmhouseCardState extends State<FarmhouseCard> {
                       begin: Alignment.bottomCenter,
                       end: Alignment.topCenter,
                       colors: [
-                        Colors.black.withOpacity(0.8),
+                        Colors.black.withOpacity(0.85),
                         Colors.black.withOpacity(0.4),
                         Colors.transparent,
                       ],
@@ -124,59 +151,59 @@ class _FarmhouseCardState extends State<FarmhouseCard> {
                   ),
                 ),
               ),
-              // Favorite button
-              Positioned(
-                top: 12,
-                right: 12,
-                child: Obx(
-                  () => GestureDetector(
-                    onTap: () {
-                      favoritesController.toggleFavorite(farmhouse);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            favoritesController.isFavorited(farmhouse.id)
-                                ? '❤️ Added to favorites'
-                                : '💔 Removed from favorites',
-                          ),
-                          duration: const Duration(seconds: 1),
-                        ),
-                      );
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.15),
-                            blurRadius: 8,
-                          ),
-                        ],
-                      ),
-                      child: Icon(
-                        favoritesController.isFavorited(farmhouse.id)
-                            ? Icons.favorite
-                            : Icons.favorite_border,
-                        color: favoritesController.isFavorited(farmhouse.id)
-                            ? Colors.red
-                            : Colors.grey[700],
-                        size: 22,
-                      ),
+            ),
+
+            // ================= FAVORITE BUTTON =================
+            Positioned(
+              top: 12,
+              right: 12,
+              child: Obx(() {
+                final isFav =
+                    favoritesController.isFavorited(farmhouse.id);
+                return GestureDetector(
+                  onTap: () {
+                    favoritesController.toggleFavorite(farmhouse);
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      isFav ? Icons.favorite : Icons.favorite_border,
+                      color: isFav ? Colors.red : Colors.grey,
                     ),
                   ),
-                ),
-              ),
-              // Details at bottom
-              Positioned(
-                bottom: 16,
-                left: 16,
-                right: 16,
+                );
+              }),
+            ),
+
+            // ================= DETAILS (TAP TO OPEN) =================
+            Positioned(
+              bottom: 16,
+              left: 16,
+              right: 16,
+              child: GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => FarmhouseDetailsScreen(
+                        id: widget.id ?? widget.name,
+                        name: widget.name,
+                        location: widget.location,
+                        price: widget.price,
+                        distance: widget.distance,
+                        imageUrl: widget.imageUrl,
+                        images: images,
+                      ),
+                    ),
+                  );
+                },
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Name
                     Text(
                       widget.name,
                       style: const TextStyle(
@@ -188,26 +215,21 @@ class _FarmhouseCardState extends State<FarmhouseCard> {
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 6),
-                    // Location and Price Row
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Expanded(
                           child: Row(
                             children: [
-                              const Icon(
-                                Icons.location_on,
-                                size: 14,
-                                color: Colors.white70,
-                              ),
+                              const Icon(Icons.location_on,
+                                  size: 14, color: Colors.white70),
                               const SizedBox(width: 4),
                               Expanded(
                                 child: Text(
                                   widget.location,
                                   style: const TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.white70,
-                                  ),
+                                      fontSize: 12,
+                                      color: Colors.white70),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -215,7 +237,6 @@ class _FarmhouseCardState extends State<FarmhouseCard> {
                             ],
                           ),
                         ),
-                        const SizedBox(width: 8),
                         Text(
                           '₹${widget.price.toStringAsFixed(0)}/night',
                           style: const TextStyle(
@@ -229,8 +250,8 @@ class _FarmhouseCardState extends State<FarmhouseCard> {
                   ],
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

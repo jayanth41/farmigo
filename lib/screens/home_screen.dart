@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-//import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
 import '../widgets/farmhouse_card.dart';
 import '../controllers/favorites_controller.dart';
-//import 'favorites_screen.dart';
 import 'favorites_screen.dart';
+import 'bookings_screen.dart';
+import 'profile_screen.dart';
+import '../widgets/farmhouse_image_slider.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -48,6 +49,15 @@ class _HomeScreenState extends State<HomeScreen> {
       'amenities': ['Pool', 'WiFi', 'Kitchen', 'Breakfast'],
       'imageUrl':
           'https://raw.githubusercontent.com/jayanth41/images/main/view2.jpeg',
+          'images': [
+            'https://raw.githubusercontent.com/jayanth41/images/main/view2.jpeg',
+            'https://raw.githubusercontent.com/jayanth41/images/main/lawn.jpeg',
+            'https://raw.githubusercontent.com/jayanth41/images/refs/heads/main/image.png',
+            'https://raw.githubusercontent.com/jayanth41/images/refs/heads/main/drone.jpeg',
+            'https://raw.githubusercontent.com/jayanth41/images/refs/heads/main/att.jpeg',
+            'https://raw.githubusercontent.com/jayanth41/images/refs/heads/main/wat.jpeg',
+            'https://raw.githubusercontent.com/jayanth41/images/refs/heads/main/rock.jpeg',
+          ],
     },
     {
       'name': 'Serene Hills Resort',
@@ -121,11 +131,37 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _logout() async {
     try {
-      // TODO: Uncomment when Firebase Auth is working
-      // await FirebaseAuth.instance.signOut();
-      if (mounted) Navigator.pushReplacementNamed(context, '/login');
+      // Show confirmation dialog
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Logout'),
+          content: const Text('Are you sure you want to logout?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: const Text('Logout'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmed == true && mounted) {
+        // TODO: Uncomment when Firebase Auth is working
+        // await FirebaseAuth.instance.signOut();
+        Navigator.pushReplacementNamed(context, '/login');
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error logging out: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error logging out: $e')),
+        );
+      }
     }
   }
 
@@ -147,7 +183,7 @@ class _HomeScreenState extends State<HomeScreen> {
         // Quick chip filters
         bool matchesFilter;
         switch (_selectedFilter) {
-          case 'Under ₹8000':
+          case 'Under ₹2000':
             matchesFilter = price <= 2000;
             break;
           case 'Within 20km':
@@ -233,20 +269,13 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildBody() {
-  if (_selectedIndex == 0) return _homePage();
-  if (_selectedIndex == 1) return const FavoritesScreen();
-  if (_selectedIndex == 3) return _filtersPage();
-
-  // placeholders for other tabs
-  return Center(
-    child: Text(
-      _selectedIndex == 2
-          ? 'Bookings (not implemented yet)'
-          : 'Profile (not implemented yet)',
-      style: const TextStyle(fontSize: 18, color: Colors.grey),
-    ),
-  );
-}
+    if (_selectedIndex == 0) return _homePage();
+    if (_selectedIndex == 1) return const FavoritesScreen();
+    if (_selectedIndex == 2) return const BookingsScreen();
+    if (_selectedIndex == 3) return _filtersPage();
+    
+    return const ProfileScreen();
+  }
 
   Widget _homePage() {
     return Column(
@@ -374,19 +403,26 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                   ),
                 )
-              : ListView.builder(
-                  itemCount: _filteredFarmhouses.length,
-                  padding: const EdgeInsets.only(bottom: 20),
-                  itemBuilder: (context, index) {
-                    final farmhouse = _filteredFarmhouses[index];
-                    return FarmhouseCard(
-                      name: farmhouse['name'],
-                      location: farmhouse['location'],
-                      price: farmhouse['price'],
-                      distance: farmhouse['distance'],
-                      imageUrl: farmhouse['imageUrl'],
-                    );
+              : RefreshIndicator(
+                  onRefresh: () async {
+                    _applyFilters();
+                    await Future.delayed(const Duration(milliseconds: 500));
                   },
+                  child: ListView.builder(
+                    itemCount: _filteredFarmhouses.length,
+                    padding: const EdgeInsets.only(bottom: 20),
+                    itemBuilder: (context, index) {
+                      final farmhouse = _filteredFarmhouses[index];
+                      return FarmhouseCard(
+                        name: farmhouse['name'],
+                        location: farmhouse['location'],
+                        price: farmhouse['price'],
+                        distance: farmhouse['distance'],
+                        imageUrl: farmhouse['imageUrl'],
+                         images: List<String>.from(farmhouse['images'] ?? []),
+                      );
+                    },
+                  ),
                 ),
         ),
       ],
