@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../models/farmhouse_model.dart';
 import '../controllers/favorites_controller.dart';
-import '../widgets/farmhouse_image_slider.dart';
 
 class FarmhouseDetailsScreen extends StatefulWidget {
   final String name;
@@ -149,7 +148,7 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.2),
+                                color: Color.fromRGBO(0, 0, 0, 0.2),
                                 blurRadius: 8,
                               ),
                             ],
@@ -183,9 +182,9 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                               shape: BoxShape.circle,
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.2),
-                                  blurRadius: 8,
-                                ),
+                                    color: Color.fromRGBO(0, 0, 0, 0.2),
+                                    blurRadius: 8,
+                                  ),
                               ],
                             ),
                             child: Icon(
@@ -713,7 +712,7 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                                     end: Alignment.bottomCenter,
                                     colors: [
                                       Colors.transparent,
-                                      Colors.black.withOpacity(0.3),
+                                      Color.fromRGBO(0, 0, 0, 0.3),
                                     ],
                                   ),
                                 ),
@@ -859,8 +858,8 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              BoxShadow(
+              color: Color.fromRGBO(0, 0, 0, 0.1),
               blurRadius: 8,
               offset: const Offset(0, -2),
             ),

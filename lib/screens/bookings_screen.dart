@@ -58,17 +58,17 @@ class _BookingsScreenState extends State<BookingsScreen> {
         } else {
           return Column(
             children: [
-              // Filter Tabs
+              // Filter Tabs (styled like the React buttons)
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 12.0),
                   child: Row(
                     children: [
-                      _buildFilterChip('All', 'all'),
-                      _buildFilterChip('Upcoming', 'upcoming'),
-                      _buildFilterChip('Completed', 'completed'),
-                      _buildFilterChip('Cancelled', 'cancelled'),
+                      _filterButton('all', 'All'),
+                      _filterButton('upcoming', 'Upcoming'),
+                      _filterButton('completed', 'Completed'),
+                      _filterButton('cancelled', 'Cancelled'),
                     ],
                   ),
                 ),
@@ -123,6 +123,24 @@ class _BookingsScreenState extends State<BookingsScreen> {
             _filterStatus = value;
           });
         },
+      ),
+    );
+  }
+
+  Widget _filterButton(String value, String label) {
+    final bool active = _filterStatus == value;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8.0),
+      child: ElevatedButton(
+        onPressed: () => setState(() => _filterStatus = value),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: active ? const Color(0xFF1B5E20) : Colors.grey[100],
+          foregroundColor: active ? Colors.white : Colors.grey[700],
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          elevation: active ? 2 : 0,
+        ),
+        child: Text(label),
       ),
     );
   }
