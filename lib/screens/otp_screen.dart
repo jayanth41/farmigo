@@ -250,7 +250,7 @@ class _OTPScreenState extends State<OTPScreen> {
                           borderRadius: BorderRadius.circular(12),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF4A7023).withOpacity(0.3),
+                              color: Color.fromRGBO(74, 112, 35, 0.3),
                               blurRadius: 12,
                               offset: const Offset(0, 8),
                             ),
