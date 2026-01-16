@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:get/get.dart';
 import '../widgets/farmhouse_card.dart';
+import '../controllers/favorites_controller.dart';
+import 'favorites_screen.dart';
+import 'bookings_screen.dart';
+import 'profile_screen.dart';
+import '../widgets/farmhouse_image_slider.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -12,6 +17,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   final TextEditingController _searchController = TextEditingController();
+  late FavoritesController favoritesController;
 
   // Quick chip filter
   String _selectedFilter = 'All';
@@ -21,7 +27,7 @@ class _HomeScreenState extends State<HomeScreen> {
   double _maxDistance = 100; // in km
   bool _luxuryOnly = false;
   double _minRating = 0;
-  Map<String, bool> _amenities = {
+  final Map<String, bool> _amenities = {
     'Pool': false,
     'WiFi': false,
     'Kitchen': false,
@@ -43,16 +49,25 @@ class _HomeScreenState extends State<HomeScreen> {
       'amenities': ['Pool', 'WiFi', 'Kitchen', 'Breakfast'],
       'imageUrl':
           'https://raw.githubusercontent.com/jayanth41/images/main/view2.jpeg',
+          'images': [
+            'https://raw.githubusercontent.com/jayanth41/images/main/view2.jpeg',
+            'https://raw.githubusercontent.com/jayanth41/images/main/lawn.jpeg',
+            'https://raw.githubusercontent.com/jayanth41/images/refs/heads/main/image.png',
+            'https://raw.githubusercontent.com/jayanth41/images/refs/heads/main/drone.jpeg',
+            'https://raw.githubusercontent.com/jayanth41/images/refs/heads/main/att.jpeg',
+            'https://raw.githubusercontent.com/jayanth41/images/refs/heads/main/wat.jpeg',
+            'https://raw.githubusercontent.com/jayanth41/images/refs/heads/main/rock.jpeg',
+          ],
     },
     {
       'name': 'Serene Hills Resort',
       'location': 'Hyderabad, Telangana',
-      'price': 3500.0,
+      'price': 13500.0,
       'distance': '8 km away',
       'rating': 4.4,
       'amenities': ['WiFi', 'Breakfast'],
       'imageUrl':
-          'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=500&h=300',
+          'https://raw.githubusercontent.com/jayanth41/images/refs/heads/main/lawn.jpeg',
     },
     {
       'name': 'Organic Farm Retreat',
@@ -62,7 +77,7 @@ class _HomeScreenState extends State<HomeScreen> {
       'rating': 4.0,
       'amenities': ['Kitchen', 'Breakfast'],
       'imageUrl':
-          'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=500&h=300',
+          'https://raw.githubusercontent.com/jayanth41/images/refs/heads/main/lawn.jpeg',
     },
     {
       'name': 'Riverside Farmhouse',
@@ -72,7 +87,7 @@ class _HomeScreenState extends State<HomeScreen> {
       'rating': 3.9,
       'amenities': ['WiFi', 'Kitchen'],
       'imageUrl':
-          'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=500&h=300',
+          'https://images.unsplash.com/photo-1561501900-3701fa6a0864?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8bHV4dXJ5JTIwaG90ZWx8ZW58MHx8MHx8fDA%3D',
     },
     {
       'name': 'Heritage Farm Stay',
@@ -82,17 +97,17 @@ class _HomeScreenState extends State<HomeScreen> {
       'rating': 4.2,
       'amenities': ['Breakfast', 'Kitchen'],
       'imageUrl':
-          'https://images.unsplash.com/photo-1469022563149-aa64dbd37dda?w=500&h=300',
+          'https://plus.unsplash.com/premium_photo-1661923725782-f73c990fbddf?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NXx8bHV4dXJ5JTIwaG90ZWx8ZW58MHx8MHx8fDA%3D',
     },
     {
       'name': 'Premium Agri Resort',
       'location': 'Narayankhed, Telangana',
-      'price': 4000.0,
+      'price': 14000.0,
       'distance': '60 km away',
       'rating': 4.6,
       'amenities': ['Pool', 'WiFi'],
       'imageUrl':
-          'https://images.unsplash.com/photo-1494783367193-149034c05e41?w=500&h=300',
+          'https://images.unsplash.com/photo-1549294413-26f195200c16?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTJ8fGx1eHVyeSUyMGhvdGVsfGVufDB8fDB8fHww',
     },
   ];
 
@@ -101,6 +116,11 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _filteredFarmhouses = List.from(farmhouses);
     _searchController.addListener(_onSearchChanged);
+    // Initialize or get existing FavoritesController
+    if (!Get.isRegistered<FavoritesController>()) {
+      Get.put(FavoritesController());
+    }
+    favoritesController = Get.find<FavoritesController>();
   }
 
   @override
@@ -111,10 +131,37 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _logout() async {
     try {
-      await FirebaseAuth.instance.signOut();
-      if (mounted) Navigator.pushReplacementNamed(context, '/login');
+      // Show confirmation dialog
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Logout'),
+          content: const Text('Are you sure you want to logout?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: const Text('Logout'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmed == true && mounted) {
+        // TODO: Uncomment when Firebase Auth is working
+        // await FirebaseAuth.instance.signOut();
+        Navigator.pushReplacementNamed(context, '/login');
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error logging out: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error logging out: $e')),
+        );
+      }
     }
   }
 
@@ -223,19 +270,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildBody() {
     if (_selectedIndex == 0) return _homePage();
+    if (_selectedIndex == 1) return const FavoritesScreen();
+    if (_selectedIndex == 2) return const BookingsScreen();
     if (_selectedIndex == 3) return _filtersPage();
-
-    // placeholders for other tabs
-    return Center(
-      child: Text(
-        _selectedIndex == 1
-            ? 'Favorites (not implemented yet)'
-            : _selectedIndex == 2
-                ? 'Bookings (not implemented yet)'
-                : 'Profile (not implemented yet)',
-        style: const TextStyle(fontSize: 18, color: Colors.grey),
-      ),
-    );
+    
+    return const ProfileScreen();
   }
 
   Widget _homePage() {
@@ -364,19 +403,26 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                   ),
                 )
-              : ListView.builder(
-                  itemCount: _filteredFarmhouses.length,
-                  padding: const EdgeInsets.only(bottom: 20),
-                  itemBuilder: (context, index) {
-                    final farmhouse = _filteredFarmhouses[index];
-                    return FarmhouseCard(
-                      name: farmhouse['name'],
-                      location: farmhouse['location'],
-                      price: farmhouse['price'],
-                      distance: farmhouse['distance'],
-                      imageUrl: farmhouse['imageUrl'],
-                    );
+              : RefreshIndicator(
+                  onRefresh: () async {
+                    _applyFilters();
+                    await Future.delayed(const Duration(milliseconds: 500));
                   },
+                  child: ListView.builder(
+                    itemCount: _filteredFarmhouses.length,
+                    padding: const EdgeInsets.only(bottom: 20),
+                    itemBuilder: (context, index) {
+                      final farmhouse = _filteredFarmhouses[index];
+                      return FarmhouseCard(
+                        name: farmhouse['name'],
+                        location: farmhouse['location'],
+                        price: farmhouse['price'],
+                        distance: farmhouse['distance'],
+                        imageUrl: farmhouse['imageUrl'],
+                         images: List<String>.from(farmhouse['images'] ?? []),
+                      );
+                    },
+                  ),
                 ),
         ),
       ],
@@ -434,7 +480,7 @@ class _HomeScreenState extends State<HomeScreen> {
               min: 0,
               max: 5,
               divisions: 5,
-              label: '${_minRating.toStringAsFixed(1)}',
+              label: _minRating.toStringAsFixed(1),
               onChanged: (v) => setState(() => _minRating = v),
             ),
 
@@ -477,8 +523,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       _applyFilters();
                       setState(() => _selectedIndex = 0);
                     },
-                    child: const Text('Apply'),
                     style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4A7023)),
+                    child: const Text('Apply'),
                   ),
                 ),
                 const SizedBox(width: 12),

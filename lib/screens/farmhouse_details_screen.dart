@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import '../models/farmhouse_model.dart';
+import '../controllers/favorites_controller.dart';
+import '../widgets/farmhouse_image_slider.dart';
 
 class FarmhouseDetailsScreen extends StatefulWidget {
   final String name;
@@ -6,6 +10,8 @@ class FarmhouseDetailsScreen extends StatefulWidget {
   final double price;
   final String distance;
   final String imageUrl;
+  final List<String>? images;
+  final String? id;
 
   const FarmhouseDetailsScreen({
     super.key,
@@ -14,6 +20,8 @@ class FarmhouseDetailsScreen extends StatefulWidget {
     required this.price,
     required this.distance,
     required this.imageUrl,
+    this.images,
+    required this.id,
   });
 
   @override
@@ -22,9 +30,20 @@ class FarmhouseDetailsScreen extends StatefulWidget {
 
 class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
   DateTime? selectedCheckInDate;
-  int numberOfPeople = 2;
+  DateTime? selectedCheckOutDate;
+  String selectedPeopleRange = 'Below 10';
+  late FavoritesController favoritesController;
+  late FarmhouseModel farmhouse;
 
-  // Dummy amenities data
+  final Map<String, double> pricePerRange = {
+    'Below 10': 8000,
+    '10–15': 10000,
+    '15–20': 12000,
+    'Above 20': 15000,
+  };
+
+  double get calculatedPrice => pricePerRange[selectedPeopleRange] ?? 3000;
+
   static const List<Map<String, dynamic>> amenities = [
     {'icon': Icons.wifi, 'name': 'Free WiFi'},
     {'icon': Icons.kitchen, 'name': 'Full Kitchen'},
@@ -36,38 +55,56 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
     {'icon': Icons.restaurant, 'name': 'Restaurant'},
   ];
 
-  // Dummy guest photos
   static const List<String> guestPhotos = [
-    'https://via.placeholder.com/150',
-    'https://via.placeholder.com/150',
-    'https://via.placeholder.com/150',
-    'https://via.placeholder.com/150',
+    'https://media.istockphoto.com/id/162137765/photo/summer-swimming-pool.jpg?s=612x612&w=0&k=20&c=Wv3DeS8S-yygZpJ6eE90iu7861DRVd177MlGTZVWd1I=',
+    'https://media.istockphoto.com/id/514102692/photo/udaipur-city-palace-in-rajasthan-state-of-india.jpg?s=612x612&w=0&k=20&c=bYRDPOuf6nFgghl6VAnCn__22SFyu_atC_fiSCzVNtY=',
+    'https://media.istockphoto.com/id/476988858/photo/white-architecture-on-santorini-island-greece.jpg?s=612x612&w=0&k=20&c=4M7lL6LvueQDiJtbUkIDT2AqV7kphss6O9YpFYsxTQc=',
+    'https://media.istockphoto.com/id/2156753581/photo/creative-composition-of-living-room-interior-with-kitchen-space-and-lobby-in-the-modern.jpg?s=612x612&w=0&k=20&c=ysbREUGzXC0IeNko4TLj4_RFiZnGlq7tjqOXr2Liu3Q=',
   ];
 
-  // Dummy similar farmhouses
   static const List<Map<String, dynamic>> similarFarmhouses = [
     {
       'name': 'Green Valley Farmhouse',
       'price': 3500,
       'rating': 4.8,
       'reviews': 156,
-      'image': 'https://via.placeholder.com/200x150'
+      'image': 'https://media.istockphoto.com/id/1483523217/photo/a-woman-in-white-dress-walks-down-a-pier-over-turquoise-ocean-in-the-maldives-during-sunset.webp?a=1&b=1&s=612x612&w=0&k=20&c=dh6Ic9mGAR4P_Ol3_KWdRx1i-imb-2FZQVF67TRNvvk='
     },
     {
       'name': 'Countryside Retreat',
       'price': 4200,
       'rating': 4.6,
       'reviews': 89,
-      'image': 'https://via.placeholder.com/200x150'
+      'image': 'https://media.istockphoto.com/id/1302442919/photo/luxury-beach-villa-at-night.webp?a=1&b=1&s=612x612&w=0&k=20&c=b0GO1cEmtHSuwmdlmkJGZVhiBoAtn-gNp6LYcPg12AQ='
     },
     {
       'name': 'Rural Paradise',
       'price': 3800,
       'rating': 4.9,
       'reviews': 234,
-      'image': 'https://via.placeholder.com/200x150'
+      'image': 'https://media.istockphoto.com/id/146765403/photo/a-luxurious-florida-beach-hotel-during-sunrise.jpg?s=612x612&w=0&k=20&c=pxw9Q78KbvqV6_pS_C-v_m6S_WQjKWLBSdqgRtqMUUg='
     },
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    try {
+      favoritesController = Get.find<FavoritesController>();
+    } catch (e) {
+      // Controller not found, initialize it
+      Get.put(FavoritesController());
+      favoritesController = Get.find<FavoritesController>();
+    }
+    farmhouse = FarmhouseModel(
+      id: widget.id ?? widget.name,
+      name: widget.name,
+      location: widget.location,
+      price: widget.price,
+      distance: widget.distance,
+      imageUrl: widget.imageUrl,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -76,7 +113,6 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Large Image with Back Button
             Stack(
               children: [
                 Image.network(
@@ -97,41 +133,83 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                     );
                   },
                 ),
-                // Back Button
                 Positioned(
                   top: 16,
                   left: 16,
-                  child: GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.2),
-                            blurRadius: 8,
+                  right: 16,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.2),
+                                blurRadius: 8,
+                              ),
+                            ],
                           ),
-                        ],
+                          child: const Icon(
+                            Icons.arrow_back,
+                            color: Colors.black,
+                            size: 24,
+                          ),
+                        ),
                       ),
-                      child: const Icon(
-                        Icons.arrow_back,
-                        color: Colors.black,
-                        size: 24,
+                      Obx(
+                        () => GestureDetector(
+                          onTap: () {
+                            favoritesController.toggleFavorite(farmhouse);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  favoritesController.isFavorited(farmhouse.id)
+                                      ? '❤️ Added to favorites'
+                                      : '💔 Removed from favorites',
+                                ),
+                                duration: const Duration(seconds: 1),
+                              ),
+                            );
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.2),
+                                  blurRadius: 8,
+                                ),
+                              ],
+                            ),
+                            child: Icon(
+                              favoritesController.isFavorited(farmhouse.id)
+                                  ? Icons.favorite
+                                  : Icons.favorite_border,
+                              color: favoritesController.isFavorited(farmhouse.id)
+                                  ? Colors.red
+                                  : Colors.black,
+                              size: 24,
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
+                    ],
                   ),
                 ),
               ],
             ),
-            // Details Section
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Name
                   Text(
                     widget.name,
                     style: const TextStyle(
@@ -141,8 +219,6 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-
-                  // Google Location
                   Row(
                     children: [
                       const Icon(
@@ -164,31 +240,12 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                               ),
                             ),
                             const SizedBox(height: 2),
-                            Row(
-                              children: [
-                                Text(
-                                  widget.distance,
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                const Icon(
-                                  Icons.open_in_new,
-                                  size: 12,
-                                  color: Colors.blue,
-                                ),
-                                const SizedBox(width: 4),
-                                const Text(
-                                  'Open in Google Maps',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.blue,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
+                            Text(
+                              widget.distance,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
                             ),
                           ],
                         ),
@@ -196,8 +253,6 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                     ],
                   ),
                   const SizedBox(height: 20),
-
-                  // Check-in Box
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -217,7 +272,6 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                           ),
                         ),
                         const SizedBox(height: 16),
-                        // Check-in Date
                         GestureDetector(
                           onTap: () async {
                             final DateTime? picked = await showDatePicker(
@@ -231,6 +285,7 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                             if (picked != null) {
                               setState(() {
                                 selectedCheckInDate = picked;
+                                selectedCheckOutDate = null;
                               });
                             }
                           },
@@ -280,9 +335,83 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        // Number of Guests
+                        GestureDetector(
+                          onTap: selectedCheckInDate != null
+                              ? () async {
+                                  final DateTime? picked = await showDatePicker(
+                                    context: context,
+                                    initialDate: selectedCheckInDate!
+                                        .add(const Duration(days: 1)),
+                                    firstDate: selectedCheckInDate!
+                                        .add(const Duration(days: 1)),
+                                    lastDate: selectedCheckInDate!.add(
+                                      const Duration(days: 365),
+                                    ),
+                                  );
+                                  if (picked != null) {
+                                    setState(() {
+                                      selectedCheckOutDate = picked;
+                                    });
+                                  }
+                                }
+                              : null,
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: selectedCheckInDate != null
+                                    ? Colors.blue[300]!
+                                    : Colors.grey[300]!,
+                                width: 1,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Check-out Date',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      selectedCheckOutDate != null
+                                          ? '${selectedCheckOutDate!.day}/${selectedCheckOutDate!.month}/${selectedCheckOutDate!.year}'
+                                          : 'Select date',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                        color: selectedCheckInDate != null
+                                            ? Colors.black
+                                            : Colors.grey,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Icon(
+                                  Icons.calendar_today,
+                                  color: selectedCheckInDate != null
+                                      ? Colors.blue
+                                      : Colors.grey,
+                                  size: 20,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
                         Container(
-                          padding: const EdgeInsets.all(12),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(8),
@@ -291,116 +420,81 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                               width: 1,
                             ),
                           ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Number of People',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    numberOfPeople.toString(),
-                                    style: const TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w500,
-                                      color: Colors.black,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Row(
-                                children: [
-                                  GestureDetector(
-                                    onTap: numberOfPeople > 1
-                                        ? () {
-                                            setState(() {
-                                              numberOfPeople--;
-                                            });
-                                          }
-                                        : null,
-                                    child: Container(
-                                      padding: const EdgeInsets.all(6),
-                                      decoration: BoxDecoration(
-                                        color: Colors.blue,
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: const Icon(
-                                        Icons.remove,
-                                        color: Colors.white,
-                                        size: 16,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  GestureDetector(
-                                    onTap: numberOfPeople < 10
-                                        ? () {
-                                            setState(() {
-                                              numberOfPeople++;
-                                            });
-                                          }
-                                        : null,
-                                    child: Container(
-                                      padding: const EdgeInsets.all(6),
-                                      decoration: BoxDecoration(
-                                        color: Colors.blue,
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: const Icon(
-                                        Icons.add,
-                                        color: Colors.white,
-                                        size: 16,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
+                          child: DropdownButton<String>(
+                            value: selectedPeopleRange,
+                            isExpanded: true,
+                            underline: Container(),
+                            icon: const Icon(
+                              Icons.keyboard_arrow_down,
+                              color: Colors.blue,
+                              size: 24,
+                            ),
+                            items: <String>[
+                              'Below 10',
+                              '10–15',
+                              '15–20',
+                              'Above 20'
+                            ].map<DropdownMenuItem<String>>((String value) {
+                              return DropdownMenuItem<String>(
+                                value: value,
+                                child: Text(value),
+                              );
+                            }).toList(),
+                            onChanged: (String? newValue) {
+                              if (newValue != null) {
+                                setState(() {
+                                  selectedPeopleRange = newValue;
+                                });
+                              }
+                            },
                           ),
                         ),
                       ],
                     ),
                   ),
                   const SizedBox(height: 20),
-
-                  // Price Section
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: Colors.green[50],
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Price per night',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey,
-                          ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Price per night',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            Text(
+                              '₹${calculatedPrice.toStringAsFixed(0)}',
+                              style: const TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green,
+                              ),
+                            ),
+                          ],
                         ),
+                        const SizedBox(height: 4),
                         Text(
-                          '₹${widget.price.toStringAsFixed(0)}',
+                          'For $selectedPeopleRange people',
                           style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.green,
+                            fontSize: 12,
+                            color: Colors.grey,
+                            fontStyle: FontStyle.italic,
                           ),
                         ),
                       ],
                     ),
                   ),
                   const SizedBox(height: 28),
-
-                  // Amenities Title
                   const Text(
                     'Amenities',
                     style: TextStyle(
@@ -410,7 +504,6 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  // Amenities Grid
                   GridView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
@@ -453,8 +546,6 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                     },
                   ),
                   const SizedBox(height: 28),
-
-                  // Description and Ratings
                   const Text(
                     'Description',
                     style: TextStyle(
@@ -473,8 +564,6 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                     ),
                   ),
                   const SizedBox(height: 20),
-
-                  // Ratings Section
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -545,8 +634,6 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                     ),
                   ),
                   const SizedBox(height: 28),
-
-                  // Guest Photos Section
                   const Text(
                     'Guest Photos',
                     style: TextStyle(
@@ -638,8 +725,6 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                     ),
                   ),
                   const SizedBox(height: 28),
-
-                  // Similar Farmhouses Section
                   const Text(
                     'Similar Farmhouses',
                     style: TextStyle(
@@ -769,7 +854,6 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
           ],
         ),
       ),
-      // Book Now Button
       bottomNavigationBar: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -784,13 +868,31 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
         ),
         child: ElevatedButton(
           onPressed: () {
-            print('Book Now tapped for: ${widget.name}');
+            if (selectedCheckInDate == null || selectedCheckOutDate == null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text(
+                    'Please select both check-in and check-out dates',
+                  ),
+                  duration: Duration(seconds: 2),
+                  backgroundColor: Colors.red,
+                ),
+              );
+              return;
+            }
+
+            final nights = selectedCheckOutDate!
+                .difference(selectedCheckInDate!)
+                .inDays;
+            final totalPrice = calculatedPrice * nights;
+
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(
-                  'Booking ${widget.name} for $numberOfPeople person(s)${selectedCheckInDate != null ? ' on ${selectedCheckInDate!.day}/${selectedCheckInDate!.month}' : ''}',
+                  'Booking Confirmed!\nTotal: ₹${totalPrice.toStringAsFixed(0)}',
                 ),
                 duration: const Duration(seconds: 2),
+                backgroundColor: Colors.green,
               ),
             );
           },
