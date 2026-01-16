@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../widgets/farmhouse_card.dart';
+// FarmhouseCard is used inside PropertiesGrid; HomeScreen no longer imports it directly.
 import '../controllers/favorites_controller.dart';
 import 'favorites_screen.dart';
 import 'bookings_screen.dart';
 import 'profile_screen.dart';
 import '../widgets/premium_search_bar.dart';
 import '../widgets/state_selector.dart';
-import '../widgets/category_selector.dart';
+import '../widgets/category_tabs.dart';
+import '../widgets/search_section.dart';
+import '../widgets/offers_banner.dart';
+import '../widgets/properties_grid.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -268,7 +271,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _homePage() {
     return Column(
       children: [
-        // Polished header
+        // Polished header (kept mostly same)
         Container(
           decoration: BoxDecoration(
             gradient: const LinearGradient(
@@ -365,22 +368,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
 
-        // Filter chips
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(
-            children: [
-              _buildFilterChip('All'),
-              _buildFilterChip('Under ₹2000'),
-              _buildFilterChip('Within 20km'),
-              _buildFilterChip('Luxury'),
-            ],
-          ),
-        ),
-
-        // Farmhouse List and category box (category box moved into the main scroll list
-        // so it scrolls together with farmhouse cards and is fully reachable)
+        // The composed Home body (mirrors React composition)
         Expanded(
           child: RefreshIndicator(
             onRefresh: () async {
@@ -390,76 +378,27 @@ class _HomeScreenState extends State<HomeScreen> {
             child: ListView(
               padding: const EdgeInsets.only(bottom: 20),
               children: [
-                // Big boxed category area included as the first list child
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(14),
-                    boxShadow: [
-                      BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12, offset: const Offset(0, 6)),
-                    ],
-                    border: Border.all(color: const Color(0xFFE6F1E6)),
-                  ),
-                  child: SizedBox(
-                    height: 200,
-                    child: GridView.count(
-                      // let the main ListView handle scrolling; the inner grid should not scroll
-                      physics: const NeverScrollableScrollPhysics(),
-                      shrinkWrap: true,
-                      crossAxisCount: 3,
-                      childAspectRatio: 1.2,
-                      mainAxisSpacing: 8,
-                      crossAxisSpacing: 8,
-                      children: [
-                        _bigCategoryTile('Farmhouses', Icons.agriculture),
-                        _bigCategoryTile('Villas', Icons.house),
-                        _bigCategoryTile('Hotels', Icons.hotel),
-                        _bigCategoryTile('Car rentals', Icons.directions_car),
-                        _bigCategoryTile('Flight', Icons.flight),
-                        _bigCategoryTile('Hourly rentals', Icons.access_time),
-                      ],
-                    ),
-                  ),
+                CategoryTabs(
+                  activeCategory: _selectedCategory,
+                  onCategoryChange: (c) => setState(() {
+                    _selectedCategory = c;
+                    _applyFilters();
+                  }),
                 ),
 
-                // Either show the no-results placeholder or the list of cards
-                if (_filteredFarmhouses.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 48),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: const [
-                        Icon(Icons.search_off, size: 60, color: Colors.grey),
-                        SizedBox(height: 12),
-                        Text(
-                          "No farmhouses found",
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.grey,
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                else
-                  ..._filteredFarmhouses.map((farmhouse) {
-                    return FarmhouseCard(
-                      name: farmhouse['name'],
-                      location: farmhouse['location'],
-                      price: farmhouse['price'],
-                      distance: farmhouse['distance'],
-                      imageUrl: farmhouse['imageUrl'],
-                      images: List<String>.from(farmhouse['images'] ?? []),
-                    );
-                  }).toList(),
+                SearchSection(
+                  category: _selectedCategory,
+                  controller: _searchController,
+                  onChanged: (q) => _applyFilters(),
+                ),
+
+                const OffersBanner(),
+
+                PropertiesGrid(properties: _filteredFarmhouses),
               ],
             ),
           ),
         ),
-
       ],
     );
   }
@@ -589,145 +528,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildFilterChip(String label) {
-    final bool isSelected = _selectedFilter == label;
-
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: FilterChip(
-        label: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? Colors.white : const Color(0xFF4A7023),
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        selected: isSelected,
-        onSelected: (value) {
-          setState(() {
-            _selectedFilter = label;
-          });
-          _applyFilters();
-        },
-        backgroundColor: isSelected ? const Color(0xFF4A7023) : Colors.white,
-        side: BorderSide(
-          color: isSelected ? const Color(0xFF4A7023) : Colors.grey[300]!,
-          width: 1.5,
-        ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-      ),
-    );
-  }
-
-  Widget _categoryChip(String label, {required bool enabled}) {
-    final bool isSelected = _selectedCategory == label;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-      child: GestureDetector(
-        onTap: () {
-          if (!enabled) {
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-              content: Text('$label is coming soon 🚧'),
-              duration: const Duration(seconds: 2),
-            ));
-            return;
-          }
-          setState(() {
-            _selectedCategory = label;
-            _applyFilters();
-          });
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFF1B5E20) : Colors.white,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: const Color(0xFF1B5E20).withOpacity(0.9)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.04),
-                blurRadius: 8,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  color: isSelected ? Colors.white : const Color(0xFF1B5E20),
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              if (!enabled) const SizedBox(width: 8),
-              if (!enabled) const Text('Coming soon', style: TextStyle(fontSize: 11, color: Colors.grey)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _bigCategoryTile(String label, IconData icon) {
-    // If 'Under ₹2000' filter is active, make Farmhouses and Villas show coming soon
-  final bool disabledByPrice = _selectedFilter == 'Under ₹2000' && (label == 'Farmhouses' || label == 'Villas');
-  // allow selection for all tiles unless disabled by the price filter
-  final bool enabled = !disabledByPrice;
-  final bool isSelected = _selectedCategory == label;
-
-    return GestureDetector(
-      onTap: () {
-        if (disabledByPrice) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('This category is coming soon 🚧'),
-            duration: Duration(seconds: 2),
-          ));
-          return;
-        }
-        setState(() {
-          _selectedCategory = label;
-          _applyFilters();
-        });
-
-        // If the category is not yet fully implemented, still give a hint
-        if (label != 'Farmhouses') {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('Coming soon 🚧'),
-            duration: Duration(seconds: 2),
-          ));
-        }
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF1B5E20) : (enabled ? Colors.white : Colors.grey[100]),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: const Color(0xFF1B5E20), width: isSelected ? 2.0 : (enabled ? 1.6 : 1.0)),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: isSelected ? Colors.white : (enabled ? const Color(0xFF1B5E20) : Colors.grey), size: 28),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: isSelected ? Colors.white : (enabled ? const Color(0xFF1B5E20) : Colors.grey[600]),
-                fontWeight: FontWeight.w600,
-                fontSize: 12,
-              ),
-            ),
-            if (!enabled)
-              const Padding(
-                padding: EdgeInsets.only(top: 6),
-                child: Text('Coming soon', style: TextStyle(fontSize: 10, color: Colors.grey)),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
+  // Helper widgets for chips and category tiles were refactored out in favor of the
+  // new component widgets (CategoryTabs, SearchSection, OffersBanner, PropertiesGrid).
 }
