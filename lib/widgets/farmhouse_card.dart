@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import '../models/farmhouse_model.dart';
 import '../controllers/favorites_controller.dart';
 import '../screens/farmhouse_details_screen.dart';
+import 'image_with_fallback.dart';
 
 class FarmhouseCard extends StatefulWidget {
   final String name;
@@ -125,47 +126,11 @@ class _FarmhouseCardState extends State<FarmhouseCard>
                 ClipRRect(
                   borderRadius:
                       const BorderRadius.vertical(top: Radius.circular(18)),
-                  child: Image.network(
-                    widget.imageUrl,
+                  child: ImageWithFallback(
+                    imageUrl: widget.imageUrl,
                     height: 210,
                     width: double.infinity,
                     fit: BoxFit.cover,
-                      // show a loading indicator while the image is loading
-                      loadingBuilder: (context, child, loadingProgress) {
-                        if (loadingProgress == null) return child;
-                        final expected = loadingProgress.expectedTotalBytes ?? 0;
-                        final received = loadingProgress.cumulativeBytesLoaded;
-                        debugPrint('Image loading: ${widget.imageUrl} ($received/$expected)');
-                        return Container(
-                          height: 210,
-                          color: const Color.fromRGBO(240, 240, 240, 1.0),
-                          child: const Center(
-                            child: SizedBox(
-                              width: 36,
-                              height: 36,
-                              child: CircularProgressIndicator(strokeWidth: 2.5),
-                            ),
-                          ),
-                        );
-                      },
-                      errorBuilder: (context, error, stackTrace) {
-                        // Log the error for diagnosis
-                        debugPrint('Image.network error for ${widget.imageUrl}: $error');
-                        if (stackTrace != null) debugPrint('$stackTrace');
-                        return Container(
-                          height: 210,
-                          color: const Color.fromRGBO(200, 200, 200, 1.0),
-                          alignment: Alignment.center,
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: const [
-                              Icon(Icons.broken_image, size: 48, color: Colors.black54),
-                              SizedBox(height: 8),
-                              Text('Image unavailable', style: TextStyle(color: Colors.black54)),
-                            ],
-                          ),
-                        );
-                      },
                   ),
                 ),
 

@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -8,162 +9,149 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
-
   @override
   void initState() {
     super.initState();
+
+    Future.delayed(const Duration(seconds: 4), () {
+      Navigator.pushReplacementNamed(context, '/home');
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F5EC), // light cream
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-
-            // LOGO - F Symbol
-            Container(
-              width: 240,
-              height: 240,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    const Color(0xFF7CB342),
-                    const Color(0xFF4CAF50),
-                    const Color.fromARGB(255, 12, 57, 14),
-                  ],
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Color.fromRGBO(76, 175, 80, 0.3),
-                    blurRadius: 15,
-                    spreadRadius: 5,
-                  ),
+      body: Stack(
+        children: [
+          // BACKGROUND GRADIENT
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Color(0xFF1B5E20),
+                  Color(0xFF2E7D32),
                 ],
-              ),
-              child: const Center(
-                child: Text(
-                  'F',
-                  style: TextStyle(
-                    fontSize: 80,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                    letterSpacing: 2,
-                  ),
-                ),
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
             ),
+          ),
 
-            const SizedBox(height: 30),
-
-            // APP NAME
-            const Text(
-              "FARMIGO",
-              style: TextStyle(
-                fontSize: 36,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF4CAF50),
-                letterSpacing: 3,
-              ),
-            ),
-
-            const SizedBox(height: 12),
-
-            // TAGLINE
-            const Text(
-              "Find Your Perfect Escape",
-              style: TextStyle(
-                fontSize: 16,
-                color: Color(0xFF558B2F),
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-
-            const SizedBox(height: 50),
-
-            // ICON ROW
-            Row(
+          // CENTER CONTENT
+          Center(
+            child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                // Logo in a rounded white box (exact layout like provided image)
+                Container(
+                  width: 100,
+                  height: 100,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(18),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.08),
+                        blurRadius: 12,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: Image.asset(
+                      'assets/images/logo_f.png',
+                      width: 56,
+                      height: 56,
+                      fit: BoxFit.contain,
+                      errorBuilder: (c, e, s) {
+                        // if logo asset missing, show a green tree icon as fallback
+                        return const Icon(Icons.park, size: 56, color: Color(0xFF1B5E20));
+                      },
+                    ),
+                  ),
+                ),
 
-                Column(
+                const SizedBox(height: 24),
+
+                // BRAND NAME
+                const Text(
+                  'Farmigo',
+                  style: TextStyle(
+                    fontSize: 34,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+
+                const SizedBox(height: 6),
+
+                const Text(
+                  'Your Gateway to Perfect Getaways',
+                  style: TextStyle(color: Colors.white70),
+                ),
+
+                const SizedBox(height: 28),
+
+                // Icon row (Farmhouses, Hotels, Flights, Cars) — match image layout
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Color.fromRGBO(76, 175, 80, 0.1),
-                      ),
-                      child: const Icon(
-                        Icons.location_on,
-                        color: Color(0xFF4CAF50),
-                        size: 28,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    const Text(
-                      "Book Unique\nFarmhouses",
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: Color(0xFF558B2F),
-                      ),
-                    ),
+                    _smallFeature(Icons.home, 'Farmhouses'),
+                    const SizedBox(width: 18),
+                    _smallFeature(Icons.hotel, 'Hotels'),
+                    const SizedBox(width: 18),
+                    _smallFeature(Icons.flight, 'Flights'),
+                    const SizedBox(width: 18),
+                    _smallFeature(Icons.directions_car, 'Cars'),
                   ],
                 ),
 
-                const SizedBox(width: 50),
+                const SizedBox(height: 28),
 
-                Column(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Color.fromRGBO(76, 175, 80, 0.1),
+                // Thin progress bar
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 60.0),
+                  child: Column(
+                    children: const [
+                      SizedBox(
+                        height: 6,
+                        child: LinearProgressIndicator(
+                          color: Colors.white,
+                          backgroundColor: Color.fromRGBO(255, 255, 255, 0.12),
+                          minHeight: 6,
+                        ),
                       ),
-                      child: const Icon(
-                        Icons.event_note,
-                        color: Color(0xFF4CAF50),
-                        size: 28,
+                      SizedBox(height: 10),
+                      Text(
+                        'Preparing your experience...',
+                        style: TextStyle(color: Colors.white70, fontSize: 12),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    const Text(
-                      "Experience\nRural Charm",
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: Color(0xFF558B2F),
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-
               ],
             ),
-
-            const SizedBox(height: 50),
-
-            // LOADING INDICATOR
-            const SizedBox(
-              width: 40,
-              height: 40,
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF4CAF50)),
-                strokeWidth: 3,
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
+    );
+  }
+
+  Widget _smallFeature(IconData icon, String label) {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.white24,
+          ),
+          child: Icon(icon, color: Colors.white, size: 20),
+        ),
+        const SizedBox(height: 6),
+        Text(label, style: const TextStyle(color: Colors.white70, fontSize: 11)),
+      ],
     );
   }
 }

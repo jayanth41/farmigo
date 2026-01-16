@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controllers/favorites_controller.dart';
 import 'farmhouse_details_screen.dart';
+import '../widgets/image_with_fallback.dart';
 
 class FavoritesScreen extends StatefulWidget {
   const FavoritesScreen({super.key});
@@ -190,23 +191,11 @@ class FavoriteCard extends StatelessWidget {
             // Image
             Stack(
               children: [
-                Image.network(
-                  farmhouse.imageUrl,
+                ImageWithFallback(
+                  imageUrl: farmhouse.imageUrl,
                   height: 180,
                   width: double.infinity,
                   fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      height: 180,
-                      width: double.infinity,
-                      color: Colors.grey[300],
-                      child: const Icon(
-                        Icons.image_not_supported,
-                        size: 60,
-                        color: Colors.grey,
-                      ),
-                    );
-                  },
                 ),
                 // Remove button
                 Positioned(
