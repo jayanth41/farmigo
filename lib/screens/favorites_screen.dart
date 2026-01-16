@@ -178,7 +178,7 @@ class FavoriteCard extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Color.fromRGBO(0, 0, 0, 0.05),
             blurRadius: 8,
           ),
         ],
@@ -221,7 +221,7 @@ class FavoriteCard extends StatelessWidget {
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.2),
+                            color: Color.fromRGBO(0, 0, 0, 0.2),
                             blurRadius: 8,
                           ),
                         ],

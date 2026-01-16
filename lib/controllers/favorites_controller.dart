@@ -1,4 +1,5 @@
 import 'package:get/get.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../models/farmhouse_model.dart';
@@ -37,7 +38,7 @@ class FavoritesController extends GetxController {
         favorites.assignAll(loadedFavorites);
       }
     } catch (e) {
-      print('Error loading favorites: $e');
+      debugPrint('Error loading favorites: $e');
     }
   }
 
@@ -48,7 +49,7 @@ class FavoritesController extends GetxController {
           favorites.map((fav) => fav.toJson()).toList();
       await _prefs.setString(_favoritesKey, jsonEncode(jsonList));
     } catch (e) {
-      print('Error saving favorites: $e');
+      debugPrint('Error saving favorites: $e');
     }
   }
 
