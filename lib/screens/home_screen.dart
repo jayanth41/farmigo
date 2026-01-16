@@ -5,7 +5,9 @@ import '../controllers/favorites_controller.dart';
 import 'favorites_screen.dart';
 import 'bookings_screen.dart';
 import 'profile_screen.dart';
-import '../widgets/farmhouse_image_slider.dart';
+import '../widgets/premium_search_bar.dart';
+import '../widgets/state_selector.dart';
+import '../widgets/category_selector.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -21,6 +23,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Quick chip filter
   String _selectedFilter = 'All';
+
+  // Location & Category selectors
+  String _selectedState = 'Telangana';
+  String _selectedCategory = 'Farmhouses';
 
   // Advanced filter state
   RangeValues _priceRange = const RangeValues(0, 10000);
@@ -43,71 +49,75 @@ class _HomeScreenState extends State<HomeScreen> {
     {
       'name': 'The Night Garden Stay',
       'location': 'Anajpur, Hyderabad',
+      'state': 'Telangana',
+      'category': 'Farmhouses',
       'price': 10000.0,
       'distance': '15 km away',
       'rating': 4.8,
       'amenities': ['Pool', 'WiFi', 'Kitchen', 'Breakfast'],
-      'imageUrl':
-          'https://raw.githubusercontent.com/jayanth41/images/main/view2.jpeg',
-          'images': [
-            'https://raw.githubusercontent.com/jayanth41/images/main/view2.jpeg',
-            'https://raw.githubusercontent.com/jayanth41/images/main/lawn.jpeg',
-            'https://raw.githubusercontent.com/jayanth41/images/refs/heads/main/image.png',
-            'https://raw.githubusercontent.com/jayanth41/images/refs/heads/main/drone.jpeg',
-            'https://raw.githubusercontent.com/jayanth41/images/refs/heads/main/att.jpeg',
-            'https://raw.githubusercontent.com/jayanth41/images/refs/heads/main/wat.jpeg',
-            'https://raw.githubusercontent.com/jayanth41/images/refs/heads/main/rock.jpeg',
-          ],
+  'imageUrl': 'https://images.unsplash.com/photo-1561501900-3701fa6a0864?w=600&auto=format&fit=crop&q=60',
+      'images': [
+  'https://images.unsplash.com/photo-1561501900-3701fa6a0864?w=600&auto=format&fit=crop&q=60',
+  'https://images.unsplash.com/photo-1549294413-26f195200c16?w=600&auto=format&fit=crop&q=60',
+      ],
     },
     {
       'name': 'Serene Hills Resort',
       'location': 'Hyderabad, Telangana',
+      'state': 'Telangana',
+      'category': 'Hotels',
       'price': 13500.0,
       'distance': '8 km away',
       'rating': 4.4,
       'amenities': ['WiFi', 'Breakfast'],
-      'imageUrl':
-          'https://raw.githubusercontent.com/jayanth41/images/refs/heads/main/lawn.jpeg',
+  'imageUrl': 'https://images.unsplash.com/photo-1561501900-3701fa6a0864?w=600&auto=format&fit=crop&q=60',
     },
     {
       'name': 'Organic Farm Retreat',
       'location': 'Tandur, Telangana',
+      'state': 'Telangana',
+      'category': 'Farmhouses',
       'price': 1800.0,
       'distance': '25 km away',
       'rating': 4.0,
       'amenities': ['Kitchen', 'Breakfast'],
-      'imageUrl':
-          'https://raw.githubusercontent.com/jayanth41/images/refs/heads/main/lawn.jpeg',
+  'imageUrl': 'https://images.unsplash.com/photo-1549294413-26f195200c16?w=600&auto=format&fit=crop&q=60',
     },
     {
       'name': 'Riverside Farmhouse',
       'location': 'Yadagirigutta, Telangana',
+      'state': 'Telangana',
+      'category': 'Farmhouses',
       'price': 2800.0,
       'distance': '35 km away',
       'rating': 3.9,
       'amenities': ['WiFi', 'Kitchen'],
       'imageUrl':
-          'https://images.unsplash.com/photo-1561501900-3701fa6a0864?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8bHV4dXJ5JTIwaG90ZWx8ZW58MHx8MHx8fDA%3D',
+          'https://images.unsplash.com/photo-1561501900-3701fa6a0864?w=600&auto=format&fit=crop&q=60',
     },
     {
       'name': 'Heritage Farm Stay',
       'location': 'Vikarabad, Telangana',
+      'state': 'Telangana',
+      'category': 'Farmhouses',
       'price': 2200.0,
       'distance': '45 km away',
       'rating': 4.2,
       'amenities': ['Breakfast', 'Kitchen'],
       'imageUrl':
-          'https://plus.unsplash.com/premium_photo-1661923725782-f73c990fbddf?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NXx8bHV4dXJ5JTIwaG90ZWx8ZW58MHx8MHx8fDA%3D',
+          'https://plus.unsplash.com/premium_photo-1661923725782-f73c990fbddf?w=600&auto=format&fit=crop&q=60',
     },
     {
       'name': 'Premium Agri Resort',
       'location': 'Narayankhed, Telangana',
+      'state': 'Telangana',
+      'category': 'Resorts',
       'price': 14000.0,
       'distance': '60 km away',
       'rating': 4.6,
       'amenities': ['Pool', 'WiFi'],
       'imageUrl':
-          'https://images.unsplash.com/photo-1549294413-26f195200c16?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTJ8fGx1eHVyeSUyMGhvdGVsfGVufDB8fDB8fHww',
+          'https://images.unsplash.com/photo-1549294413-26f195200c16?w=600&auto=format&fit=crop&q=60',
     },
   ];
 
@@ -128,53 +138,24 @@ class _HomeScreenState extends State<HomeScreen> {
     _searchController.dispose();
     super.dispose();
   }
-
-  Future<void> _logout() async {
-    try {
-      // Show confirmation dialog
-      final confirmed = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Logout'),
-          content: const Text('Are you sure you want to logout?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              style: TextButton.styleFrom(foregroundColor: Colors.red),
-              child: const Text('Logout'),
-            ),
-          ],
-        ),
-      );
-
-      if (confirmed == true && mounted) {
-        // TODO: Uncomment when Firebase Auth is working
-        // await FirebaseAuth.instance.signOut();
-        Navigator.pushReplacementNamed(context, '/login');
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error logging out: $e')),
-        );
-      }
-    }
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // keep placeholder for possible future logout wiring
   }
 
   void _onSearchChanged() => _applyFilters();
 
   void _applyFilters() {
     final query = _searchController.text.toLowerCase();
+    final selectedState = _selectedState.toLowerCase();
+    final selectedCategory = _selectedCategory.toLowerCase();
 
     setState(() {
       _filteredFarmhouses = farmhouses.where((farm) {
         final name = (farm['name'] as String).toLowerCase();
         final location = (farm['location'] as String).toLowerCase();
-        final price = farm['price'] as double;
+        final price = (farm['price'] as double?) ?? 0.0;
         final distance = double.tryParse((farm['distance'] as String).split(' ').first) ?? 0;
 
         // SEARCH MATCH
@@ -208,6 +189,13 @@ class _HomeScreenState extends State<HomeScreen> {
         for (final entry in _amenities.entries) {
           if (entry.value && !farmAmenities.contains(entry.key)) return false;
         }
+
+        // STATE & CATEGORY filtering
+        final farmState = (farm['state'] as String?)?.toLowerCase() ?? '';
+        final farmCategory = (farm['category'] as String?)?.toLowerCase() ?? '';
+
+        if (selectedState.isNotEmpty && selectedState != 'all' && farmState != selectedState) return false;
+        if (selectedCategory.isNotEmpty && selectedCategory != 'all' && farmCategory != selectedCategory) return false;
 
         return matchesSearch && matchesFilter;
       }).toList();
@@ -244,7 +232,7 @@ class _HomeScreenState extends State<HomeScreen> {
         decoration: BoxDecoration(
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Color.fromRGBO(0, 0, 0, 0.1),
               blurRadius: 12,
             ),
           ],
@@ -273,98 +261,106 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_selectedIndex == 1) return const FavoritesScreen();
     if (_selectedIndex == 2) return const BookingsScreen();
     if (_selectedIndex == 3) return _filtersPage();
-    
+
     return const ProfileScreen();
   }
 
   Widget _homePage() {
     return Column(
       children: [
-        // Custom AppBar
+        // Polished header
         Container(
           decoration: BoxDecoration(
             gradient: const LinearGradient(
               colors: [
-                Color(0xFF2D5016),
-                Color(0xFF4A7023),
+                Color(0xFF294716),
+                Color(0xFF3F6A1B),
               ],
             ),
+            borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 8,
+                color: const Color.fromRGBO(0, 0, 0, 0.12),
+                blurRadius: 12,
+                offset: const Offset(0, 6),
               ),
             ],
           ),
           padding: const EdgeInsets.only(
-            top: 16,
+            top: 28,
             left: 16,
             right: 16,
-            bottom: 20,
+            bottom: 18,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header with Logout Button
+              // Top row: title + avatar
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'FARMIGO',
-                    style: TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Text(
+                              'FARMIGO',
+                              style: TextStyle(
+                                fontSize: 28,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            // location beside title
+                            StateSelector(
+                              selectedState: _selectedState,
+                              onSelect: (s) => setState(() {
+                                _selectedState = s;
+                                _applyFilters();
+                              }),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        const Text(
+                          'Find your perfect farmhouse retreat',
+                          style: TextStyle(fontSize: 13, color: Colors.white70),
+                        ),
+                      ],
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(
-                      Icons.logout,
-                      color: Colors.white,
-                    ),
-                    onPressed: _logout,
-                    tooltip: 'Logout',
+                  // simple profile avatar
+                  CircleAvatar(
+                    radius: 20,
+                    backgroundColor: const Color.fromRGBO(255, 255, 255, 0.18),
+                    child: const Icon(Icons.person, color: Colors.white),
                   ),
                 ],
               ),
-              const SizedBox(height: 4),
-              const Text(
-                'Find your perfect farmhouse retreat',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.white70,
-                ),
-              ),
-              const SizedBox(height: 16),
 
-              // Search Bar
-              TextField(
-                controller: _searchController,
-                decoration: InputDecoration(
-                  hintText: 'Search by stay name or location',
-                  hintStyle: TextStyle(color: Colors.grey[400]),
-                  prefixIcon: const Icon(
-                    Icons.search,
-                    color: Color(0xFF4A7023),
+              const SizedBox(height: 12),
+
+              // Prominent full-width search bar
+              SizedBox(
+                height: 58,
+                child: Hero(
+                  tag: 'search_bar',
+                  child: Material(
+                    color: Colors.transparent,
+                    child: PremiumSearchBar(
+                      controller: _searchController,
+                      onChanged: (q) => _applyFilters(),
+                      onMicTap: () {},
+                      hintText: 'Search stays, locations...',
+                      variant: SearchBarVariant.standard, // bigger, full-width style
+                    ),
                   ),
-                  suffixIcon: _searchController.text.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.close),
-                          onPressed: () {
-                            _searchController.clear();
-                            FocusScope.of(context).unfocus();
-                          },
-                        )
-                      : null,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide.none,
-                  ),
-                  filled: true,
-                  fillColor: Colors.white,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 ),
               ),
+
+              const SizedBox(height: 12),
             ],
           ),
         ),
@@ -383,48 +379,87 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
 
-        // Farmhouse List
+        // Farmhouse List and category box (category box moved into the main scroll list
+        // so it scrolls together with farmhouse cards and is fully reachable)
         Expanded(
-          child: _filteredFarmhouses.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
-                      Icon(Icons.search_off, size: 60, color: Colors.grey),
-                      SizedBox(height: 12),
-                      Text(
-                        "No farmhouses found",
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.grey,
-                        ),
-                      ),
+          child: RefreshIndicator(
+            onRefresh: () async {
+              _applyFilters();
+              await Future.delayed(const Duration(milliseconds: 500));
+            },
+            child: ListView(
+              padding: const EdgeInsets.only(bottom: 20),
+              children: [
+                // Big boxed category area included as the first list child
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [
+                      BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12, offset: const Offset(0, 6)),
                     ],
+                    border: Border.all(color: const Color(0xFFE6F1E6)),
                   ),
-                )
-              : RefreshIndicator(
-                  onRefresh: () async {
-                    _applyFilters();
-                    await Future.delayed(const Duration(milliseconds: 500));
-                  },
-                  child: ListView.builder(
-                    itemCount: _filteredFarmhouses.length,
-                    padding: const EdgeInsets.only(bottom: 20),
-                    itemBuilder: (context, index) {
-                      final farmhouse = _filteredFarmhouses[index];
-                      return FarmhouseCard(
-                        name: farmhouse['name'],
-                        location: farmhouse['location'],
-                        price: farmhouse['price'],
-                        distance: farmhouse['distance'],
-                        imageUrl: farmhouse['imageUrl'],
-                         images: List<String>.from(farmhouse['images'] ?? []),
-                      );
-                    },
+                  child: SizedBox(
+                    height: 200,
+                    child: GridView.count(
+                      // let the main ListView handle scrolling; the inner grid should not scroll
+                      physics: const NeverScrollableScrollPhysics(),
+                      shrinkWrap: true,
+                      crossAxisCount: 3,
+                      childAspectRatio: 1.2,
+                      mainAxisSpacing: 8,
+                      crossAxisSpacing: 8,
+                      children: [
+                        _bigCategoryTile('Farmhouses', Icons.agriculture),
+                        _bigCategoryTile('Villas', Icons.house),
+                        _bigCategoryTile('Hotels', Icons.hotel),
+                        _bigCategoryTile('Car rentals', Icons.directions_car),
+                        _bigCategoryTile('Flight', Icons.flight),
+                        _bigCategoryTile('Hourly rentals', Icons.access_time),
+                      ],
+                    ),
                   ),
                 ),
+
+                // Either show the no-results placeholder or the list of cards
+                if (_filteredFarmhouses.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 48),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: const [
+                        Icon(Icons.search_off, size: 60, color: Colors.grey),
+                        SizedBox(height: 12),
+                        Text(
+                          "No farmhouses found",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  ..._filteredFarmhouses.map((farmhouse) {
+                    return FarmhouseCard(
+                      name: farmhouse['name'],
+                      location: farmhouse['location'],
+                      price: farmhouse['price'],
+                      distance: farmhouse['distance'],
+                      imageUrl: farmhouse['imageUrl'],
+                      images: List<String>.from(farmhouse['images'] ?? []),
+                    );
+                  }).toList(),
+              ],
+            ),
+          ),
         ),
+
       ],
     );
   }
@@ -581,6 +616,116 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
+        ),
+      ),
+    );
+  }
+
+  Widget _categoryChip(String label, {required bool enabled}) {
+    final bool isSelected = _selectedCategory == label;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+      child: GestureDetector(
+        onTap: () {
+          if (!enabled) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content: Text('$label is coming soon 🚧'),
+              duration: const Duration(seconds: 2),
+            ));
+            return;
+          }
+          setState(() {
+            _selectedCategory = label;
+            _applyFilters();
+          });
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: isSelected ? const Color(0xFF1B5E20) : Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0xFF1B5E20).withOpacity(0.9)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.04),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  color: isSelected ? Colors.white : const Color(0xFF1B5E20),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              if (!enabled) const SizedBox(width: 8),
+              if (!enabled) const Text('Coming soon', style: TextStyle(fontSize: 11, color: Colors.grey)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _bigCategoryTile(String label, IconData icon) {
+    // If 'Under ₹2000' filter is active, make Farmhouses and Villas show coming soon
+  final bool disabledByPrice = _selectedFilter == 'Under ₹2000' && (label == 'Farmhouses' || label == 'Villas');
+  // allow selection for all tiles unless disabled by the price filter
+  final bool enabled = !disabledByPrice;
+  final bool isSelected = _selectedCategory == label;
+
+    return GestureDetector(
+      onTap: () {
+        if (disabledByPrice) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('This category is coming soon 🚧'),
+            duration: Duration(seconds: 2),
+          ));
+          return;
+        }
+        setState(() {
+          _selectedCategory = label;
+          _applyFilters();
+        });
+
+        // If the category is not yet fully implemented, still give a hint
+        if (label != 'Farmhouses') {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Coming soon 🚧'),
+            duration: Duration(seconds: 2),
+          ));
+        }
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF1B5E20) : (enabled ? Colors.white : Colors.grey[100]),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0xFF1B5E20), width: isSelected ? 2.0 : (enabled ? 1.6 : 1.0)),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: isSelected ? Colors.white : (enabled ? const Color(0xFF1B5E20) : Colors.grey), size: 28),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: isSelected ? Colors.white : (enabled ? const Color(0xFF1B5E20) : Colors.grey[600]),
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+              ),
+            ),
+            if (!enabled)
+              const Padding(
+                padding: EdgeInsets.only(top: 6),
+                child: Text('Coming soon', style: TextStyle(fontSize: 10, color: Colors.grey)),
+              ),
+          ],
         ),
       ),
     );

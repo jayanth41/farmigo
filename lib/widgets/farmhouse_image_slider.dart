@@ -30,7 +30,7 @@ class _FarmhouseImageSliderState extends State<FarmhouseImageSlider> {
               width: double.infinity,
               height: 240,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(
+              errorBuilder: (context, error, stackTrace) => Container(
                 color: Colors.grey[300],
                 child: const Icon(Icons.broken_image, size: 60),
               ),
