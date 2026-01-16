@@ -1,16 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:get/get.dart';
 import 'firebase_options.dart';
+import 'controllers/favorites_controller.dart';
+import 'controllers/bookings_controller.dart';
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/profile_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    print('Firebase initialized successfully');
+  } catch (e) {
+    print('Firebase initialization error: $e');
+  }
+  
+  // Initialize Controllers
+  Get.put<FavoritesController>(FavoritesController());
+  Get.put<BookingsController>(BookingsController());
+  
   runApp(const MyApp());
 }
 
@@ -19,14 +33,34 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return GetMaterialApp(
       debugShowCheckedModeBanner: false,
+      title: 'Farmigo',
+      theme: ThemeData(
+        primaryColor: const Color(0xFF4A7023),
+        useMaterial3: true,
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFF4A7023),
+          foregroundColor: Colors.white,
+          elevation: 0,
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF4A7023),
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+        ),
+      ),
       home: const AuthStateHandler(),
-      routes: {
-        '/home': (context) => const HomeScreen(),
-        '/login': (context) => const LoginScreen(),
-        '/splash': (context) => const SplashScreen(),
-      },
+      getPages: [
+        GetPage(name: '/home', page: () => const HomeScreen()),
+        GetPage(name: '/login', page: () => const LoginScreen()),
+        GetPage(name: '/splash', page: () => const SplashScreen()),
+      ],
     );
   }
 }
@@ -39,7 +73,6 @@ class AuthStateHandler extends StatefulWidget {
 }
 
 class _AuthStateHandlerState extends State<AuthStateHandler> {
-
   @override
   void initState() {
     super.initState();
@@ -47,24 +80,20 @@ class _AuthStateHandlerState extends State<AuthStateHandler> {
   }
 
   Future<void> _checkAuthState() async {
-    // Wait for splash screen duration (2 seconds)
     await Future.delayed(const Duration(seconds: 2));
 
     if (!mounted) return;
 
-    final user = FirebaseAuth.instance.currentUser;
+    // TODO: Uncomment when Firebase Auth is working
+    // final user = FirebaseAuth.instance.currentUser;
+    // if (user != null) {
+    //   Get.offAllNamed('/home');
+    // } else {
+    //   Get.offAllNamed('/login');
+    // }
 
-    if (user != null) {
-      // User is logged in, navigate to home
-      if (mounted) {
-        Navigator.pushReplacementNamed(context, '/home');
-      }
-    } else {
-      // User is not logged in, navigate to login
-      if (mounted) {
-        Navigator.pushReplacementNamed(context, '/login');
-      }
-    }
+    // For now, always go to login
+    Get.offAllNamed('/login');
   }
 
   @override
