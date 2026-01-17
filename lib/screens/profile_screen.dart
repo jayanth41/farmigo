@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -79,7 +80,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Container(
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
-                  colors: [Color(0xFF2D5016), Color(0xFF4A7023)],
+                  colors: [Color(0xFF2D5016), AppColors.primary],
                 ),
               ),
               padding: const EdgeInsets.symmetric(vertical: 24),
@@ -220,7 +221,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           style: const TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF4A7023),
+            color: AppColors.primary,
           ),
         ),
         const SizedBox(height: 4),
@@ -257,7 +258,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           controller: controller,
           enabled: _isEditing && enabled,
           decoration: InputDecoration(
-            prefixIcon: Icon(icon, color: const Color(0xFF4A7023)),
+            prefixIcon: Icon(icon, color: AppColors.primary),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
             ),
@@ -279,7 +280,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
-        leading: Icon(icon, color: const Color(0xFF4A7023)),
+  leading: Icon(icon, color: AppColors.primary),
         title: Text(title),
         subtitle: Text(subtitle),
         trailing: const Icon(Icons.arrow_forward_ios, size: 16),
