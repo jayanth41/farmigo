@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'image_with_fallback.dart';
 
 class FarmhouseImageSlider extends StatefulWidget {
   final List<String> images;
@@ -25,15 +26,11 @@ class _FarmhouseImageSliderState extends State<FarmhouseImageSlider> {
             setState(() => _currentIndex = index);
           },
           itemBuilder: (context, index) {
-            return Image.network(
-              widget.images[index],
+            return ImageWithFallback(
+              imageUrl: widget.images[index],
               width: double.infinity,
               height: 240,
               fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => Container(
-                color: Colors.grey[300],
-                child: const Icon(Icons.broken_image, size: 60),
-              ),
             );
           },
         ),

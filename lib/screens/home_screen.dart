@@ -7,10 +7,13 @@ import 'favorites_screen.dart';
 import 'bookings_screen.dart';
 import 'profile_screen.dart';
 import '../widgets/search_card.dart';
-import '../widgets/state_selector.dart';
+import 'all_properties_screen.dart';
+// premium_search_bar and state_selector are no longer used in this header
 import '../widgets/category_tabs.dart';
 import '../widgets/search_section.dart';
 import '../widgets/offers_banner.dart';
+import '../widgets/home_top_bar.dart';
+import '../widgets/app_drawer.dart';
 import '../widgets/properties_grid.dart';
 // promo_box removed — SearchCard is used instead
 
@@ -27,7 +30,7 @@ class _HomeScreenState extends State<HomeScreen> {
   late FavoritesController favoritesController;
 
   // Quick chip filter
-  String _selectedFilter = 'All';
+  final String _selectedFilter = 'All';
 
   // Location & Category selectors
   String _selectedState = 'Telangana';
@@ -51,6 +54,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Dummy farmhouse data (enriched with rating & amenities)
   static const List<Map<String, dynamic>> farmhouses = [
+    // Farmhouses
     {
       'name': 'The Night Garden Stay',
       'location': 'Anajpur, Hyderabad',
@@ -59,23 +63,14 @@ class _HomeScreenState extends State<HomeScreen> {
       'price': 10000.0,
       'distance': '15 km away',
       'rating': 4.8,
+      'reviews': 245,
       'amenities': ['Pool', 'WiFi', 'Kitchen', 'Breakfast'],
-  'imageUrl': 'https://images.unsplash.com/photo-1561501900-3701fa6a0864?w=600&auto=format&fit=crop&q=60',
+      'imageUrl': 'https://images.unsplash.com/photo-1561501900-3701fa6a0864?w=600&auto=format&fit=crop&q=60',
       'images': [
-  'https://images.unsplash.com/photo-1561501900-3701fa6a0864?w=600&auto=format&fit=crop&q=60',
-  'https://images.unsplash.com/photo-1549294413-26f195200c16?w=600&auto=format&fit=crop&q=60',
+        'https://images.unsplash.com/photo-1561501900-3701fa6a0864?w=600&auto=format&fit=crop&q=60',
+        'https://images.unsplash.com/photo-1549294413-26f195200c16?w=600&auto=format&fit=crop&q=60',
       ],
-    },
-    {
-      'name': 'Serene Hills Resort',
-      'location': 'Hyderabad, Telangana',
-      'state': 'Telangana',
-      'category': 'Hotels',
-      'price': 13500.0,
-      'distance': '8 km away',
-      'rating': 4.4,
-      'amenities': ['WiFi', 'Breakfast'],
-  'imageUrl': 'https://images.unsplash.com/photo-1561501900-3701fa6a0864?w=600&auto=format&fit=crop&q=60',
+      'discount': 15,
     },
     {
       'name': 'Organic Farm Retreat',
@@ -85,8 +80,10 @@ class _HomeScreenState extends State<HomeScreen> {
       'price': 1800.0,
       'distance': '25 km away',
       'rating': 4.0,
+      'reviews': 78,
       'amenities': ['Kitchen', 'Breakfast'],
-  'imageUrl': 'https://images.unsplash.com/photo-1549294413-26f195200c16?w=600&auto=format&fit=crop&q=60',
+      'imageUrl': 'https://images.unsplash.com/photo-1549294413-26f195200c16?w=600&auto=format&fit=crop&q=60',
+      'discount': 15,
     },
     {
       'name': 'Riverside Farmhouse',
@@ -96,9 +93,9 @@ class _HomeScreenState extends State<HomeScreen> {
       'price': 2800.0,
       'distance': '35 km away',
       'rating': 3.9,
+      'reviews': 42,
       'amenities': ['WiFi', 'Kitchen'],
-      'imageUrl':
-          'https://images.unsplash.com/photo-1561501900-3701fa6a0864?w=600&auto=format&fit=crop&q=60',
+      'imageUrl': 'https://images.unsplash.com/photo-1561501900-3701fa6a0864?w=600&auto=format&fit=crop&q=60',
     },
     {
       'name': 'Heritage Farm Stay',
@@ -108,21 +105,113 @@ class _HomeScreenState extends State<HomeScreen> {
       'price': 2200.0,
       'distance': '45 km away',
       'rating': 4.2,
+      'reviews': 94,
       'amenities': ['Breakfast', 'Kitchen'],
-      'imageUrl':
-          'https://plus.unsplash.com/premium_photo-1661923725782-f73c990fbddf?w=600&auto=format&fit=crop&q=60',
+      'imageUrl': 'https://plus.unsplash.com/premium_photo-1661923725782-f73c990fbddf?w=600&auto=format&fit=crop&q=60',
+    },
+
+    // Villas (duplicate-style sample cards)
+    {
+      'name': 'Sunny Hills Villa',
+      'location': 'Lonavala, Maharashtra',
+      'state': 'Maharashtra',
+      'category': 'Villas',
+      'price': 15000.0,
+      'distance': '120 km away',
+      'rating': 4.7,
+      'reviews': 312,
+      'amenities': ['Pool', 'Garden', 'BBQ'],
+      'imageUrl': 'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=600&auto=format&fit=crop&q=60',
     },
     {
-      'name': 'Premium Agri Resort',
-      'location': 'Narayankhed, Telangana',
+      'name': 'Beachside Villa Escape',
+      'location': 'Goa',
+      'state': 'Goa',
+      'category': 'Villas',
+      'price': 22000.0,
+      'distance': '560 km away',
+      'rating': 4.9,
+      'reviews': 421,
+      'amenities': ['Pool', 'Sea View', 'Private Chef'],
+      'imageUrl': 'https://images.unsplash.com/photo-1505691938895-1758d7feb511?w=600&auto=format&fit=crop&q=60',
+    },
+
+    // Hotels
+    {
+      'name': 'Serene Hills Resort',
+      'location': 'Hyderabad, Telangana',
       'state': 'Telangana',
-      'category': 'Resorts',
-      'price': 14000.0,
-      'distance': '60 km away',
+      'category': 'Hotels',
+      'price': 13500.0,
+      'distance': '8 km away',
+      'rating': 4.4,
+      'reviews': 198,
+      'amenities': ['WiFi', 'Breakfast'],
+      'imageUrl': 'https://images.unsplash.com/photo-1546623381-7a0f3b6f0b1b?w=600&auto=format&fit=crop&q=60',
+    },
+    {
+      'name': 'City Center Hotel',
+      'location': 'Secunderabad, Telangana',
+      'state': 'Telangana',
+      'category': 'Hotels',
+      'price': 7200.0,
+      'distance': '10 km away',
+      'rating': 4.1,
+      'reviews': 86,
+      'amenities': ['WiFi', 'Gym'],
+      'imageUrl': 'https://images.unsplash.com/photo-1526772662000-3f88f10405ff?w=600&auto=format&fit=crop&q=60',
+    },
+
+    // Car rentals
+    {
+      'name': 'Swift Car Rental - Hyderabad',
+      'location': 'Hyderabad',
+      'state': 'Telangana',
+      'category': 'Car rentals',
+      'price': 1800.0,
+      'distance': 'Varies',
+      'rating': 4.3,
+      'reviews': 213,
+      'amenities': ['AC', 'Unlimited KM'],
+      'imageUrl': 'https://images.unsplash.com/photo-1542367597-74b293f1b1b9?w=600&auto=format&fit=crop&q=60',
+    },
+    {
+      'name': 'Premium Car Hire',
+      'location': 'Hyderabad',
+      'state': 'Telangana',
+      'category': 'Car rentals',
+      'price': 4200.0,
+      'distance': 'Varies',
       'rating': 4.6,
-      'amenities': ['Pool', 'WiFi'],
-      'imageUrl':
-          'https://images.unsplash.com/photo-1549294413-26f195200c16?w=600&auto=format&fit=crop&q=60',
+      'reviews': 142,
+      'amenities': ['Luxury Cars', 'Chauffeur'],
+      'imageUrl': 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=600&auto=format&fit=crop&q=60',
+    },
+
+    // Flights (sample entries shown as 'bookable' items)
+    {
+      'name': 'AirExpress - HYD → BLR',
+      'location': 'Hyderabad to Bangalore',
+      'state': 'N/A',
+      'category': 'Flight',
+      'price': 4200.0,
+      'distance': '1.5 hr',
+      'rating': 4.2,
+      'reviews': 980,
+      'amenities': ['In-flight Snacks', 'WiFi'],
+      'imageUrl': 'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=600&auto=format&fit=crop&q=60',
+    },
+    {
+      'name': 'BudgetAir - HYD → MAA',
+      'location': 'Hyderabad to Chennai',
+      'state': 'N/A',
+      'category': 'Flight',
+      'price': 3600.0,
+      'distance': '1.0 hr',
+      'rating': 3.9,
+      'reviews': 421,
+      'amenities': ['Free Cancellation'],
+      'imageUrl': 'https://images.unsplash.com/photo-1526778548025-fa2f459cd5c0?w=600&auto=format&fit=crop&q=60',
     },
   ];
 
@@ -231,6 +320,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      drawer: const AppDrawer(),
       backgroundColor: AppColors.bgSoft,
       body: _buildBody(),
       bottomNavigationBar: Container(
@@ -278,7 +368,8 @@ class _HomeScreenState extends State<HomeScreen> {
       children: [
         Column(
           children: [
-            // Polished header (very very light green background)
+            // Header: top bar + location bar + search card
+            // Keep header background styling for brand look
             Container(
               decoration: BoxDecoration(
                 color: const Color(0xFFF2FBF2),
@@ -291,79 +382,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ],
               ),
-              padding: const EdgeInsets.only(
-                top: 28,
-                left: 16,
-                right: 16,
-                bottom: 18,
-              ),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Top row: title + avatar
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                // logo before Farmigo
-                                Padding(
-                                  padding: const EdgeInsets.only(right: 8.0),
-                                  child: Image.asset(
-                                    'assets/images/logo_f.png',
-                                    width: 36,
-                                    height: 36,
-                                    errorBuilder: (ctx, err, st) => Container(
-                                      width: 36,
-                                      height: 36,
-                                      decoration: const BoxDecoration(
-                                        color: AppColors.primary,
-                                        shape: BoxShape.circle,
-                                      ),
-                                      alignment: Alignment.center,
-                                      child: const Text('f', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 4),
-                                const Text(
-                                  'FARMIGO',
-                                  style: TextStyle(
-                                    fontSize: 28,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.primary,
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                                // location beside title
-                                StateSelector(
-                                  selectedState: _selectedState,
-                                  onSelect: (s) => setState(() {
-                                    _selectedState = s;
-                                    _applyFilters();
-                                  }),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              'Find your perfect ${_selectedCategory.toLowerCase()} retreat',
-                              style: const TextStyle(fontSize: 13, color: Colors.black54),
-                            ),
-                          ],
-                        ),
-                      ),
-                      // simple profile avatar (visible with green background)
-                      CircleAvatar(
-                        radius: 20,
-                        backgroundColor: AppColors.primary,
-                        child: const Icon(Icons.person, color: Colors.white),
-                      ),
-                    ],
-                  ),
+                  children: [
+                      const HomeTopBar(),
+                    // Keep a small gap below the top bar; the main SearchCard is the docked/inline one
+                    const SizedBox(height: 12),
                 ],
               ),
             ),
@@ -378,6 +401,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: ListView(
                   padding: const EdgeInsets.only(bottom: 180),
                   children: [
+                    // Premium search bar moved above categories
+                      // PremiumSearchBar removed (design uses SearchCard and inline search only)
+
                     CategoryTabs(
                       activeCategory: _selectedCategory,
                       onCategoryChange: (c) => setState(() {
@@ -409,6 +435,39 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
 
                     const OffersBanner(),
+                    const SizedBox(height: 16),
+
+                    // Farmhouses header with 'View all'
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
+                      child: Row(
+                        children: [
+                          const Expanded(
+                            child: Text('Farmhouses', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              // navigate to a full list page
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => AllPropertiesScreen(properties: _filteredFarmhouses),
+                                ),
+                              );
+                            },
+                            style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: const [
+                                Text('View all'),
+                                SizedBox(width: 6),
+                                Icon(Icons.arrow_forward, size: 16),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
 
                     PropertiesGrid(properties: _filteredFarmhouses),
                   ],

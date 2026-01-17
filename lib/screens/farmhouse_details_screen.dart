@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import '../widgets/app_drawer.dart';
 import '../models/farmhouse_model.dart';
 import '../controllers/favorites_controller.dart';
 
@@ -108,6 +109,7 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      drawer: const AppDrawer(),
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

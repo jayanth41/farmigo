@@ -28,12 +28,17 @@ class PropertiesGrid extends StatelessWidget {
     return Column(
       children: properties.map((farmhouse) {
         return FarmhouseCard(
+          category: farmhouse['category'] as String? ?? 'Farmhouses',
           name: farmhouse['name'],
           location: farmhouse['location'],
-          price: farmhouse['price'],
-          distance: farmhouse['distance'],
-          imageUrl: farmhouse['imageUrl'],
+          price: (farmhouse['price'] is int) ? (farmhouse['price'] as int).toDouble() : (farmhouse['price'] as double? ?? 0.0),
+          distance: farmhouse['distance'] ?? '',
+          imageUrl: farmhouse['imageUrl'] ?? '',
           images: List<String>.from(farmhouse['images'] ?? []),
+          rating: (farmhouse['rating'] is int) ? (farmhouse['rating'] as int).toDouble() : (farmhouse['rating'] as double? ?? 0.0),
+          reviews: farmhouse['reviews'] as int? ?? 0,
+          amenities: (farmhouse['amenities'] as List?)?.cast<String>() ?? const [],
+          discount: farmhouse['discount'] as int?,
         );
       }).toList(),
     );

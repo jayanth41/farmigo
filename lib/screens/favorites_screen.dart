@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import '../widgets/app_drawer.dart';
 import '../theme/app_colors.dart';
 import '../controllers/favorites_controller.dart';
 import 'farmhouse_details_screen.dart';
@@ -25,6 +26,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[50],
+      drawer: const AppDrawer(),
       appBar: AppBar(
         backgroundColor: AppColors.primary,
         elevation: 0,

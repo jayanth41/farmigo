@@ -1,291 +1,247 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
-import 'package:get/get.dart';
-import '../models/farmhouse_model.dart';
-import '../controllers/favorites_controller.dart';
 import '../screens/farmhouse_details_screen.dart';
+import '../screens/booking_details_screen.dart';
 import 'image_with_fallback.dart';
 
-class FarmhouseCard extends StatefulWidget {
+class FarmhouseCard extends StatelessWidget {
+  final String image;
   final String name;
   final String location;
+  final String category;
   final double price;
-  final String distance;
-  final String imageUrl;
+  final double rating;
+  final int reviews;
+  final List<String> amenities;
+  final int? discount;
+  final String? distance;
   final List<String>? images;
-  final String? id;
 
   const FarmhouseCard({
     super.key,
+    String? image,
+    String? imageUrl,
+    this.category = 'Farmhouses',
     required this.name,
     required this.location,
     required this.price,
-    required this.distance,
-    required this.imageUrl,
+    this.rating = 0.0,
+    this.reviews = 0,
+    List<String>? amenities,
+    this.discount,
+    this.distance,
     this.images,
-    this.id,
-  });
-
-  @override
-  State<FarmhouseCard> createState() => _FarmhouseCardState();
-}
-// Removed Markdown code fence marker
-class _FarmhouseCardState extends State<FarmhouseCard>
-    with SingleTickerProviderStateMixin {
-  bool isFav = false;
-
-  late AnimationController _controller;
-  late Animation<double> _scaleAnim;
-
-  FavoritesController? _favController;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller =
-        AnimationController(vsync: this, duration: const Duration(milliseconds: 200));
-    _scaleAnim = Tween(begin: 1.0, end: 1.2).animate(_controller);
-
-    // lazy register favorites controller if not present
-    if (Get.isRegistered<FavoritesController>()) {
-      _favController = Get.find<FavoritesController>();
-      isFav = _favController!.isFavorited(widget.id ?? widget.name);
-    } else {
-      // avoid creating it if you don't want global state; keeping safe fallback
-      try {
-  _favController = Get.put(FavoritesController());
-  isFav = _favController!.isFavorited(widget.id ?? widget.name);
-      } catch (_) {
-        _favController = null;
-      }
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _toggleFav() {
-    setState(() => isFav = !isFav);
-    _controller.forward().then((_) => _controller.reverse());
-    if (_favController != null) {
-      final farmhouse = FarmhouseModel(
-        id: widget.id ?? widget.name,
-        name: widget.name,
-        location: widget.location,
-        price: widget.price,
-        distance: widget.distance,
-        imageUrl: widget.imageUrl,
-        images: widget.images ?? [],
-      );
-
-      if (isFav) {
-        _favController!.addFavorite(farmhouse);
-      } else {
-        _favController!.removeFavorite(farmhouse.id);
-      }
-    }
-  }
+  })  : image = image ?? imageUrl ?? '',
+        amenities = amenities ?? const [];
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        // navigate to details
-        Navigator.of(context).push(MaterialPageRoute(
-            builder: (_) => FarmhouseDetailsScreen(
-                  name: widget.name,
-                  location: widget.location,
-                  price: widget.price,
-                  distance: widget.distance,
-                  imageUrl: widget.imageUrl,
-                  images: widget.images,
-                  id: widget.id ?? widget.name,
-                )));
+        // Navigate to a generic booking/details screen that adapts to category
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) =>
+                // Use the specific farmhouse details screen for farmhouses for now
+                (category.toLowerCase().contains('farm'))
+                    ? FarmhouseDetailsScreen(
+                        name: name,
+                        location: location,
+                        price: price,
+                        distance: distance ?? '',
+                        imageUrl: image,
+                        images: images,
+                        id: name,
+                      )
+                    : BookingDetailsScreen(
+                        name: name,
+                        category: category,
+                        location: location,
+                        price: price,
+                        rating: rating,
+                        reviews: reviews,
+                        imageUrl: image,
+                        amenities: amenities,
+                      ),
+          ),
+        );
       },
-        child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: Container(
+        width: 340,
+        margin: const EdgeInsets.only(right: 16, bottom: 12),
         decoration: BoxDecoration(
+          color: AppColors.white,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: AppColors.primary, width: 2),
           boxShadow: [
             BoxShadow(
-              color: const Color.fromRGBO(0, 0, 0, 0.12),
-              blurRadius: 14,
-              offset: const Offset(0, 8),
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 18,
+              offset: const Offset(0, 10),
             ),
           ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // IMAGE SECTION
+            // IMAGE
             Stack(
               children: [
                 ClipRRect(
-                  borderRadius:
-                      const BorderRadius.vertical(top: Radius.circular(18)),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
                   child: ImageWithFallback(
-                    imageUrl: widget.imageUrl,
-                    height: 210,
+                    imageUrl: image,
+                    height: 170,
                     width: double.infinity,
                     fit: BoxFit.cover,
                   ),
                 ),
-
-                // GRADIENT OVERLAY
-                Container(
-                  height: 210,
-                  decoration: BoxDecoration(
-                    borderRadius:
-                        const BorderRadius.vertical(top: Radius.circular(18)),
-                    gradient: LinearGradient(
-                      begin: Alignment.bottomCenter,
-                      end: Alignment.topCenter,
-                      colors: [
-                        const Color.fromRGBO(0, 0, 0, 0.65),
-                        Colors.transparent,
-                      ],
-                    ),
-                  ),
-                ),
-
-                // RATING
-                const Positioned(
-                  top: 12,
-                  left: 12,
-                  child: _RatingPill(rating: 4.6),
-                ),
-
-                // FAVORITE
+                if (discount != null) Positioned(top: 12, left: 12, child: _discountBadge("$discount% OFF")),
                 Positioned(
                   top: 12,
                   right: 12,
-                  child: ScaleTransition(
-                    scale: _scaleAnim,
-                    child: GestureDetector(
-                      onTap: () {
-                        _toggleFav();
-                      },
-                      child: CircleAvatar(
-                        backgroundColor: Colors.white,
-                        child: Icon(
-                          isFav ? Icons.favorite : Icons.favorite_border,
-                          color: isFav ? Colors.red : Colors.black,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-
-                // TITLE
-                Positioned(
-                  left: 12,
-                  bottom: 18,
-                  right: 12,
-                  child: Text(
-                    widget.name,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                  child: Container(
+                    height: 36,
+                    width: 36,
+                    decoration: BoxDecoration(color: AppColors.white, shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 8)]),
+                    child: const Icon(Icons.favorite_border, size: 18, color: AppColors.textMuted),
                   ),
                 ),
               ],
             ),
-
             // CONTENT
             Padding(
               padding: const EdgeInsets.all(14),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Text(name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textMain), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 4),
+                  // Small reviews subtext
                   Text(
-                    "📍 ${widget.location} • ${widget.distance}",
-                    style: TextStyle(color: Colors.grey[600]),
+                    '$reviews reviews',
+                    style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 6),
-                  const Text("👨‍👩‍👧‍👦 Up to 6 guests"),
-                  const SizedBox(height: 10),
-
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // PRICE
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "₹${widget.price.toInt().toString()}",
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                          const Text(
-                            "per night",
-                            style: TextStyle(color: Colors.grey, fontSize: 12),
-                          ),
-                        ],
-                      ),
-
-                      // CTA
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        onPressed: () {
-                          Navigator.of(context).push(MaterialPageRoute(
-                              builder: (_) => FarmhouseDetailsScreen(
-                                    name: widget.name,
-                                    location: widget.location,
-                                    price: widget.price,
-                                    distance: widget.distance,
-                                    imageUrl: widget.imageUrl,
-                                    images: widget.images,
-                                    id: widget.id ?? widget.name,
-                                  )));
-                        },
-                        child: const Text("View Details"),
-                      ),
+                      Row(children: List.generate(5, (i) {
+                        final filled = i < rating.round();
+                        return Icon(Icons.star, size: 12, color: filled ? Colors.amber : Colors.grey[300]);
+                      })),
+                      const SizedBox(width: 8),
+                      Text(rating.toStringAsFixed(1), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                      const SizedBox(width: 4),
+                      Text('($reviews)', style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
                     ],
                   ),
+                  const SizedBox(height: 6),
+                  Row(children: [
+                    const Icon(Icons.location_on, size: 14, color: AppColors.textMuted),
+                    const SizedBox(width: 4),
+                    Expanded(child: Text(location, style: const TextStyle(fontSize: 13, color: AppColors.textMuted), overflow: TextOverflow.ellipsis)),
+                  ]),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: amenities.take(3).map((a) => Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4), decoration: BoxDecoration(color: AppColors.chipBg, borderRadius: BorderRadius.circular(20)), child: Text(a, style: const TextStyle(fontSize: 11, color: AppColors.primaryDark, fontWeight: FontWeight.w500)))).toList(),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                    _ratingPill(),
+                    Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                      Text("₹${price.toInt()}", style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textMain)),
+                      const Text("per night", style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                    ])
+                  ])
                 ],
               ),
-            ),
+            )
           ],
         ),
       ),
     );
   }
-}
-
-class _RatingPill extends StatelessWidget {
-  final double rating;
-  const _RatingPill({required this.rating});
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _discountBadge(String text) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color.fromRGBO(0, 0, 0, 0.7),
+        color: AppColors.primary,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
-        '⭐ ${rating.toStringAsFixed(1)}',
-        style: const TextStyle(color: Colors.white, fontSize: 12),
+        text,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  Widget _ratingPill() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppColors.ratingBg,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.star, size: 14, color: Colors.white),
+          const SizedBox(width: 4),
+          Text(
+            "$rating",
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          Text(
+            " ($reviews)",
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 11,
+            ),
+          ),
+        ],
       ),
     );
   }
 }
-// Removed Markdown code fence marker
+
+// Example horizontal list (if needed in a parent widget):
+// SizedBox(
+//   height: 380,
+//   child: ListView(
+//     scrollDirection: Axis.horizontal,
+//     padding: const EdgeInsets.only(left: 16),
+//     children: const [
+//       FarmhouseCard(
+//         image: "https://images.unsplash.com/photo-1564013799919-ab600027ffc6",
+//         name: "Green Valley Farmhouse",
+//         location: "Lonavala, Maharashtra",
+//         price: 8500,
+//         rating: 4.8,
+//         reviews: 245,
+//         amenities: ["Pool", "BBQ", "Garden"],
+//         discount: 20,
+//       ),
+//       FarmhouseCard(
+//         image: "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85",
+//         name: "Riverside Retreat",
+//         location: "Karjat, Maharashtra",
+//         price: 6200,
+//         rating: 4.6,
+//         reviews: 189,
+//         amenities: ["River View", "Bonfire", "Parking"],
+//         discount: 15,
+//       ),
+//     ],
+//   ),
+// ),
