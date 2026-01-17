@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
-import 'premium_search_bar.dart';
+
 
 typedef SearchChanged = void Function(String query);
 
@@ -23,11 +22,35 @@ class SearchSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          PremiumSearchBar(
-            controller: controller,
-            onChanged: onChanged,
-            hintText: 'Search $category or location...',
-            variant: SearchBarVariant.standard,
+          // Simplified search input (PremiumSearchBar removed)
+          Container(
+            height: 48,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey.shade200),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.search, color: Colors.grey),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextField(
+                    controller: controller,
+                    onChanged: onChanged,
+                    decoration: InputDecoration.collapsed(hintText: 'Search $category or location...'),
+                  ),
+                ),
+                IconButton(
+                  onPressed: () {
+                    controller.clear();
+                    onChanged('');
+                  },
+                  icon: const Icon(Icons.close, color: Colors.grey),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 10),
           // small quick-search chips

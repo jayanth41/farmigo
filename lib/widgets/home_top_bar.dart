@@ -11,46 +11,40 @@ class HomeTopBar extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // MENU
-          Icon(Icons.menu, color: AppColors.textMain),
-
-          // LOGO
-          Container(
-            height: 44,
-            width: 44,
-            decoration: BoxDecoration(
-              color: AppColors.primary,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: const Icon(Icons.park, color: Colors.white),
-          ),
-
+          // Left group: menu, breadcrumb, logo and 'Farmigo' text
           Row(
             children: [
-              // FILTER
-              Container(
-                height: 44,
-                width: 44,
-                decoration: BoxDecoration(
-                  border: Border.all(color: AppColors.primary),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: const Icon(Icons.tune, color: AppColors.primary),
+              GestureDetector(
+                onTap: () {
+                  // Open the scaffold drawer when the menu is tapped
+                  Scaffold.of(context).openDrawer();
+                },
+                child: Icon(Icons.menu, color: AppColors.textMain),
               ),
               const SizedBox(width: 12),
-
-              // PROFILE
+              // breadcrumb (compact) - icon only; text removed for a cleaner header
+              const SizedBox(width: 6),
+              // logo beside breadcrumb
               Container(
-                height: 44,
-                width: 44,
+                height: 36,
+                width: 36,
                 decoration: BoxDecoration(
                   color: AppColors.primary,
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.person, color: Colors.white),
+                child: const Icon(Icons.park, color: Colors.white, size: 20),
               ),
+              const SizedBox(width: 8),
+              const Text('Farmigo', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primary)),
+
+              // Right-side actions: filter and profile (profile visible in green)
             ],
           ),
+
+          const Spacer(),
+
+          // make menu open the drawer; keep spacing on the right
+          const SizedBox(width: 12),
         ],
       ),
     );

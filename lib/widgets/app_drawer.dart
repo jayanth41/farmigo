@@ -42,6 +42,38 @@ class AppDrawer extends StatelessWidget {
             },
           ),
 
+          ListTile(
+            leading: const Icon(Icons.support_agent),
+            title: const Text('Support'),
+            onTap: () {
+              // Close drawer first
+              Navigator.pop(context);
+              showDialog(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Text('Support'),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      Text('Email: support@farmigo.app'),
+                      SizedBox(height: 8),
+                      Text('Phone: +1 (800) 555-0123'),
+                      SizedBox(height: 8),
+                      Text('We typically respond within 24 hours.'),
+                    ],
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: const Text('Close'),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+
           const Divider(),
 
           ListTile(
