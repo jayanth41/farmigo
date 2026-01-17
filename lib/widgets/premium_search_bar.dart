@@ -8,6 +8,7 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
 
 enum SearchBarVariant { standard, darkCompact }
 
@@ -73,29 +74,11 @@ class _PremiumSearchBarState extends State<PremiumSearchBar>
     final bool hasText = widget.controller.text.isNotEmpty;
     final bool isDark = widget.variant == SearchBarVariant.darkCompact;
 
-    final bgDecoration = isDark
-        ? BoxDecoration(
-            color: const Color(0xFF122E18),
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: const Color.fromRGBO(0, 0, 0, 0.14),
-                blurRadius: 10,
-                offset: const Offset(0, 6),
-              )
-            ],
-          )
-        : BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            color: Colors.white,
-            boxShadow: [
-              BoxShadow(
-                color: const Color.fromRGBO(0, 0, 0, 0.06),
-                blurRadius: 12,
-                offset: const Offset(0, 6),
-              ),
-            ],
-          );
+    // Use flat decoration for both variants — remove shadow to match design
+    final bgDecoration = BoxDecoration(
+      borderRadius: BorderRadius.circular(isDark ? 12 : 14),
+      color: isDark ? const Color(0xFF122E18) : Colors.white,
+    );
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16, vertical: isDark ? 6 : 8),
@@ -108,11 +91,7 @@ class _PremiumSearchBarState extends State<PremiumSearchBar>
           borderRadius: BorderRadius.circular(isDark ? 12 : 14),
           child: Stack(
             children: [
-              if (!isDark)
-                BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 6.0, sigmaY: 6.0),
-                  child: Container(color: Colors.transparent),
-                ),
+              // removed backdrop blur/shadow for a flat placeholder appearance
               Row(
                 children: [
                   Padding(
@@ -123,7 +102,7 @@ class _PremiumSearchBarState extends State<PremiumSearchBar>
                       ),
                       child: Icon(
                         Icons.search,
-                        color: const Color(0xFF1B5E20),
+                        color: AppColors.primary,
                         size: isDark ? 20 : 22,
                       ),
                     ),

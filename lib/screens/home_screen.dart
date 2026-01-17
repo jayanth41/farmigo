@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import '../theme/app_colors.dart';
 // FarmhouseCard is used inside PropertiesGrid; HomeScreen no longer imports it directly.
 import '../controllers/favorites_controller.dart';
 import 'favorites_screen.dart';
 import 'bookings_screen.dart';
 import 'profile_screen.dart';
-import '../widgets/premium_search_bar.dart';
+import '../widgets/search_card.dart';
 import '../widgets/state_selector.dart';
 import '../widgets/category_tabs.dart';
 import '../widgets/search_section.dart';
 import '../widgets/offers_banner.dart';
 import '../widgets/properties_grid.dart';
+// promo_box removed — SearchCard is used instead
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -229,7 +231,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: AppColors.bgSoft,
       body: _buildBody(),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
@@ -245,7 +247,7 @@ class _HomeScreenState extends State<HomeScreen> {
           onTap: (index) => setState(() => _selectedIndex = index),
           type: BottomNavigationBarType.fixed,
           backgroundColor: Colors.white,
-          selectedItemColor: const Color(0xFF4A7023),
+          selectedItemColor: AppColors.primary,
           unselectedItemColor: Colors.grey[600],
           items: const [
             BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
@@ -268,137 +270,155 @@ class _HomeScreenState extends State<HomeScreen> {
     return const ProfileScreen();
   }
 
+  // (removed older homePage) the stacked version below is used instead
+
+  // New stacked home page with floating search card at the bottom
   Widget _homePage() {
-    return Column(
+    return Stack(
       children: [
-        // Polished header (kept mostly same)
-        Container(
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [
-                Color(0xFF294716),
-                Color(0xFF3F6A1B),
-              ],
-            ),
-            borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
-            boxShadow: [
-              BoxShadow(
-                color: const Color.fromRGBO(0, 0, 0, 0.12),
-                blurRadius: 12,
-                offset: const Offset(0, 6),
-              ),
-            ],
-          ),
-          padding: const EdgeInsets.only(
-            top: 28,
-            left: 16,
-            right: 16,
-            bottom: 18,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Top row: title + avatar
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            const Text(
-                              'FARMIGO',
-                              style: TextStyle(
-                                fontSize: 28,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            // location beside title
-                            StateSelector(
-                              selectedState: _selectedState,
-                              onSelect: (s) => setState(() {
-                                _selectedState = s;
-                                _applyFilters();
-                              }),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        const Text(
-                          'Find your perfect farmhouse retreat',
-                          style: TextStyle(fontSize: 13, color: Colors.white70),
-                        ),
-                      ],
-                    ),
-                  ),
-                  // simple profile avatar
-                  CircleAvatar(
-                    radius: 20,
-                    backgroundColor: const Color.fromRGBO(255, 255, 255, 0.18),
-                    child: const Icon(Icons.person, color: Colors.white),
+        Column(
+          children: [
+            // Polished header (very very light green background)
+            Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFFF2FBF2),
+                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color.fromRGBO(0, 0, 0, 0.03),
+                    blurRadius: 6,
+                    offset: const Offset(0, 3),
                   ),
                 ],
               ),
+              padding: const EdgeInsets.only(
+                top: 28,
+                left: 16,
+                right: 16,
+                bottom: 18,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Top row: title + avatar
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                // logo before Farmigo
+                                Padding(
+                                  padding: const EdgeInsets.only(right: 8.0),
+                                  child: Image.asset(
+                                    'assets/images/logo_f.png',
+                                    width: 36,
+                                    height: 36,
+                                    errorBuilder: (ctx, err, st) => Container(
+                                      width: 36,
+                                      height: 36,
+                                      decoration: const BoxDecoration(
+                                        color: AppColors.primary,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      alignment: Alignment.center,
+                                      child: const Text('f', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                const Text(
+                                  'FARMIGO',
+                                  style: TextStyle(
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                // location beside title
+                                StateSelector(
+                                  selectedState: _selectedState,
+                                  onSelect: (s) => setState(() {
+                                    _selectedState = s;
+                                    _applyFilters();
+                                  }),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'Find your perfect ${_selectedCategory.toLowerCase()} retreat',
+                              style: const TextStyle(fontSize: 13, color: Colors.black54),
+                            ),
+                          ],
+                        ),
+                      ),
+                      // simple profile avatar (visible with green background)
+                      CircleAvatar(
+                        radius: 20,
+                        backgroundColor: AppColors.primary,
+                        child: const Icon(Icons.person, color: Colors.white),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
 
-              const SizedBox(height: 12),
+            // The composed Home body (mirrors React composition)
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: () async {
+                  _applyFilters();
+                  await Future.delayed(const Duration(milliseconds: 500));
+                },
+                child: ListView(
+                  padding: const EdgeInsets.only(bottom: 180),
+                  children: [
+                    CategoryTabs(
+                      activeCategory: _selectedCategory,
+                      onCategoryChange: (c) => setState(() {
+                        _selectedCategory = c;
+                        _applyFilters();
+                      }),
+                    ),
 
-              // Prominent full-width search bar
-              SizedBox(
-                height: 58,
-                child: Hero(
-                  tag: 'search_bar',
-                  child: Material(
-                    color: Colors.transparent,
-                    child: PremiumSearchBar(
+                    // Docked search card placed inline so it scrolls with the list
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                      child: SearchCard(
+                        onFind: (criteria) {
+                          setState(() {
+                            final loc = (criteria['location'] as String?) ?? '';
+                            if (loc.isNotEmpty) _searchController.text = loc;
+                            final cat = (criteria['category'] as String?) ?? '';
+                            if (cat.isNotEmpty) _selectedCategory = cat;
+                          });
+                          _applyFilters();
+                        },
+                      ),
+                    ),
+
+                    SearchSection(
+                      category: _selectedCategory,
                       controller: _searchController,
                       onChanged: (q) => _applyFilters(),
-                      onMicTap: () {},
-                      hintText: 'Search stays, locations...',
-                      variant: SearchBarVariant.standard, // bigger, full-width style
                     ),
-                  ),
+
+                    const OffersBanner(),
+
+                    PropertiesGrid(properties: _filteredFarmhouses),
+                  ],
                 ),
               ),
-
-              const SizedBox(height: 12),
-            ],
-          ),
-        ),
-
-        // The composed Home body (mirrors React composition)
-        Expanded(
-          child: RefreshIndicator(
-            onRefresh: () async {
-              _applyFilters();
-              await Future.delayed(const Duration(milliseconds: 500));
-            },
-            child: ListView(
-              padding: const EdgeInsets.only(bottom: 20),
-              children: [
-                CategoryTabs(
-                  activeCategory: _selectedCategory,
-                  onCategoryChange: (c) => setState(() {
-                    _selectedCategory = c;
-                    _applyFilters();
-                  }),
-                ),
-
-                SearchSection(
-                  category: _selectedCategory,
-                  controller: _searchController,
-                  onChanged: (q) => _applyFilters(),
-                ),
-
-                const OffersBanner(),
-
-                PropertiesGrid(properties: _filteredFarmhouses),
-              ],
             ),
-          ),
+          ],
         ),
+
+        // SearchCard is now inline/scrollable inside the ListView above.
       ],
     );
   }
@@ -497,7 +517,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       _applyFilters();
                       setState(() => _selectedIndex = 0);
                     },
-                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4A7023)),
+                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
                     child: const Text('Apply'),
                   ),
                 ),
