@@ -1,5 +1,6 @@
 //bookings screen
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
 import 'package:get/get.dart';
 import '../controllers/bookings_controller.dart';
 import '../widgets/app_drawer.dart';
@@ -134,7 +135,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
       child: ElevatedButton(
         onPressed: () => setState(() => _filterStatus = value),
         style: ElevatedButton.styleFrom(
-          backgroundColor: active ? const Color(0xFF1B5E20) : Colors.grey[100],
+          backgroundColor: active ? AppColors.primary : Colors.grey[100],
           foregroundColor: active ? Colors.white : Colors.grey[700],
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),

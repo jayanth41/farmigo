@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import '../theme/app_colors.dart';
 import '../controllers/favorites_controller.dart';
 import 'farmhouse_details_screen.dart';
 import '../widgets/image_with_fallback.dart';
@@ -25,7 +26,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        backgroundColor: const Color(0xFF4A7023),
+        backgroundColor: AppColors.primary,
         elevation: 0,
         title: const Text(
           'My Favorites',
@@ -92,7 +93,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                   Icon(
                     Icons.favorite_border,
                     size: 80,
-                    color: Colors.grey[400],
+                      color: Colors.grey[400],
                   ),
                   const SizedBox(height: 16),
                   Text(
@@ -120,7 +121,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                     icon: const Icon(Icons.explore),
                     label: const Text('Explore Farmhouses'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF4A7023),
+                      backgroundColor: AppColors.primary,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 24,
                         vertical: 12,
@@ -282,7 +283,7 @@ class FavoriteCard extends StatelessWidget {
                         style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF4A7023),
+                          color: AppColors.primary,
                         ),
                       ),
                     ],
@@ -308,7 +309,7 @@ class FavoriteCard extends StatelessWidget {
                         );
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF4A7023),
+                        backgroundColor: AppColors.primary,
                         padding: const EdgeInsets.symmetric(vertical: 10),
                       ),
                       child: const Text(

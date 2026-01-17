@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'app_colors.dart';
 
 class AppTheme {
   // Map a subset of the provided CSS variables to concrete Flutter colors.
@@ -30,7 +31,7 @@ class AppTheme {
       scaffoldBackgroundColor: background,
       canvasColor: card,
       appBarTheme: const AppBarTheme(
-        backgroundColor: Color(0xFF4A7023),
+  backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         elevation: 0,
       ),
@@ -44,7 +45,7 @@ class AppTheme {
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF4A7023),
+          backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -52,9 +53,9 @@ class AppTheme {
       ),
       chipTheme: ChipThemeData(
         backgroundColor: Colors.white,
-        selectedColor: const Color(0xFF1B5E20),
+  selectedColor: AppColors.primary,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        labelStyle: const TextStyle(color: Color(0xFF1B5E20), fontWeight: FontWeight.w600),
+  labelStyle: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600),
         secondaryLabelStyle: const TextStyle(color: Colors.white),
         brightness: Brightness.light,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18), side: BorderSide(color: border)),
@@ -86,7 +87,7 @@ class AppTheme {
       scaffoldBackgroundColor: colorScheme.background,
       canvasColor: colorScheme.surface,
       appBarTheme: const AppBarTheme(
-        backgroundColor: Color(0xFF1B5E20),
+        backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         elevation: 0,
       ),
@@ -100,7 +101,7 @@ class AppTheme {
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF1B5E20),
+          backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),

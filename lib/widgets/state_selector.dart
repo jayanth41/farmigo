@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
 
 class StateSelector extends StatelessWidget {
   final String selectedState;
@@ -19,17 +20,12 @@ class StateSelector extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: const Color.fromRGBO(0, 0, 0, 0.12),
-              blurRadius: 8,
-            ),
-          ],
+          // removed heavy grey shadow to match requested flat look
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.location_on, color: Color(0xFF1B5E20)),
+            Icon(Icons.location_on, color: AppColors.primary),
             const SizedBox(width: 6),
             Text(
               selectedState,

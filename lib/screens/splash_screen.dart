@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -28,7 +29,7 @@ class _SplashScreenState extends State<SplashScreen> {
             decoration: const BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  Color(0xFF1B5E20),
+                  AppColors.primary,
                   Color(0xFF2E7D32),
                 ],
                 begin: Alignment.topLeft,
@@ -65,7 +66,7 @@ class _SplashScreenState extends State<SplashScreen> {
                       fit: BoxFit.contain,
                       errorBuilder: (c, e, s) {
                         // if logo asset missing, show a green tree icon as fallback
-                        return const Icon(Icons.park, size: 56, color: Color(0xFF1B5E20));
+                        return const Icon(Icons.park, size: 56, color: AppColors.primary);
                       },
                     ),
                   ),

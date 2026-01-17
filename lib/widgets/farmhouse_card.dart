@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
 import 'package:get/get.dart';
 import '../models/farmhouse_model.dart';
 import '../controllers/favorites_controller.dart';
@@ -108,7 +109,7 @@ class _FarmhouseCardState extends State<FarmhouseCard>
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: const Color(0xFF1B5E20), width: 2),
+          border: Border.all(color: AppColors.primary, width: 2),
           boxShadow: [
             BoxShadow(
               color: const Color.fromRGBO(0, 0, 0, 0.12),
@@ -224,7 +225,7 @@ class _FarmhouseCardState extends State<FarmhouseCard>
                             style: const TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
-                              color: Color(0xFF1B5E20),
+                              color: AppColors.primary,
                             ),
                           ),
                           const Text(
@@ -237,7 +238,7 @@ class _FarmhouseCardState extends State<FarmhouseCard>
                       // CTA
                       ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF1B5E20),
+                          backgroundColor: AppColors.primary,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
                           ),
