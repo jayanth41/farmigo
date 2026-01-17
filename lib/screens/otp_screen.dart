@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class OTPScreen extends StatefulWidget {
@@ -119,7 +120,7 @@ class _OTPScreenState extends State<OTPScreen> {
               end: Alignment.bottomCenter,
               colors: [
                 Color(0xFF2D5016),
-                Color(0xFF4A7023),
+                AppColors.primary,
               ],
             ),
           ),
@@ -218,7 +219,7 @@ class _OTPScreenState extends State<OTPScreen> {
                                   focusedBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
                                     borderSide: const BorderSide(
-                                      color: Color(0xFF4A7023),
+                                      color: AppColors.primary,
                                       width: 2,
                                     ),
                                   ),
@@ -228,7 +229,7 @@ class _OTPScreenState extends State<OTPScreen> {
                                 style: const TextStyle(
                                   fontSize: 24,
                                   fontWeight: FontWeight.bold,
-                                  color: Color(0xFF4A7023),
+                                  color: AppColors.primary,
                                 ),
                               ),
                             ),
@@ -241,7 +242,7 @@ class _OTPScreenState extends State<OTPScreen> {
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
                             colors: [
-                              Color(0xFF4A7023),
+                              AppColors.primary,
                               Color(0xFF6BA13A),
                             ],
                             begin: Alignment.topLeft,
@@ -309,7 +310,7 @@ class _OTPScreenState extends State<OTPScreen> {
                                 child: const Text(
                                   'Resend OTP',
                                   style: TextStyle(
-                                    color: Color(0xFF4A7023),
+                                    color: AppColors.primary,
                                     fontWeight: FontWeight.bold,
                                     fontSize: 14,
                                   ),
