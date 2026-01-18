@@ -20,7 +20,6 @@ class AppTheme {
       primary: primary,
       onPrimary: primaryForeground,
       secondary: secondary,
-      background: background,
       surface: card,
       onSurface: foreground,
     );
@@ -76,7 +75,6 @@ class AppTheme {
       primary: Color(0xFF030213),
       onPrimary: Colors.white,
       secondary: Color(0xFF66BB6A),
-      background: Color(0xFF121212),
       surface: Color(0xFF1E1E1E),
       onSurface: Colors.white,
     );
@@ -84,7 +82,7 @@ class AppTheme {
     return ThemeData(
       colorScheme: colorScheme,
       primaryColor: colorScheme.primary,
-      scaffoldBackgroundColor: colorScheme.background,
+      scaffoldBackgroundColor: colorScheme.surface,
       canvasColor: colorScheme.surface,
       appBarTheme: const AppBarTheme(
         backgroundColor: AppColors.primary,

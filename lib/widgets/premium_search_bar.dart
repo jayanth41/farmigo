@@ -5,7 +5,6 @@
   caused analysis errors.
 */
 
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
