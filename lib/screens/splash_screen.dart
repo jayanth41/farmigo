@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 
@@ -15,6 +14,8 @@ class _SplashScreenState extends State<SplashScreen> {
     super.initState();
 
     Future.delayed(const Duration(seconds: 4), () {
+      // Ensure widget is still mounted before using the context or navigating.
+      if (!mounted) return;
       Navigator.pushReplacementNamed(context, '/home');
     });
   }
