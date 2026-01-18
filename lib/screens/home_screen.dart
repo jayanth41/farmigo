@@ -1,21 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../theme/app_colors.dart';
-// FarmhouseCard is used inside PropertiesGrid; HomeScreen no longer imports it directly.
 import '../controllers/favorites_controller.dart';
 import 'favorites_screen.dart';
 import 'bookings_screen.dart';
 import 'profile_screen.dart';
-import '../widgets/search_card.dart';
 import 'all_properties_screen.dart';
-// premium_search_bar and state_selector are no longer used in this header
 import '../widgets/category_tabs.dart';
-import '../widgets/search_section.dart';
 import '../widgets/offers_banner.dart';
 import '../widgets/home_top_bar.dart';
 import '../widgets/app_drawer.dart';
 import '../widgets/properties_grid.dart';
-// promo_box removed — SearchCard is used instead
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -29,16 +24,13 @@ class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _searchController = TextEditingController();
   late FavoritesController favoritesController;
 
-  // Quick chip filter
-  final String _selectedFilter = 'All';
-
   // Location & Category selectors
   String _selectedState = 'Telangana';
   String _selectedCategory = 'Farmhouses';
 
   // Advanced filter state
   RangeValues _priceRange = const RangeValues(0, 10000);
-  double _maxDistance = 100; // in km
+  double _maxDistance = 100;
   bool _luxuryOnly = false;
   double _minRating = 0;
   final Map<String, bool> _amenities = {
@@ -52,9 +44,40 @@ class _HomeScreenState extends State<HomeScreen> {
   // Filtered list for search results
   List<Map<String, dynamic>> _filteredFarmhouses = [];
 
-  // Dummy farmhouse data (enriched with rating & amenities)
+  // All Indian States
+  static const List<String> indianStates = [
+    'Andhra Pradesh',
+    'Arunachal Pradesh',
+    'Assam',
+    'Bihar',
+    'Chhattisgarh',
+    'Goa',
+    'Gujarat',
+    'Haryana',
+    'Himachal Pradesh',
+    'Jharkhand',
+    'Karnataka',
+    'Kerala',
+    'Madhya Pradesh',
+    'Maharashtra',
+    'Manipur',
+    'Meghalaya',
+    'Mizoram',
+    'Nagaland',
+    'Odisha',
+    'Punjab',
+    'Rajasthan',
+    'Sikkim',
+    'Tamil Nadu',
+    'Telangana',
+    'Tripura',
+    'Uttar Pradesh',
+    'Uttarakhand',
+    'West Bengal',
+  ];
+
+  // Dummy farmhouse data
   static const List<Map<String, dynamic>> farmhouses = [
-    // Farmhouses
     {
       'name': 'The Night Garden Stay',
       'location': 'Anajpur, Hyderabad',
@@ -109,8 +132,6 @@ class _HomeScreenState extends State<HomeScreen> {
       'amenities': ['Breakfast', 'Kitchen'],
       'imageUrl': 'https://plus.unsplash.com/premium_photo-1661923725782-f73c990fbddf?w=600&auto=format&fit=crop&q=60',
     },
-
-    // Villas (duplicate-style sample cards)
     {
       'name': 'Sunny Hills Villa',
       'location': 'Lonavala, Maharashtra',
@@ -135,8 +156,6 @@ class _HomeScreenState extends State<HomeScreen> {
       'amenities': ['Pool', 'Sea View', 'Private Chef'],
       'imageUrl': 'https://images.unsplash.com/photo-1505691938895-1758d7feb511?w=600&auto=format&fit=crop&q=60',
     },
-
-    // Hotels
     {
       'name': 'Serene Hills Resort',
       'location': 'Hyderabad, Telangana',
@@ -161,58 +180,6 @@ class _HomeScreenState extends State<HomeScreen> {
       'amenities': ['WiFi', 'Gym'],
       'imageUrl': 'https://images.unsplash.com/photo-1526772662000-3f88f10405ff?w=600&auto=format&fit=crop&q=60',
     },
-
-    // Car rentals
-    {
-      'name': 'Swift Car Rental - Hyderabad',
-      'location': 'Hyderabad',
-      'state': 'Telangana',
-      'category': 'Car rentals',
-      'price': 1800.0,
-      'distance': 'Varies',
-      'rating': 4.3,
-      'reviews': 213,
-      'amenities': ['AC', 'Unlimited KM'],
-      'imageUrl': 'https://images.unsplash.com/photo-1542367597-74b293f1b1b9?w=600&auto=format&fit=crop&q=60',
-    },
-    {
-      'name': 'Premium Car Hire',
-      'location': 'Hyderabad',
-      'state': 'Telangana',
-      'category': 'Car rentals',
-      'price': 4200.0,
-      'distance': 'Varies',
-      'rating': 4.6,
-      'reviews': 142,
-      'amenities': ['Luxury Cars', 'Chauffeur'],
-      'imageUrl': 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=600&auto=format&fit=crop&q=60',
-    },
-
-    // Flights (sample entries shown as 'bookable' items)
-    {
-      'name': 'AirExpress - HYD → BLR',
-      'location': 'Hyderabad to Bangalore',
-      'state': 'N/A',
-      'category': 'Flight',
-      'price': 4200.0,
-      'distance': '1.5 hr',
-      'rating': 4.2,
-      'reviews': 980,
-      'amenities': ['In-flight Snacks', 'WiFi'],
-      'imageUrl': 'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=600&auto=format&fit=crop&q=60',
-    },
-    {
-      'name': 'BudgetAir - HYD → MAA',
-      'location': 'Hyderabad to Chennai',
-      'state': 'N/A',
-      'category': 'Flight',
-      'price': 3600.0,
-      'distance': '1.0 hr',
-      'rating': 3.9,
-      'reviews': 421,
-      'amenities': ['Free Cancellation'],
-      'imageUrl': 'https://images.unsplash.com/photo-1526778548025-fa2f459cd5c0?w=600&auto=format&fit=crop&q=60',
-    },
   ];
 
   @override
@@ -220,7 +187,6 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _filteredFarmhouses = List.from(farmhouses);
     _searchController.addListener(_onSearchChanged);
-    // Initialize or get existing FavoritesController
     if (!Get.isRegistered<FavoritesController>()) {
       Get.put(FavoritesController());
     }
@@ -231,11 +197,6 @@ class _HomeScreenState extends State<HomeScreen> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
-  }
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // keep placeholder for possible future logout wiring
   }
 
   void _onSearchChanged() => _applyFilters();
@@ -252,27 +213,8 @@ class _HomeScreenState extends State<HomeScreen> {
         final price = (farm['price'] as double?) ?? 0.0;
         final distance = double.tryParse((farm['distance'] as String).split(' ').first) ?? 0;
 
-        // SEARCH MATCH
         bool matchesSearch = name.contains(query) || location.contains(query);
 
-        // Quick chip filters
-        bool matchesFilter;
-        switch (_selectedFilter) {
-          case 'Under ₹2000':
-            matchesFilter = price <= 2000;
-            break;
-          case 'Within 20km':
-            matchesFilter = distance <= 20;
-            break;
-          case 'Luxury':
-            matchesFilter = price >= 3500;
-            break;
-          case 'All':
-          default:
-            matchesFilter = true;
-        }
-
-        // Advanced filters (further restrict)
         if (!(price >= _priceRange.start && price <= _priceRange.end)) return false;
         if (distance > _maxDistance) return false;
         if (_luxuryOnly && price < 3500) return false;
@@ -284,17 +226,15 @@ class _HomeScreenState extends State<HomeScreen> {
           if (entry.value && !farmAmenities.contains(entry.key)) return false;
         }
 
-        // STATE & CATEGORY filtering
         final farmState = (farm['state'] as String?)?.toLowerCase() ?? '';
         final farmCategory = (farm['category'] as String?)?.toLowerCase() ?? '';
 
         if (selectedState.isNotEmpty && selectedState != 'all' && farmState != selectedState) return false;
         if (selectedCategory.isNotEmpty && selectedCategory != 'all' && farmCategory != selectedCategory) return false;
 
-        return matchesSearch && matchesFilter;
+        return matchesSearch;
       }).toList();
 
-      // Sorting
       switch (_sortOption) {
         case 'Price: Low to High':
           _filteredFarmhouses.sort((a, b) => (a['price'] as double).compareTo(b['price'] as double));
@@ -356,20 +296,15 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_selectedIndex == 1) return const FavoritesScreen();
     if (_selectedIndex == 2) return const BookingsScreen();
     if (_selectedIndex == 3) return _filtersPage();
-
     return const ProfileScreen();
   }
 
-  // (removed older homePage) the stacked version below is used instead
-
-  // New stacked home page with floating search card at the bottom
   Widget _homePage() {
     return Stack(
       children: [
         Column(
           children: [
-            // Header: top bar + location bar + search card
-            // Keep header background styling for brand look
+            // HEADER WITH LOGO, MENU, AND LOCATION DROPDOWN
             Container(
               decoration: BoxDecoration(
                 color: const Color(0xFFF2FBF2),
@@ -382,16 +317,89 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ],
               ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Column(
-                  children: [
-                      const HomeTopBar(),
-                    // Keep a small gap below the top bar; the main SearchCard is the docked/inline one
-                    const SizedBox(height: 12),
+                children: [
+                  // Top bar with menu, logo, title, and location dropdown
+                  Row(
+                    children: [
+                      // Hamburger menu icon
+                      Builder(
+                        builder: (context) => IconButton(
+                          icon: const Icon(Icons.menu, color: AppColors.primary, size: 28),
+                          onPressed: () => Scaffold.of(context).openDrawer(),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      // Logo image or fallback
+                      Image.asset(
+                        'assets/images/logo_f.png',
+                        width: 40,
+                        height: 40,
+                        fit: BoxFit.contain,
+                        errorBuilder: (ctx, err, st) => Container(
+                          width: 40,
+                          height: 40,
+                          decoration: const BoxDecoration(
+                            color: AppColors.primary,
+                            shape: BoxShape.circle,
+                          ),
+                          alignment: Alignment.center,
+                          child: const Text('F',
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 20)),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      // Brand name
+                      const Text(
+                        'FARMIGO',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      const Spacer(),
+                      // Location dropdown
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: AppColors.primary, width: 1.5),
+                          borderRadius: BorderRadius.circular(8),
+                          color: Colors.white,
+                        ),
+                        child: DropdownButton<String>(
+                          value: _selectedState,
+                          underline: Container(),
+                          items: indianStates.map((state) {
+                            return DropdownMenuItem(
+                              value: state,
+                              child: Text(
+                                state,
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (value) {
+                            if (value != null) {
+                              setState(() {
+                                _selectedState = value;
+                                _applyFilters();
+                              });
+                            }
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
 
-            // The composed Home body (mirrors React composition)
+            // MAIN CONTENT
             Expanded(
               child: RefreshIndicator(
                 onRefresh: () async {
@@ -401,9 +409,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: ListView(
                   padding: const EdgeInsets.only(bottom: 180),
                   children: [
-                    // Premium search bar moved above categories
-                      // PremiumSearchBar removed (design uses SearchCard and inline search only)
-
+                    // Category tabs
                     CategoryTabs(
                       activeCategory: _selectedCategory,
                       onCategoryChange: (c) => setState(() {
@@ -412,50 +418,32 @@ class _HomeScreenState extends State<HomeScreen> {
                       }),
                     ),
 
-                    // Docked search card placed inline so it scrolls with the list
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-                      child: SearchCard(
-                        onFind: (criteria) {
-                          setState(() {
-                            final loc = (criteria['location'] as String?) ?? '';
-                            if (loc.isNotEmpty) _searchController.text = loc;
-                            final cat = (criteria['category'] as String?) ?? '';
-                            if (cat.isNotEmpty) _selectedCategory = cat;
-                          });
-                          _applyFilters();
-                        },
-                      ),
-                    ),
-
-                    SearchSection(
-                      category: _selectedCategory,
-                      controller: _searchController,
-                      onChanged: (q) => _applyFilters(),
-                    ),
-
+                    // Offers banner
                     const OffersBanner(),
                     const SizedBox(height: 16),
 
-                    // Farmhouses header with 'View all'
+                    // Properties header with View all button
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
                       child: Row(
                         children: [
                           const Expanded(
-                            child: Text('Farmhouses', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                            child: Text('Featured Properties',
+                                style: TextStyle(
+                                    fontSize: 18, fontWeight: FontWeight.w700)),
                           ),
                           TextButton(
                             onPressed: () {
-                              // navigate to a full list page
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) => AllPropertiesScreen(properties: _filteredFarmhouses),
+                                  builder: (_) => AllPropertiesScreen(
+                                      properties: _filteredFarmhouses),
                                 ),
                               );
                             },
-                            style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+                            style: TextButton.styleFrom(
+                                foregroundColor: const Color.fromARGB(255, 66, 202, 85)),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: const [
@@ -469,6 +457,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
 
+                    // Properties grid
                     PropertiesGrid(properties: _filteredFarmhouses),
                   ],
                 ),
@@ -476,8 +465,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
-
-        // SearchCard is now inline/scrollable inside the ListView above.
       ],
     );
   }
@@ -491,19 +478,19 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Filters', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+            const Text('Filters',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
-
             const Text('Price range'),
             RangeSlider(
               values: _priceRange,
               min: 0,
               max: 10000,
               divisions: 100,
-              labels: RangeLabels('₹${_priceRange.start.toInt()}', '₹${_priceRange.end.toInt()}'),
+              labels: RangeLabels('₹${_priceRange.start.toInt()}',
+                  '₹${_priceRange.end.toInt()}'),
               onChanged: (r) => setState(() => _priceRange = r),
             ),
-
             const SizedBox(height: 8),
             const Text('Max distance (km)'),
             Slider(
@@ -514,7 +501,6 @@ class _HomeScreenState extends State<HomeScreen> {
               label: '${_maxDistance.toInt()} km',
               onChanged: (v) => setState(() => _maxDistance = v),
             ),
-
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -525,7 +511,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ],
             ),
-
             const SizedBox(height: 8),
             const Text('Minimum rating'),
             Slider(
@@ -536,7 +521,6 @@ class _HomeScreenState extends State<HomeScreen> {
               label: _minRating.toStringAsFixed(1),
               onChanged: (v) => setState(() => _minRating = v),
             ),
-
             const SizedBox(height: 8),
             const Text('Amenities'),
             Wrap(
@@ -550,33 +534,32 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
               }),
             ),
-
             const SizedBox(height: 12),
             const Text('Sort by'),
             DropdownButton<String>(
               value: _sortOption,
               items: const [
                 DropdownMenuItem(value: 'Relevance', child: Text('Relevance')),
-                DropdownMenuItem(value: 'Price: Low to High', child: Text('Price: Low to High')),
-                DropdownMenuItem(value: 'Price: High to Low', child: Text('Price: High to Low')),
+                DropdownMenuItem(
+                    value: 'Price: Low to High', child: Text('Price: Low to High')),
+                DropdownMenuItem(
+                    value: 'Price: High to Low', child: Text('Price: High to Low')),
                 DropdownMenuItem(value: 'Distance', child: Text('Distance')),
                 DropdownMenuItem(value: 'Rating', child: Text('Rating')),
               ],
               onChanged: (v) => setState(() => _sortOption = v ?? 'Relevance'),
             ),
-
             const Spacer(),
-
             Row(
               children: [
                 Expanded(
                   child: ElevatedButton(
                     onPressed: () {
-                      // Apply filters and switch back to Home tab
                       _applyFilters();
                       setState(() => _selectedIndex = 0);
                     },
-                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+                    style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary),
                     child: const Text('Apply'),
                   ),
                 ),
@@ -584,7 +567,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () {
-                      // Reset advanced filters
                       setState(() {
                         _priceRange = const RangeValues(0, 10000);
                         _maxDistance = 100;
@@ -606,7 +588,4 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-
-  // Helper widgets for chips and category tiles were refactored out in favor of the
-  // new component widgets (CategoryTabs, SearchSection, OffersBanner, PropertiesGrid).
 }
