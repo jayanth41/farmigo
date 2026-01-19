@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 
@@ -10,55 +11,6 @@ class PromoBox extends StatefulWidget {
   final PromoSearchCallback? onFind;
 
   const PromoBox({super.key, required this.category, this.onFind});
-
-  String _titleFor(String c) {
-    final key = c.toLowerCase();
-    if (key.contains('farm')) return 'Book your perfect farmhouse';
-    if (key.contains('villa')) return 'Book your perfect villa';
-    if (key.contains('hotel')) return 'Book your perfect hotel';
-    if (key.contains('car')) return 'Book your perfect car rental';
-    if (key.contains('flight')) return 'Book your perfect flight';
-    return 'Book your perfect stay';
-  }
-
-  String _subtitleFor(String c) {
-    final key = c.toLowerCase();
-    if (key.contains('farm')) return 'Discover amazing deals on farmhouses across India';
-    if (key.contains('villa')) return 'Discover amazing deals on villas across India';
-    if (key.contains('hotel')) return 'Discover amazing deals on hotels across India';
-    if (key.contains('car')) return 'Discover amazing deals on car rentals across India';
-    if (key.contains('flight')) return 'Discover amazing deals on flights across India';
-    return 'Discover amazing deals across India';
-  }
-
-  // Build input placeholders per category; for flights and car rentals we show slightly different labels
-  List<_FormFieldSpec> _fieldsFor(String c) {
-    final key = c.toLowerCase();
-    if (key.contains('flight')) {
-      return [
-        _FormFieldSpec('From', Icons.flight_takeoff, 'Departure city'),
-        _FormFieldSpec('To', Icons.flight_land, 'Destination city'),
-        _FormFieldSpec('Depart', Icons.calendar_today, 'Depart date'),
-        _FormFieldSpec('Return', Icons.calendar_today, 'Return date'),
-        _FormFieldSpec('Passengers', Icons.person, '1 passenger'),
-      ];
-    }
-    if (key.contains('car')) {
-      return [
-        _FormFieldSpec('Pickup', Icons.place, 'Pickup location'),
-        _FormFieldSpec('Pickup date', Icons.calendar_today, 'Pickup date'),
-        _FormFieldSpec('Dropoff date', Icons.calendar_today, 'Dropoff date'),
-        _FormFieldSpec('Passengers', Icons.person, '1-4 passengers'),
-      ];
-    }
-    // Default for farmhouses, villas, hotels
-    return [
-      _FormFieldSpec('Location', Icons.location_on, 'Enter city or landmark'),
-      _FormFieldSpec('Check-in', Icons.calendar_today, 'Add check-in date'),
-      _FormFieldSpec('Check-out', Icons.calendar_today, 'Add check-out date'),
-      _FormFieldSpec('Guests', Icons.person, '2 guests'),
-    ];
-  }
 
   @override
   State<PromoBox> createState() => _PromoBoxState();
@@ -156,7 +108,7 @@ class _PromoBoxState extends State<PromoBox> {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
+            color: const Color.fromRGBO(0, 0, 0, 0.08),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -239,11 +191,12 @@ class _PromoBoxState extends State<PromoBox> {
       ),
       child: Row(
         children: [
-          Icon(Icons.location_on_outlined, color: AppColors.textMuted),
+          Icon(Icons.location_on_outlined, color: AppColors.iconGrey, size: 22),
           const SizedBox(width: 10),
           Expanded(
             child: TextFormField(
               controller: _locationController,
+              style: const TextStyle(color: AppColors.textMuted, fontSize: 15),
               decoration: const InputDecoration(
                 border: InputBorder.none,
                 hintText: 'Search destination, farmhouse',
@@ -255,7 +208,8 @@ class _PromoBoxState extends State<PromoBox> {
       ),
     );
   }
-  Widget _dateInput({required String label, required bool isStart, required IconData icon, required String placeholder}) {
+
+  Widget _dateInput({required bool isStart, required String label, required IconData icon, required String placeholder}) {
     final dateText = isStart ? (_checkIn != null ? '${_checkIn!.day}/${_checkIn!.month}/${_checkIn!.year}' : placeholder) : (_checkOut != null ? '${_checkOut!.day}/${_checkOut!.month}/${_checkOut!.year}' : placeholder);
     return InkWell(
       onTap: () => _pickDate(context, isStart),
@@ -263,10 +217,17 @@ class _PromoBoxState extends State<PromoBox> {
         height: 52,
         padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(border: Border.all(color: _borderSoft), borderRadius: BorderRadius.circular(14)),
-        child: Row(children: [Icon(icon, color: AppColors.textMuted), const SizedBox(width: 10), Expanded(child: Text(dateText, style: const TextStyle(color: AppColors.textMuted, fontSize: 15)))]),
+        child: Row(
+          children: [
+            Icon(icon, color: AppColors.textMuted),
+            const SizedBox(width: 10),
+            Expanded(child: Text(dateText, style: const TextStyle(color: AppColors.textMuted, fontSize: 15))),
+          ],
+        ),
       ),
     );
   }
+
   Widget _guestsInput() {
     return InkWell(
       onTap: _openGuestSelector,
@@ -278,14 +239,5 @@ class _PromoBoxState extends State<PromoBox> {
       ),
     );
   }
-
-}
-
-class _FormFieldSpec {
-  final String label;
-  final IconData icon;
-  final String placeholder;
-
-  _FormFieldSpec(this.label, this.icon, this.placeholder);
 }
 

@@ -8,7 +8,6 @@ import 'profile_screen.dart';
 import 'all_properties_screen.dart';
 import '../widgets/category_tabs.dart';
 import '../widgets/offers_banner.dart';
-import '../widgets/home_top_bar.dart';
 import '../widgets/app_drawer.dart';
 import '../widgets/properties_grid.dart';
 
@@ -193,6 +192,79 @@ class _HomeScreenState extends State<HomeScreen> {
     favoritesController = Get.find<FavoritesController>();
   }
 
+  void _showStateSelector() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        List<String> filtered = List.from(indianStates);
+        return StatefulBuilder(builder: (context, setModalState) {
+          void updateQuery(String q) {
+            filtered = indianStates.where((s) => s.toLowerCase().contains(q.toLowerCase())).toList();
+            setModalState(() {});
+          }
+
+          return Padding(
+            padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+            child: SizedBox(
+              height: MediaQuery.of(context).size.height * 0.6,
+              child: Column(
+                children: [
+                  const SizedBox(height: 12),
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: TextField(
+                      autofocus: true,
+                      decoration: const InputDecoration(
+                        prefixIcon: Icon(Icons.search),
+                        hintText: 'Search state',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(8))),
+                        isDense: true,
+                        contentPadding: EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                      ),
+                      onChanged: updateQuery,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: filtered.length,
+                      itemBuilder: (context, i) {
+                        final s = filtered[i];
+                        return ListTile(
+                          title: Text(s),
+                          onTap: () {
+                            setState(() {
+                              _selectedState = s;
+                              _applyFilters();
+                            });
+                            Navigator.of(context).pop();
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        });
+      },
+    );
+  }
+
   @override
   void dispose() {
     _searchController.dispose();
@@ -353,44 +425,53 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      // Brand name
-                      const Text(
-                        'FARMIGO',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primary,
+                      // Brand name (flexible to avoid overflow)
+                      Flexible(
+                        child: Text(
+                          'FARMIGO',
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary,
+                          ),
                         ),
                       ),
                       const Spacer(),
-                      // Location dropdown
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: AppColors.primary, width: 1.5),
-                          borderRadius: BorderRadius.circular(8),
-                          color: Colors.white,
-                        ),
-                        child: DropdownButton<String>(
-                          value: _selectedState,
-                          underline: Container(),
-                          items: indianStates.map((state) {
-                            return DropdownMenuItem(
-                              value: state,
-                              child: Text(
-                                state,
-                                style: const TextStyle(fontSize: 12),
-                              ),
-                            );
-                          }).toList(),
-                          onChanged: (value) {
-                            if (value != null) {
-                              setState(() {
-                                _selectedState = value;
-                                _applyFilters();
-                              });
-                            }
-                          },
+                      // Location selector (opens modal bottom sheet on tap)
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 180),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: _showStateSelector,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: AppColors.primary),
+                              borderRadius: BorderRadius.circular(12),
+                              color: Colors.white,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.location_on, size: 16, color: AppColors.primary),
+                                const SizedBox(width: 6),
+                                Flexible(
+                                  child: Text(
+                                    _selectedState,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 14,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                const Icon(Icons.keyboard_arrow_down, size: 20, color: Colors.black54),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
                     ],
@@ -409,10 +490,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: ListView(
                   padding: const EdgeInsets.only(bottom: 180),
                   children: [
-                    // Category tabs
-                    CategoryTabs(
-                      activeCategory: _selectedCategory,
-                      onCategoryChange: (c) => setState(() {
+                    // Category grid (square boxes) replacing the horizontal tabs
+                    CategoryGrid(
+                      onTap: (c) => setState(() {
                         _selectedCategory = c;
                         _applyFilters();
                       }),
