@@ -66,23 +66,22 @@ class _FarmhouseCardState extends State<FarmhouseCard> {
       images: widget.images ?? [],
     );
     
-    if (favoritesController.isFavorited(farmhouse.id)) {
+    final wasFav = favoritesController.isFavorited(farmhouse.id);
+    if (wasFav) {
       await favoritesController.removeFavorite(farmhouse.id);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${widget.name} removed from favorites'),
-          duration: const Duration(milliseconds: 800),
-        ),
-      );
     } else {
       await favoritesController.addFavorite(farmhouse);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${widget.name} added to favorites'),
-          duration: const Duration(milliseconds: 800),
-        ),
-      );
     }
+
+    // Don't touch the BuildContext after an await if the widget was disposed.
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(wasFav ? '${widget.name} removed from favorites' : '${widget.name} added to favorites'),
+        duration: const Duration(milliseconds: 800),
+      ),
+    );
     setState(() {});
   }
 
@@ -130,7 +129,7 @@ class _FarmhouseCardState extends State<FarmhouseCard> {
           borderRadius: BorderRadius.circular(18),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.08),
+              color: const Color.fromRGBO(0, 0, 0, 0.08),
               blurRadius: 18,
               offset: const Offset(0, 10),
             ),
@@ -168,7 +167,7 @@ class _FarmhouseCardState extends State<FarmhouseCard> {
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.15),
+                                color: const Color.fromRGBO(0, 0, 0, 0.15),
                             blurRadius: 8,
                           )
                         ],
