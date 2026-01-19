@@ -1,3 +1,6 @@
+// This script is a local tooling helper; printing is acceptable here.
+// ignore_for_file: avoid_print
+
 import 'dart:io';
 
 void main(List<String> args) async {

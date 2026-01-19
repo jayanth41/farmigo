@@ -113,20 +113,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
     );
   }
 
-  Widget _buildFilterChip(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4.0),
-      child: FilterChip(
-        label: Text(label),
-        selected: _filterStatus == value,
-        onSelected: (selected) {
-          setState(() {
-            _filterStatus = value;
-          });
-        },
-      ),
-    );
-  }
+  
 
   Widget _filterButton(String value, String label) {
     final bool active = _filterStatus == value;

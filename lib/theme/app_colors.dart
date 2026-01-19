@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 class AppColors {
   static const primary = Color(0xFF3FA34D);
   static const primaryDark = Color(0xFF2F8F3A);
+  // Additional theme accents
+  static const greenDark = Color(0xFF059669); // user-specified green dark
+  static const tealDark = Color(0xFF0E7490); // user-specified teal dark
 
   static const bgSoft = Color(0xFFF2FBF4);
   static const white = Color(0xFFFFFFFF);
