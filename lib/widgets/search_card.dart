@@ -98,11 +98,11 @@ class _SearchCardState extends State<SearchCard> {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(26),
-  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 22, offset: const Offset(0, 12))],
-      ),
+  decoration: BoxDecoration(
+    color: AppColors.white,
+    borderRadius: BorderRadius.circular(26),
+  boxShadow: [BoxShadow(color: const Color.fromRGBO(0, 0, 0, 0.08), blurRadius: 22, offset: const Offset(0, 12))],
+  ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Padding(padding: const EdgeInsets.only(bottom: 6), child: Text('Location', style: labelStyle)),
         _locationField(),
