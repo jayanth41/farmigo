@@ -6,8 +6,9 @@ import 'favorites_screen.dart';
 import 'bookings_screen.dart';
 import 'profile_screen.dart';
 import 'all_properties_screen.dart';
+import '../navigation/app_routes.dart';
 import '../widgets/category_tabs.dart';
-import '../widgets/offers_banner.dart';
+import '../widgets/offers_carousel.dart';
 import '../widgets/app_drawer.dart';
 import '../widgets/properties_grid.dart';
 
@@ -37,6 +38,14 @@ class _HomeScreenState extends State<HomeScreen> {
     'WiFi': false,
     'Kitchen': false,
     'Breakfast': false,
+  };
+  final Map<String, bool> _propertyTypes = {
+    'Farmhouse': false,
+    'Villa': false,
+    'Hotel': false,
+    'Apartment': false,
+    'Cottage': false,
+    'Homestay': false,
   };
   String _sortOption = 'Relevance';
 
@@ -492,14 +501,36 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     // Category grid (square boxes) replacing the horizontal tabs
                     CategoryGrid(
-                      onTap: (c) => setState(() {
-                        _selectedCategory = c;
-                        _applyFilters();
-                      }),
+                      onTap: (c) {
+                        // If the user tapped the Car Rentals category, navigate to
+                        // the dedicated CarRentals screen instead of trying to
+                        // filter the farmhouse list (which contains only
+                        // farmhouses/villas/hotels). Use case-insensitive match.
+                        if (c.toLowerCase().contains('car')) {
+                          // Use Get for named navigation which is registered in main.dart
+                          try {
+                            Get.toNamed(AppRoutes.carRentals);
+                          } catch (_) {
+                            Navigator.of(context).pushNamed(AppRoutes.carRentals);
+                          }
+                          return;
+                        }
+
+                        setState(() {
+                          _selectedCategory = c;
+                          _applyFilters();
+                        });
+                      },
                     ),
 
-                    // Offers banner
-                    const OffersBanner(),
+                    // Offers carousel
+                    OffersCarousel(
+                      offers: const [
+                        OfferItem(title: 'Weekend Deals', subtitle: 'Up to 40% off', icon: Icons.local_fire_department, color: Color(0xFF6EE7B7)),
+                        OfferItem(title: 'Early Bird', subtitle: 'Save 15%', icon: Icons.percent, color: Color(0xFF86C9FF)),
+                        OfferItem(title: 'First Booking', subtitle: '20% off', icon: Icons.star_border, color: Color(0xFFAAF27A)),
+                      ],
+                    ),
                     const SizedBox(height: 16),
 
                     // Properties header with View all button
@@ -561,6 +592,7 @@ class _HomeScreenState extends State<HomeScreen> {
             const Text('Filters',
                 style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
+            // 1. Price range
             const Text('Price range'),
             RangeSlider(
               values: _priceRange,
@@ -572,26 +604,8 @@ class _HomeScreenState extends State<HomeScreen> {
               onChanged: (r) => setState(() => _priceRange = r),
             ),
             const SizedBox(height: 8),
-            const Text('Max distance (km)'),
-            Slider(
-              value: _maxDistance,
-              min: 1,
-              max: 200,
-              divisions: 199,
-              label: '${_maxDistance.toInt()} km',
-              onChanged: (v) => setState(() => _maxDistance = v),
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('Luxury only'),
-                Switch(
-                  value: _luxuryOnly,
-                  onChanged: (v) => setState(() => _luxuryOnly = v),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
+
+            // 2. Minimum rating
             const Text('Minimum rating'),
             Slider(
               value: _minRating,
@@ -602,6 +616,8 @@ class _HomeScreenState extends State<HomeScreen> {
               onChanged: (v) => setState(() => _minRating = v),
             ),
             const SizedBox(height: 8),
+
+            // 3. Amenities
             const Text('Amenities'),
             Wrap(
               spacing: 8,
@@ -615,7 +631,24 @@ class _HomeScreenState extends State<HomeScreen> {
               }),
             ),
             const SizedBox(height: 12),
-            const Text('Sort by'),
+
+            // 4. Property type
+            const Text('Property type'),
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 8,
+              children: _propertyTypes.keys.map((k) {
+                return FilterChip(
+                  label: Text(k),
+                  selected: _propertyTypes[k] ?? false,
+                  onSelected: (v) => setState(() => _propertyTypes[k] = v),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 12),
+
+            // Other optional filters
+            const Text('Max distance (km)'),
             DropdownButton<String>(
               value: _sortOption,
               items: const [

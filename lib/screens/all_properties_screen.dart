@@ -19,12 +19,10 @@ class AllPropertiesScreen extends StatelessWidget {
       ),
       body: Padding(
         padding: const EdgeInsets.symmetric(vertical: 12.0),
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              PropertiesGrid(properties: properties),
-            ],
-          ),
+        child: ListView(
+          children: [
+            PropertiesGrid(properties: properties),
+          ],
         ),
       ),
     );
