@@ -7,6 +7,7 @@ class FiltersScreen extends StatefulWidget {
   final bool luxuryOnly;
   final double minRating;
   final Map<String, bool> amenities;
+  final Map<String, bool> propertyTypes;
   final String sortOption;
 
   const FiltersScreen({
@@ -16,6 +17,7 @@ class FiltersScreen extends StatefulWidget {
     required this.luxuryOnly,
     required this.minRating,
     required this.amenities,
+  this.propertyTypes = const {},
     required this.sortOption,
   });
 
@@ -29,6 +31,7 @@ class _FiltersScreenState extends State<FiltersScreen> {
   late bool _luxuryOnly;
   late double _minRating;
   late Map<String, bool> _amenities;
+  late Map<String, bool> _propertyTypes;
   late String _sortOption;
 
   @override
@@ -39,6 +42,13 @@ class _FiltersScreenState extends State<FiltersScreen> {
     _luxuryOnly = widget.luxuryOnly;
     _minRating = widget.minRating;
     _amenities = Map.from(widget.amenities);
+    // initialize property types with defaults if none provided
+    if (widget.propertyTypes.isNotEmpty) {
+      _propertyTypes = Map.from(widget.propertyTypes);
+    } else {
+      final defaults = ['Farmhouse', 'Villa', 'Hotel', 'Apartment', 'Cottage', 'Homestay'];
+      _propertyTypes = {for (var k in defaults) k: false};
+    }
     _sortOption = widget.sortOption;
   }
 
@@ -58,6 +68,7 @@ class _FiltersScreenState extends State<FiltersScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // 1. Price range
               const Text('Price range'),
               RangeSlider(
                 values: _priceRange,
@@ -68,6 +79,35 @@ class _FiltersScreenState extends State<FiltersScreen> {
                 onChanged: (r) => setState(() => _priceRange = r),
               ),
               const SizedBox(height: 8),
+
+              // 2. Rating
+              const Text('Minimum rating'),
+              Slider(value: _minRating, min: 0, max: 5, divisions: 5, label: _minRating.toStringAsFixed(1), onChanged: (v) => setState(() => _minRating = v)),
+              const SizedBox(height: 8),
+
+              // 3. Amenities
+              const Text('Amenities'),
+              Wrap(
+                spacing: 8,
+                children: List.generate(amenitiesKeys.length, (i) {
+                  final key = amenitiesKeys[i];
+                  return FilterChip(label: Text(key), selected: _amenities[key] ?? false, onSelected: (v) => setState(() => _amenities[key] = v));
+                }),
+              ),
+              const SizedBox(height: 12),
+
+              // 4. Property type
+              const Text('Property type'),
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 8,
+                children: _propertyTypes.keys.map((k) {
+                  return FilterChip(label: Text(k), selected: _propertyTypes[k] ?? false, onSelected: (v) => setState(() => _propertyTypes[k] = v));
+                }).toList(),
+              ),
+              const SizedBox(height: 12),
+
+              // Other optional filters
               const Text('Max distance (km)'),
               Slider(
                 value: _maxDistance,
@@ -82,18 +122,6 @@ class _FiltersScreenState extends State<FiltersScreen> {
                 const Text('Luxury only'),
                 Switch(value: _luxuryOnly, onChanged: (v) => setState(() => _luxuryOnly = v)),
               ]),
-              const SizedBox(height: 8),
-              const Text('Minimum rating'),
-              Slider(value: _minRating, min: 0, max: 5, divisions: 5, label: _minRating.toStringAsFixed(1), onChanged: (v) => setState(() => _minRating = v)),
-              const SizedBox(height: 8),
-              const Text('Amenities'),
-              Wrap(
-                spacing: 8,
-                children: List.generate(amenitiesKeys.length, (i) {
-                  final key = amenitiesKeys[i];
-                  return FilterChip(label: Text(key), selected: _amenities[key] ?? false, onSelected: (v) => setState(() => _amenities[key] = v));
-                }),
-              ),
               const SizedBox(height: 12),
               const Text('Sort by'),
               DropdownButton<String>(
@@ -118,6 +146,7 @@ class _FiltersScreenState extends State<FiltersScreen> {
                         'luxuryOnly': _luxuryOnly,
                         'minRating': _minRating,
                         'amenities': _amenities,
+                        'propertyTypes': _propertyTypes,
                         'sortOption': _sortOption,
                       });
                     },
@@ -135,6 +164,7 @@ class _FiltersScreenState extends State<FiltersScreen> {
                         _luxuryOnly = false;
                         _minRating = 0;
                         _amenities.updateAll((key, value) => false);
+                        _propertyTypes.updateAll((key, value) => false);
                         _sortOption = 'Relevance';
                       });
                     },
