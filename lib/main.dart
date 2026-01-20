@@ -4,15 +4,22 @@ import 'package:get/get.dart';
 import 'firebase_options.dart';
 import 'controllers/favorites_controller.dart';
 import 'controllers/bookings_controller.dart';
+import 'navigation/app_routes.dart';
+// Import your screen widgets
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/favorites_screen.dart';
+import 'screens/bookings_screen.dart';
+import 'screens/profile_screen.dart';
+import 'screens/car_rentals_screen.dart';
+import 'screens/farmhouses_screen.dart';
 import 'theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-    try {
+
+  try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
@@ -20,11 +27,11 @@ void main() async {
   } catch (e) {
     debugPrint('Firebase initialization error: $e');
   }
-  
+
   // Initialize Controllers
   Get.put<FavoritesController>(FavoritesController());
   Get.put<BookingsController>(BookingsController());
-  
+
   runApp(const MyApp());
 }
 
@@ -41,7 +48,12 @@ class MyApp extends StatelessWidget {
       themeMode: ThemeMode.system,
       home: const AuthStateHandler(),
       getPages: [
-        GetPage(name: '/home', page: () => const HomeScreen()),
+        GetPage(name: AppRoutes.home, page: () => const HomeScreen()),
+        GetPage(name: AppRoutes.favorites, page: () => const FavoritesScreen()),
+  GetPage(name: AppRoutes.farmhouses, page: () => const FarmhousesScreen()),
+        GetPage(name: AppRoutes.carRentals, page: () => const CarRentalsScreen()),
+        GetPage(name: AppRoutes.bookings, page: () => const BookingsScreen()),
+        GetPage(name: AppRoutes.profile, page: () => const ProfileScreen()),
         GetPage(name: '/login', page: () => const LoginScreen()),
         GetPage(name: '/splash', page: () => const SplashScreen()),
       ],
@@ -83,5 +95,20 @@ class _AuthStateHandlerState extends State<AuthStateHandler> {
   @override
   Widget build(BuildContext context) {
     return const SplashScreen();
+  }
+}
+
+void drawerCallback(BuildContext context, String label) {
+  final route = AppRoutes.labelToRoute[label];
+  if (route == null) return;
+
+  // Prefer using Get navigation to ensure the route defined in getPages is used.
+  // For main-tab routes your MainScaffold handles switching; for others we
+  // navigate using Get so named routes from `getPages` resolve correctly.
+  try {
+    Get.toNamed(route);
+  } catch (_) {
+    // Fallback to Flutter navigator if Get fails for any reason.
+    Navigator.of(context).pushReplacementNamed(route);
   }
 }
