@@ -68,6 +68,7 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
       'price': 3500,
       'rating': 4.8,
       'reviews': 156,
+      'category': 'Farmhouses',
       'image': 'https://media.istockphoto.com/id/1483523217/photo/a-woman-in-white-dress-walks-down-a-pier-over-turquoise-ocean-in-the-maldives-during-sunset.webp?a=1&b=1&s=612x612&w=0&k=20&c=dh6Ic9mGAR4P_Ol3_KWdRx1i-imb-2FZQVF67TRNvvk='
     },
     {
@@ -75,6 +76,7 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
       'price': 4200,
       'rating': 4.6,
       'reviews': 89,
+      'category': 'Retreats',
       'image': 'https://media.istockphoto.com/id/1302442919/photo/luxury-beach-villa-at-night.webp?a=1&b=1&s=612x612&w=0&k=20&c=b0GO1cEmtHSuwmdlmkJGZVhiBoAtn-gNp6LYcPg12AQ='
     },
     {
@@ -82,6 +84,7 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
       'price': 3800,
       'rating': 4.9,
       'reviews': 234,
+      'category': 'Cottages',
       'image': 'https://media.istockphoto.com/id/146765403/photo/a-luxurious-florida-beach-hotel-during-sunrise.jpg?s=612x612&w=0&k=20&c=pxw9Q78KbvqV6_pS_C-v_m6S_WQjKWLBSdqgRtqMUUg='
     },
   ];

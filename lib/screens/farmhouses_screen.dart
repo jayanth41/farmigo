@@ -64,9 +64,21 @@ class FarmhousesScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Reuse the existing AllPropertiesScreen which already provides a
-    // Scaffold and drawer so the farmhouses route renders the same cards
-    // as seen on Home.
-    return AllPropertiesScreen(properties: _farmhouses);
-  }
+    return WillPopScope(
+    onWillPop: () async {
+      Navigator.of(context).pop();
+      return false;
+    },
+    child: Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        // ... rest of appBar
+      ),
+      // ... rest of body
+    ),
+  );
+}
 }
