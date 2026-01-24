@@ -1,0 +1,2 @@
+/Users/prathyushagartigipati/farmigo/android/app/.cxx/debug/1q435h2g/x86_64/CMakeFiles/edit_cache.dir
+/Users/prathyushagartigipati/farmigo/android/app/.cxx/debug/1q435h2g/x86_64/CMakeFiles/rebuild_cache.dir

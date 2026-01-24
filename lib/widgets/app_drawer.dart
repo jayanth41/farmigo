@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
+ 
+
 
 /// A modern travel-app style Drawer for the Farmigo app.
 ///
@@ -8,12 +10,14 @@ import '../theme/app_colors.dart';
 class AppDrawer extends StatelessWidget {
   final String? activeItem;
   final ValueChanged<String>? onItemSelected;
+  final Map<String, dynamic>? profile;
+  final bool isProfileLoading;
 
-  const AppDrawer({super.key, this.activeItem, this.onItemSelected});
+  const AppDrawer({super.key, this.activeItem, this.onItemSelected, this.profile, this.isProfileLoading = false});
 
   static const double _horizontalPadding = 16.0;
   static const double _verticalPadding = 12.0;
-  static const double _avatarSize = 64.0;
+  // avatar size constant removed — CircleAvatar used directly in the profile card
 
   @override
   Widget build(BuildContext context) {
@@ -25,8 +29,9 @@ class AppDrawer extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Top header
+              // Top header (give an explicit height so decoration has bounded constraints)
               Container(
+                height: 96,
                 padding: const EdgeInsets.symmetric(
                   horizontal: _horizontalPadding,
                   vertical: _verticalPadding,
@@ -83,39 +88,82 @@ class AppDrawer extends StatelessWidget {
 
               const SizedBox(height: 18),
 
-              // User area
+              // User area: show a compact profile card (copied from Home header)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: _horizontalPadding),
-                child: Row(
-                  children: [
-                    Container(
-                      width: _avatarSize,
-                      height: _avatarSize,
-                      decoration: BoxDecoration(
-                        color: AppColors.border,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.person, size: 36, color: AppColors.textMuted),
+                child: Card(
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CircleAvatar(
+                          radius: 24,
+                          child: Text((profile?['name'] ?? '').toString().isNotEmpty ? (profile?['name']?[0] ?? 'U') : 'U'),
+                        ),
+                        const SizedBox(width: 12),
+                        Flexible(
+                          fit: FlexFit.loose,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (isProfileLoading) ...[
+                                const Text(
+                                  'Loading profile...',
+                                  style: TextStyle(color: AppColors.textMuted),
+                                ),
+                                const SizedBox(height: 4),
+                                const Text(
+                                  'Please wait',
+                                  style: TextStyle(color: AppColors.textMain, fontWeight: FontWeight.bold),
+                                ),
+                              ] else if (profile == null) ...[
+                                const Text(
+                                  'Welcome back',
+                                  style: TextStyle(color: AppColors.textMuted),
+                                ),
+                                const SizedBox(height: 4),
+                                // Show sign-in action when no profile exists
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.of(context).pop();
+                                    try {
+                                      Navigator.of(context).pushReplacementNamed('/login');
+                                    } catch (_) {}
+                                  },
+                                  child: const Text('Sign in', style: TextStyle(color: AppColors.textMain, fontWeight: FontWeight.bold)),
+                                ),
+                              ] else ...[
+                                Text(
+                                  'Welcome back ${profile!['name'] ?? 'User'}',
+                                  style: const TextStyle(color: AppColors.textMuted),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  profile!['phone'] ?? '',
+                                  style: const TextStyle(color: AppColors.textMain, fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                            if (onItemSelected != null) onItemSelected!('Profile');
+                          },
+                          child: const Text('Edit'),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
-                          Text('Welcome back!', style: TextStyle(color: AppColors.textMuted)),
-                          SizedBox(height: 4),
-                          Text('Guest User', style: TextStyle(color: AppColors.textMain, fontWeight: FontWeight.bold)),
-                        ],
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
 
-              const SizedBox(height: 18),
-
               // Menu sections
-              Expanded(
+            Expanded(
                 child: ListView(
                   padding: const EdgeInsets.symmetric(horizontal: _horizontalPadding),
                   children: [

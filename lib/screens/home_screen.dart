@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../services/user_service.dart';
 import '../theme/app_colors.dart';
 import '../controllers/favorites_controller.dart';
 import 'favorites_screen.dart';
@@ -19,10 +21,96 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
+class EditProfilePage extends StatefulWidget {
+  final Map<String, dynamic> profile;
+  const EditProfilePage({super.key, required this.profile});
+
+  @override
+  State<EditProfilePage> createState() => _EditProfilePageState();
+}
+
+class _EditProfilePageState extends State<EditProfilePage> {
+  late TextEditingController _nameController;
+  late TextEditingController _phoneController;
+  bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.profile['name'] ?? '');
+    _phoneController = TextEditingController(text: widget.profile['phone'] ?? '');
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _phoneController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    setState(() => _isSaving = true);
+    final profileHasId = widget.profile.containsKey('id') && (widget.profile['id'] != null && widget.profile['id'].toString().isNotEmpty);
+
+    bool success = false;
+    if (profileHasId) {
+      success = await UserService().updateProfile(
+        name: _nameController.text.trim(),
+        phone: _phoneController.text.trim(),
+      );
+    } else {
+      // Create a new profile row for the authenticated user.
+      try {
+        await UserService().createUserIfNotExists(
+          name: _nameController.text.trim(),
+          phone: _phoneController.text.trim(),
+        );
+        success = true;
+      } catch (_) {
+        success = false;
+      }
+    }
+
+    if (!mounted) return;
+    setState(() => _isSaving = false);
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile saved')));
+      Navigator.pop(context);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to save profile')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Edit Profile')),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            TextField(controller: _nameController, decoration: const InputDecoration(labelText: 'Full name')),
+            const SizedBox(height: 12),
+            TextField(controller: _phoneController, decoration: const InputDecoration(labelText: 'Phone'), keyboardType: TextInputType.phone),
+            const SizedBox(height: 20),
+            ElevatedButton(onPressed: _isSaving ? null : _save, child: _isSaving ? const SizedBox(width:20,height:20,child:CircularProgressIndicator(strokeWidth:2)) : const Text('Save')),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+ 
+
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   final TextEditingController _searchController = TextEditingController();
   late FavoritesController favoritesController;
+  Map<String, dynamic>? _profile;
+  bool _isProfileLoading = true;
+  bool _didPromptForProfile = false;
 
   // Location & Category selectors
   String _selectedState = 'Telangana';
@@ -199,6 +287,89 @@ class _HomeScreenState extends State<HomeScreen> {
       Get.put(FavoritesController());
     }
     favoritesController = Get.find<FavoritesController>();
+    // Load Supabase-backed user profile (if authenticated)
+    loadProfile();
+  }
+
+  Future<void> loadProfile() async {
+    // start loading
+    setState(() => _isProfileLoading = true);
+    print('[HomeScreen] loadProfile: fetching profile...');
+    final data = await UserService().fetchUserProfile();
+    print('[HomeScreen] loadProfile: fetch returned: $data');
+    if (!mounted) return;
+    setState(() {
+      _profile = data;
+      _isProfileLoading = false;
+    });
+
+    // If user is authenticated but no profile exists, prompt them once to
+    // complete their profile by opening the EditProfilePage.
+    final authUser = Supabase.instance.client.auth.currentUser;
+    if (authUser != null && _profile == null && !_didPromptForProfile) {
+      _didPromptForProfile = true;
+      // Delay navigation until after current frame to avoid navigator errors.
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!mounted) return;
+        await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => EditProfilePage(profile: {})),
+        );
+        // Refresh after potential profile creation.
+        await loadProfile();
+      });
+    }
+  }
+
+  // Drawer item handler moved to a dedicated method to keep build() tidy.
+  void _onDrawerItemSelected(String label) async {
+    // Close the drawer first so navigation happens off-screen
+    Navigator.of(context).pop();
+
+    // Handle logout explicitly
+    if (label.toLowerCase() == 'logout') {
+      try {
+        await Supabase.instance.client.auth.signOut();
+      } catch (_) {}
+      if (!mounted) return;
+      // Send user to login screen (named route used in main.dart)
+      try {
+        Get.offAllNamed('/login');
+      } catch (_) {
+        try {
+          Navigator.of(context).pushReplacementNamed('/login');
+        } catch (_) {}
+      }
+      return;
+    }
+
+    // Open profile editor when Profile selected
+    if (label == AppRoutes.labelProfile || label == 'Profile') {
+      if (_profile == null) return;
+
+      if (!mounted) return;
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => EditProfilePage(profile: _profile!),
+        ),
+      );
+
+      // refresh after edit
+      await loadProfile();
+      return;
+    }
+
+    // Map label to route if available
+    final route = AppRoutes.labelToRoute[label];
+    if (route == null || route.isEmpty) return;
+    try {
+      Get.toNamed(route);
+    } catch (_) {
+      try {
+        Navigator.of(context).pushNamed(route);
+      } catch (_) {}
+    }
   }
 
   void _showStateSelector() {
@@ -341,7 +512,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      drawer: const AppDrawer(),
+      drawer: AppDrawer(profile: _profile, isProfileLoading: _isProfileLoading, onItemSelected: _onDrawerItemSelected,),
       backgroundColor: AppColors.bgSoft,
       body: _buildBody(),
       bottomNavigationBar: Container(
@@ -483,6 +654,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ),
                       ),
+
+                  const SizedBox.shrink(),
                     ],
                   ),
                 ],
@@ -499,15 +672,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: ListView(
                   padding: const EdgeInsets.only(bottom: 180),
                   children: [
-                    // Category grid (square boxes) replacing the horizontal tabs
+                    // Category grid
                     CategoryGrid(
                       onTap: (c) {
-                        // If the user tapped the Car Rentals category, navigate to
-                        // the dedicated CarRentals screen instead of trying to
-                        // filter the farmhouse list (which contains only
-                        // farmhouses/villas/hotels). Use case-insensitive match.
                         if (c.toLowerCase().contains('car')) {
-                          // Use Get for named navigation which is registered in main.dart
                           try {
                             Get.toNamed(AppRoutes.carRentals);
                           } catch (_) {

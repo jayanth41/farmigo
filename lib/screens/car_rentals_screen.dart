@@ -18,7 +18,7 @@ class CarRentalsScreen extends StatelessWidget {
       reviews: 128,
       features: ['AC', 'Driver', 'Fuel Included'],
       pricePerDay: 2200,
-      imageUrl: 'https://images.unsplash.com/photo-1542365887-4fa2588d4f6a?auto=format&fit=crop&w=1200&q=80',
+  imageUrl: 'https://via.placeholder.com/1200x800.png?text=Car+Image',
       discountPercent: 10,
     ),
     CarRental(
@@ -30,7 +30,7 @@ class CarRentalsScreen extends StatelessWidget {
       reviews: 254,
       features: ['AC', 'Driver', 'Spacious'],
       pricePerDay: 4200,
-      imageUrl: 'https://images.unsplash.com/photo-1472291025161-3c9e1d76d51c?auto=format&fit=crop&w=1200&q=80',
+  imageUrl: 'https://via.placeholder.com/1200x800.png?text=Car+Image',
       discountPercent: 15,
     ),
     CarRental(
@@ -42,7 +42,7 @@ class CarRentalsScreen extends StatelessWidget {
       reviews: 64,
       features: ['AC', 'Self Drive'],
       pricePerDay: 1500,
-      imageUrl: 'https://images.unsplash.com/photo-1511910849309-0d5f7c1d6d20?auto=format&fit=crop&w=1200&q=80',
+  imageUrl: 'https://via.placeholder.com/1200x800.png?text=Car+Image',
     ),
     CarRental(
       id: 'endeavour',
@@ -53,7 +53,7 @@ class CarRentalsScreen extends StatelessWidget {
       reviews: 98,
       features: ['AC', 'Driver', 'Fuel Included'],
       pricePerDay: 4800,
-      imageUrl: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1200&q=80',
+  imageUrl: 'https://via.placeholder.com/1200x800.png?text=Car+Image',
       discountPercent: 5,
     ),
   ];
@@ -75,7 +75,7 @@ class CarRentalsScreen extends StatelessWidget {
       body: ListView.separated(
         padding: const EdgeInsets.symmetric(vertical: 12),
         itemCount: _dummyCars.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 4),
+  separatorBuilder: (context, index) => const SizedBox(height: 4),
         itemBuilder: (context, index) {
           final car = _dummyCars[index];
           return CarRentalCard(car: car);

@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 //import 'package:firebase_auth/firebase_auth.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -11,9 +14,14 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController phoneController = TextEditingController();
   final TextEditingController otpController = TextEditingController();
+  // Email/password controllers for alternate login
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
 
   String verificationId = "";
   bool otpSent = false;
+  bool _useEmailLogin = false;
+  bool _isLoading = false;
 
   void sendOTP() async {
     String phoneNumber = phoneController.text.trim();
@@ -111,38 +119,123 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Future<void> signInUser(String email, String password) async {
+    if (email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter email and password')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final res = await Supabase.instance.client.auth.signInWithPassword(
+        email: email,
+        password: password,
+      );
+
+      final user = res.user;
+      if (user != null) {
+        if (kDebugMode) debugPrint('✅ Login success: ${user.email}');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Login successful')),
+          );
+          Get.offAllNamed('/home');
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Login failed - check credentials or confirm email')),
+          );
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) debugPrint('❌ Login error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Login failed: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Phone Login")),
+      appBar: AppBar(title: const Text("Login")),
       body: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           children: [
-            TextField(
-              controller: phoneController,
-              keyboardType: TextInputType.phone,
-              decoration: const InputDecoration(
-                labelText: "Phone Number",
-                hintText: "Enter 10 digit number",
+            // Toggle between phone OTP and email/password login
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: () => setState(() => _useEmailLogin = !_useEmailLogin),
+                child: Text(_useEmailLogin ? 'Use phone login' : 'Use email login'),
               ),
             ),
-            const SizedBox(height: 20),
 
-            if (otpSent)
+            if (!_useEmailLogin) ...[
               TextField(
-                controller: otpController,
-                keyboardType: TextInputType.number,
+                controller: phoneController,
+                keyboardType: TextInputType.phone,
                 decoration: const InputDecoration(
-                  labelText: "OTP",
+                  labelText: "Phone Number",
+                  hintText: "Enter 10 digit number",
                 ),
               ),
+              const SizedBox(height: 20),
 
-            const SizedBox(height: 30),
+              if (otpSent)
+                TextField(
+                  controller: otpController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: "OTP",
+                  ),
+                ),
 
-            ElevatedButton(
-              onPressed: otpSent ? verifyOTP : sendOTP,
-              child: Text(otpSent ? "Verify OTP" : "Send OTP"),
+              const SizedBox(height: 30),
+
+              ElevatedButton(
+                onPressed: otpSent ? verifyOTP : sendOTP,
+                child: Text(otpSent ? "Verify OTP" : "Send OTP"),
+              ),
+            ] else ...[
+              TextField(
+                controller: emailController,
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(labelText: 'Email'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: passwordController,
+                decoration: const InputDecoration(labelText: 'Password'),
+                obscureText: true,
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: _isLoading
+                    ? null
+                    : () => signInUser(emailController.text.trim(), passwordController.text.trim()),
+                child: _isLoading
+                    ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Text('Login with email'),
+              ),
+            ],
+
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: () {
+                // Navigate to signup page (Supabase email signup)
+                Get.toNamed('/signup');
+              },
+              child: const Text('Sign up with email'),
             ),
           ],
         ),
