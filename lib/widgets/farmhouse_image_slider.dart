@@ -1,12 +1,15 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'image_with_fallback.dart';
 
 class FarmhouseImageSlider extends StatefulWidget {
   final List<String> images;
+  final double height;
 
   const FarmhouseImageSlider({
     super.key,
     required this.images,
+    this.height = 240,
   });
 
   @override
@@ -14,51 +17,75 @@ class FarmhouseImageSlider extends StatefulWidget {
 }
 
 class _FarmhouseImageSliderState extends State<FarmhouseImageSlider> {
+  late final PageController _pageController;
+  Timer? _timer;
   int _currentIndex = 0;
+  bool _userTouching = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController();
+    _startAutoSlide();
+  }
+
+  void _startAutoSlide() {
+    if (widget.images.length <= 1) return;
+
+    _timer = Timer.periodic(const Duration(seconds: 3), (_) {
+      if (_userTouching || !_pageController.hasClients) return;
+
+      _currentIndex =
+          (_currentIndex + 1) % widget.images.length;
+
+      _pageController.animateToPage(
+        _currentIndex,
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeInOut,
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _pageController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        PageView.builder(
+    if (widget.images.isEmpty) {
+      return SizedBox(height: widget.height);
+    }
+
+    return GestureDetector(
+      onPanDown: (_) => _userTouching = true,
+      onPanCancel: () => _userTouching = false,
+      onPanEnd: (_) => _userTouching = false,
+      child: SizedBox(
+        height: widget.height,
+        width: double.infinity,
+        child: PageView.builder(
+          controller: _pageController,
           itemCount: widget.images.length,
           onPageChanged: (index) {
             setState(() => _currentIndex = index);
           },
           itemBuilder: (context, index) {
-            return ImageWithFallback(
-              imageUrl: widget.images[index],
-              width: double.infinity,
-              height: 240,
-              fit: BoxFit.cover,
+            return AnimatedOpacity(
+              duration: const Duration(milliseconds: 400),
+              opacity: _currentIndex == index ? 1.0 : 0.0,
+              child: ImageWithFallback(
+                imageUrl: widget.images[index],
+                width: double.infinity,
+                height: widget.height,
+                fit: BoxFit.cover,
+              ),
             );
           },
         ),
-
-        // 🔹 Dots Indicator
-        Positioned(
-          bottom: 12,
-          left: 0,
-          right: 0,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(
-              widget.images.length,
-              (index) => Container(
-                margin: const EdgeInsets.symmetric(horizontal: 4),
-                width: _currentIndex == index ? 10 : 6,
-                height: 6,
-                decoration: BoxDecoration(
-                  color: _currentIndex == index
-                      ? Colors.white
-                      : Colors.white54,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
+      ),
     );
   }
 }

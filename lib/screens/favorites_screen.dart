@@ -16,11 +16,23 @@ class FavoritesScreen extends StatefulWidget {
 
 class _FavoritesScreenState extends State<FavoritesScreen> {
   late FavoritesController favoritesController;
+  String _selectedCategory = 'All';
 
   @override
   void initState() {
     super.initState();
     favoritesController = Get.find<FavoritesController>();
+  }
+
+  List get filteredFavorites {
+    if (_selectedCategory == 'All') {
+      return favoritesController.favorites.toList();
+    }
+    return favoritesController.favorites
+        .where((fav) =>
+            fav.category == _selectedCategory ||
+            (fav.category ?? 'All') == _selectedCategory)
+        .toList();
   }
 
   @override
@@ -29,7 +41,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
       backgroundColor: Colors.grey[50],
       drawer: const AppDrawer(),
       appBar: AppBar(
-        backgroundColor: AppColors.primary,
+        backgroundColor: const Color(0xFF2D5016),
         elevation: 0,
         title: const Text(
           'My Favorites',
@@ -96,7 +108,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                   Icon(
                     Icons.favorite_border,
                     size: 80,
-                      color: Colors.grey[400],
+                    color: Colors.grey[400],
                   ),
                   const SizedBox(height: 16),
                   Text(
@@ -119,17 +131,17 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                   const SizedBox(height: 24),
                   ElevatedButton.icon(
                     onPressed: () {
-                      // Navigate to the Farmhouses listing screen.
                       try {
                         Get.toNamed(AppRoutes.farmhouses);
                       } catch (_) {
-                        Navigator.of(context).pushReplacementNamed(AppRoutes.farmhouses);
+                        Navigator.of(context)
+                            .pushReplacementNamed(AppRoutes.farmhouses);
                       }
                     },
                     icon: const Icon(Icons.explore),
                     label: const Text('Explore Farmhouses'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
+                      backgroundColor: const Color(0xFF2D5016),
                       padding: const EdgeInsets.symmetric(
                         horizontal: 24,
                         vertical: 12,
@@ -141,26 +153,94 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
             );
           }
 
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: favoritesController.favorites.length,
-            itemBuilder: (context, index) {
-              final farmhouse = favoritesController.favorites[index];
-              return FavoriteCard(
-                farmhouse: farmhouse,
-                onRemove: () {
-                  favoritesController.removeFavorite(farmhouse.id);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('${farmhouse.name} removed from favorites'),
-                      duration: const Duration(seconds: 1),
+          return Column(
+            children: [
+              // FILTER TABS (NEW)
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8.0, vertical: 12.0),
+                  child: Row(
+                    children: [
+                      _filterChip('All'),
+                      _filterChip('Farmhouses'),
+                      _filterChip('Villas'),
+                      _filterChip('Hotels'),
+                      _filterChip('Hourly Rentals'),
+                    ],
+                  ),
+                ),
+              ),
+
+              // SAVED COUNT (NEW)
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                child: Row(
+                  children: [
+                    Text(
+                      'Saved: ${filteredFavorites.length}',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey,
+                      ),
                     ),
-                  );
-                },
-              );
-            },
+                  ],
+                ),
+              ),
+
+              // FAVORITES LIST
+              Expanded(
+                child: filteredFavorites.isEmpty
+                    ? Center(
+                        child: Text(
+                          'No favorites in this category',
+                          style: TextStyle(color: Colors.grey[600]),
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: filteredFavorites.length,
+                        itemBuilder: (context, index) {
+                          final farmhouse = filteredFavorites[index];
+                          return FavoriteCard(
+                            farmhouse: farmhouse,
+                            onRemove: () {
+                              favoritesController.removeFavorite(farmhouse.id);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                      '${farmhouse.name} removed from favorites'),
+                                  duration: const Duration(seconds: 1),
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      ),
+              ),
+            ],
           );
         },
+      ),
+    );
+  }
+
+  Widget _filterChip(String category) {
+    final isSelected = _selectedCategory == category;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8.0),
+      child: FilterChip(
+        label: Text(category),
+        selected: isSelected,
+        onSelected: (_) => setState(() => _selectedCategory = category),
+        selectedColor: const Color(0xFF2D5016),
+        labelStyle: TextStyle(
+          color: isSelected ? Colors.white : Colors.black87,
+          fontWeight: FontWeight.w500,
+        ),
       ),
     );
   }
@@ -188,7 +268,7 @@ class FavoriteCard extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: Color.fromRGBO(0, 0, 0, 0.05),
+            color: const Color.fromRGBO(0, 0, 0, 0.05),
             blurRadius: 8,
           ),
         ],
@@ -211,7 +291,30 @@ class FavoriteCard extends StatelessWidget {
                   top: 8,
                   right: 8,
                   child: GestureDetector(
-                    onTap: onRemove,
+                    onTap: () {
+                      showDialog(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text('Remove from Favorites?'),
+                          content: Text(
+                              'Are you sure you want to remove ${farmhouse.name}?'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx),
+                              child: const Text('Cancel'),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                Navigator.pop(ctx);
+                                onRemove();
+                              },
+                              child: const Text('Remove',
+                                  style: TextStyle(color: Colors.red)),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
                     child: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
@@ -219,7 +322,7 @@ class FavoriteCard extends StatelessWidget {
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: Color.fromRGBO(0, 0, 0, 0.2),
+                            color: const Color.fromRGBO(0, 0, 0, 0.2),
                             blurRadius: 8,
                           ),
                         ],
@@ -291,7 +394,7 @@ class FavoriteCard extends StatelessWidget {
                         style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.primary,
+                          color: Color(0xFF2D5016),
                         ),
                       ),
                     ],
@@ -317,7 +420,7 @@ class FavoriteCard extends StatelessWidget {
                         );
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
+                        backgroundColor: const Color(0xFF2D5016),
                         padding: const EdgeInsets.symmetric(vertical: 10),
                       ),
                       child: const Text(

@@ -16,6 +16,15 @@ import 'screens/car_rentals_screen.dart';
 import 'screens/farmhouses_screen.dart';
 import 'screens/signup_screen.dart';
 import 'theme/app_theme.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:get/get.dart';
+
+import 'firebase_options.dart';
+import 'screens/splash_screen.dart';
+import 'screens/login_screen.dart';
+import 'screens/home_screen.dart';
+import 'navigation/app_routes.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -39,6 +48,9 @@ void main() async {
   // Initialize Controllers
   Get.put<FavoritesController>(FavoritesController());
   Get.put<BookingsController>(BookingsController());
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
 
   runApp(const MyApp());
 }
@@ -51,10 +63,10 @@ class MyApp extends StatelessWidget {
     return GetMaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Farmigo',
-      theme: AppTheme.lightTheme(),
-      darkTheme: AppTheme.darkTheme(),
-      themeMode: ThemeMode.system,
-      home: const AuthStateHandler(),
+
+      // ✅ START WITH SPLASH
+      home: const SplashScreen(),
+
       getPages: [
         // Legacy tabbed HomeScreen remains at '/', keep for drawer/landing.
         GetPage(name: AppRoutes.home, page: () => const HomeScreen()),
@@ -117,5 +129,11 @@ void drawerCallback(BuildContext context, String label) {
   } catch (_) {
     // Fallback to Flutter navigator if Get fails for any reason.
     Navigator.of(context).pushReplacementNamed(route);
+  }
+}
+        GetPage(name: '/login', page: () => const LoginScreen()),
+        GetPage(name: AppRoutes.home, page: () => const HomeScreen()),
+      ],
+    );
   }
 }
