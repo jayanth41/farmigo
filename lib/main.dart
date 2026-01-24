@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:get/get.dart';
-import 'firebase_options.dart';
 import 'controllers/favorites_controller.dart';
 import 'controllers/bookings_controller.dart';
 import 'navigation/app_routes.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 // Import your screen widgets
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
@@ -14,20 +14,28 @@ import 'screens/bookings_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/car_rentals_screen.dart';
 import 'screens/farmhouses_screen.dart';
+import 'screens/signup_screen.dart';
 import 'theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Initialize Supabase (replace URL and anonKey with your project's values)
   try {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
+    await Supabase.initialize(
+      url: 'https://kvnwikjxjimztjqsycti.supabase.co',
+      anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt2bndpa2p4amltenRqcXN5Y3RpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg4ODgxMDcsImV4cCI6MjA4NDQ2NDEwN30.e-mZfYqzztQNbBQ4n0R3aKFFYhdGI6rZgKvgyJNx2Fw',
     );
-    debugPrint('Firebase initialized successfully');
+    debugPrint('Supabase initialized successfully');
   } catch (e) {
-    debugPrint('Firebase initialization error: $e');
+    debugPrint('Supabase initialization error: $e');
   }
-
+  
+    // DEV: create a test user record if you want a quick verification write.
+    // Replace or remove in production. This is wrapped in try/catch so it
+    // doesn't crash the app if the table doesn't exist or the insert fails.
+      // Insert a test user (dev-only). .select() returns the created row(s).
+  
   // Initialize Controllers
   Get.put<FavoritesController>(FavoritesController());
   Get.put<BookingsController>(BookingsController());
@@ -48,13 +56,18 @@ class MyApp extends StatelessWidget {
       themeMode: ThemeMode.system,
       home: const AuthStateHandler(),
       getPages: [
+        // Legacy tabbed HomeScreen remains at '/', keep for drawer/landing.
         GetPage(name: AppRoutes.home, page: () => const HomeScreen()),
+  // Support '/home' literal used across login/splash flows to show the
+  // canonical HomeScreen used in the app.
+  GetPage(name: '/home', page: () => const HomeScreen()),
         GetPage(name: AppRoutes.favorites, page: () => const FavoritesScreen()),
   GetPage(name: AppRoutes.farmhouses, page: () => const FarmhousesScreen()),
         GetPage(name: AppRoutes.carRentals, page: () => const CarRentalsScreen()),
         GetPage(name: AppRoutes.bookings, page: () => const BookingsScreen()),
         GetPage(name: AppRoutes.profile, page: () => const ProfileScreen()),
         GetPage(name: '/login', page: () => const LoginScreen()),
+  GetPage(name: '/signup', page: () => const SignupPage()),
         GetPage(name: '/splash', page: () => const SplashScreen()),
       ],
     );
@@ -80,15 +93,9 @@ class _AuthStateHandlerState extends State<AuthStateHandler> {
 
     if (!mounted) return;
 
-    // TODO: Uncomment when Firebase Auth is working
-    // final user = FirebaseAuth.instance.currentUser;
-    // if (user != null) {
-    //   Get.offAllNamed('/home');
-    // } else {
-    //   Get.offAllNamed('/login');
-    // }
-
-    // For now, always go to login
+    // For development ensure the auth screens appear after Splash.
+    // If you want automatic session-based routing, revert this to check
+    // `Supabase.instance.client.auth.currentUser` and route accordingly.
     Get.offAllNamed('/login');
   }
 
