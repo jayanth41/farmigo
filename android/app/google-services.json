@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "520560089620",
+    "project_id": "farmigo-704ca",
+    "storage_bucket": "farmigo-704ca.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:520560089620:android:6b99e2e96fd93f916aa501",
+        "android_client_info": {
+          "package_name": "com.example.flutter_application_1"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAaNXzlIaKWzvR7w9688Zjnawm7fvr4_h0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -85,11 +85,37 @@ class CategoryTabs extends StatelessWidget {
   }
 }
 
-/// Square category grid used on some screens — kept here for convenience.
-class CategoryGrid extends StatelessWidget {
+/// Square category grid used on Home screen with selection state - UPDATED
+class CategoryGrid extends StatefulWidget {
   final void Function(String category)? onTap;
+  final String selectedCategory;
 
-  const CategoryGrid({super.key, this.onTap});
+  const CategoryGrid({
+    super.key,
+    this.onTap,
+    this.selectedCategory = 'All',
+  });
+
+  @override
+  State<CategoryGrid> createState() => _CategoryGridState();
+}
+
+class _CategoryGridState extends State<CategoryGrid> {
+  late String _localSelectedCategory;
+
+  @override
+  void initState() {
+    super.initState();
+    _localSelectedCategory = widget.selectedCategory;
+  }
+
+  @override
+  void didUpdateWidget(CategoryGrid oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.selectedCategory != widget.selectedCategory) {
+      _localSelectedCategory = widget.selectedCategory;
+    }
+  }
 
   static const List<Color> _palette = [
     AppColors.primaryDark,
@@ -100,12 +126,12 @@ class CategoryGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final List<Map<String, dynamic>> items = [
+      {'label': 'All', 'icon': Icons.home},
       {'label': 'Farmhouses', 'icon': Icons.agriculture},
       {'label': 'Villas', 'icon': Icons.villa},
       {'label': 'Hotels', 'icon': Icons.hotel},
-      {'label': 'Flights', 'icon': Icons.flight},
       {'label': 'Car Rentals', 'icon': Icons.directions_car},
-      {'label': 'Halls', 'icon': Icons.apartment},
+      {'label': 'Hourly Rentals', 'icon': Icons.access_time},
     ];
 
     return Padding(
@@ -122,14 +148,38 @@ class CategoryGrid extends StatelessWidget {
         ),
         itemBuilder: (_, i) {
           final item = items[i];
+          final label = item['label'] as String;
+          final icon = item['icon'] as IconData;
+          final isSelected = label == _localSelectedCategory;
           final bg = _palette[i % _palette.length];
-          return InkWell(
-            onTap: () => onTap?.call(item['label'] as String),
-            child: Container(
+
+          return GestureDetector(
+            onTap: () {
+              setState(() {
+                _localSelectedCategory = label;
+              });
+              widget.onTap?.call(label);
+            },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
               decoration: BoxDecoration(
-                color: AppColors.white,
+                color: isSelected ? const Color(0xFF2D5016) : AppColors.white,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.border),
+                border: Border.all(
+                  color: isSelected
+                      ? const Color(0xFF2D5016)
+                      : AppColors.border,
+                  width: 2,
+                ),
+                boxShadow: isSelected
+                    ? [
+                        BoxShadow(
+                          color: const Color(0xFF2D5016).withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ]
+                    : [],
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -138,20 +188,25 @@ class CategoryGrid extends StatelessWidget {
                     width: 48,
                     height: 48,
                     decoration: BoxDecoration(
-                      color: bg,
+                      color: isSelected ? Colors.white : bg,
                       shape: BoxShape.circle,
                     ),
                     child: Center(
-                      child: Icon(item['icon'] as IconData, size: 30, color: Colors.white),
+                      child: Icon(
+                        icon,
+                        size: 30,
+                        color: isSelected ? const Color(0xFF2D5016) : Colors.white,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    item['label'] as String,
+                    label,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 13,
+                      color: isSelected ? Colors.white : AppColors.textMain,
                     ),
                   ),
                 ],
