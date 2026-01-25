@@ -14,7 +14,7 @@ class BookingsScreen extends StatefulWidget {
 }
 
 class _BookingsScreenState extends State<BookingsScreen> {
-  late BookingsController bookingsController;
+  late dynamic bookingsController;
   String _filterStatus = 'all';
 
   @override

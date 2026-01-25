@@ -22,85 +22,78 @@ class AppDrawer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Drawer(
-      child: ListView(
-        padding: EdgeInsets.zero,
-        children: [
-          DrawerHeader(
-            decoration: const BoxDecoration(color: AppColors.primary),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Farmigo', style: TextStyle(color: Colors.white, fontSize: 22)),
-                const SizedBox(height: 8),
-                if (isProfileLoading)
-                  const SizedBox(height: 20, child: CircularProgressIndicator(color: Colors.white))
-                else if (profile != null)
-                  Text(profile!['name'] ?? 'Guest', style: const TextStyle(color: Colors.white70))
-                else
-                  const Text('Not signed in', style: TextStyle(color: Colors.white70)),
-              ],
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              color: AppColors.primary,
+              child: Row(
+                children: [
+                  const CircleAvatar(backgroundColor: Colors.white, child: Icon(Icons.park, color: AppColors.primary)),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: isProfileLoading
+                        ? const SizedBox(height: 20, child: CircularProgressIndicator(color: Colors.white))
+                        : Text(
+                            profile != null ? (profile!['name'] ?? 'Guest') : 'Not signed in',
+                            style: const TextStyle(color: Colors.white, fontSize: 16),
+                          ),
+                  ),
+                ],
+              ),
             ),
-          ),
 
-          ListTile(
-            leading: const Icon(Icons.home),
-            title: const Text('Home'),
-            onTap: () {
-              Navigator.pop(context);
-              onItemSelected?.call('Home');
-              try {
-                Get.offAllNamed(AppRoutes.home);
-              } catch (_) {
-                Navigator.of(context).pushReplacementNamed(AppRoutes.home);
-              }
-            },
-          ),
+            Expanded(
+              child: ListView(
+                padding: EdgeInsets.zero,
+                children: [
+                  _buildTile(context, icon: Icons.home, label: 'Home', keyLabel: 'Home'),
+                  _buildTile(context, icon: Icons.book, label: 'Bookings', keyLabel: 'Bookings', route: AppRoutes.bookings),
+                  _buildTile(context, icon: Icons.favorite, label: 'Favorites', keyLabel: 'Favorites', route: AppRoutes.favorites),
+                  const Divider(),
+                  _buildTile(context, icon: Icons.manage_accounts, label: 'Owner Dashboard', keyLabel: 'Owner', route: '/owner'),
+                ],
+              ),
+            ),
 
-          ListTile(
-            leading: const Icon(Icons.book),
-            title: const Text('Bookings'),
-            onTap: () {
-              Navigator.pop(context);
-              onItemSelected?.call('Bookings');
-              try {
-                Get.toNamed(AppRoutes.bookings);
-              } catch (_) {
-                Navigator.of(context).pushNamed(AppRoutes.bookings);
-              }
-            },
-          ),
-
-          ListTile(
-            leading: const Icon(Icons.favorite),
-            title: const Text('Favorites'),
-            onTap: () {
-              Navigator.pop(context);
-              onItemSelected?.call('Favorites');
-              try {
-                Get.toNamed(AppRoutes.favorites);
-              } catch (_) {
-                Navigator.of(context).pushNamed(AppRoutes.favorites);
-              }
-            },
-          ),
-
-          const Divider(),
-
-          ListTile(
-            leading: const Icon(Icons.logout),
-            title: const Text('Logout'),
-            onTap: () {
-              Navigator.pop(context);
-              onItemSelected?.call('Logout');
-              try {
-                Get.offAllNamed('/login');
-              } catch (_) {
-                Navigator.of(context).pushReplacementNamed('/login');
-              }
-            },
-          ),
-        ],
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 12),
+              child: _buildTile(context, icon: Icons.logout, label: 'Logout', keyLabel: 'Logout', route: '/login', replace: true),
+            ),
+          ],
+        ),
       ),
+    );
+  }
+
+  Widget _buildTile(BuildContext context, {required IconData icon, required String label, required String keyLabel, String? route, bool replace = false}) {
+    final selected = activeItem != null && activeItem == keyLabel;
+    return ListTile(
+      leading: Icon(icon, color: selected ? AppColors.primaryDark : AppColors.iconGrey),
+      title: Text(label),
+      selected: selected,
+      selectedTileColor: AppColors.chipBg,
+      onTap: () {
+        Navigator.pop(context);
+        onItemSelected?.call(keyLabel);
+        if (route != null) {
+          try {
+            if (replace) {
+              Get.offAllNamed(route);
+            } else {
+              Get.toNamed(route);
+            }
+          } catch (_) {
+            if (replace) {
+              Navigator.of(context).pushReplacementNamed(route);
+            } else {
+              Navigator.of(context).pushNamed(route);
+            }
+          }
+        }
+      },
     );
   }
 }

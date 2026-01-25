@@ -12,6 +12,87 @@ class LoginScreen extends StatefulWidget {
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
+Widget _tabButton(String text, bool active, {required VoidCallback onTap}) {
+  return Expanded(
+    child: GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: active ? AppColors.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          text,
+          style: TextStyle(
+            color: active ? Colors.white : Colors.black,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+Widget _inputField({
+  required TextEditingController controller,
+  required String hint,
+  required IconData icon,
+  bool isPassword = false,
+  TextInputType keyboard = TextInputType.text,
+}) {
+  return TextField(
+    controller: controller,
+    keyboardType: keyboard,
+    obscureText: isPassword,
+    decoration: InputDecoration(
+      hintText: hint,
+      prefixIcon: Icon(icon),
+      filled: true,
+      fillColor: Colors.grey.shade100,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide.none,
+      ),
+    ),
+  );
+}
+
+Widget _primaryButton({
+  required String text,
+  required bool loading,
+  required VoidCallback onTap,
+}) {
+  return SizedBox(
+    width: double.infinity,
+    height: 50,
+    child: ElevatedButton(
+      onPressed: loading ? null : onTap,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppColors.primary,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+        ),
+      ),
+      child: loading
+          ? const CircularProgressIndicator(color: Colors.white)
+          : Text(text, style: const TextStyle(fontSize: 16)),
+    ),
+  );
+}
+
+Widget _socialBtn(IconData icon) {
+  return Container(
+    height: 48,
+    width: 48,
+    decoration: BoxDecoration(
+      border: Border.all(color: Colors.grey.shade300),
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Icon(icon),
+  );
+}
+
 
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController phoneController = TextEditingController();
@@ -140,81 +221,170 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Login')),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 40),
-              const Text(
-                'Welcome 👋',
-                style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              Text('Login to continue', style: TextStyle(color: Colors.grey[600])),
-              const SizedBox(height: 20),
+Widget build(BuildContext context) {
+  return Scaffold(
+    backgroundColor: const Color(0xFFF2F5F3),
+    body: SafeArea(
+      child: SingleChildScrollView(
+        child: Column(
+          children: [
+            const SizedBox(height: 40),
 
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: () => setState(() => useEmailLogin = !useEmailLogin),
-                  child: Text(useEmailLogin ? 'Use phone login' : 'Use email login'),
-                ),
+            // LOGO
+            Container(
+              height: 70,
+              width: 70,
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                borderRadius: BorderRadius.circular(18),
               ),
+              child: const Icon(Icons.park, color: Colors.white, size: 40),
+            ),
 
-              if (useEmailLogin) ...[
-                TextField(controller: emailController, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(labelText: 'Email')),
-                const SizedBox(height: 12),
-                TextField(controller: passwordController, decoration: const InputDecoration(labelText: 'Password'), obscureText: true),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: isLoading ? null : signInUser,
-                    child: isLoading ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Login with email'),
-                  ),
-                ),
-              ] else ...[
-                const SizedBox(height: 12),
-                const Text('Mobile Number', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Container(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16), decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(12)), child: const Text('+91', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold))),
-                    const SizedBox(width: 12),
-                    Expanded(child: TextField(controller: phoneController, keyboardType: TextInputType.phone, maxLength: 10, decoration: InputDecoration(counterText: '', hintText: 'Enter mobile number', filled: true, fillColor: Colors.grey[100], border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)))),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: isLoading ? null : sendOTP,
-                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
-                    child: isLoading ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('Send OTP', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                if (otpSent) ...[
-                  TextField(controller: otpController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Enter OTP')),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(onPressed: isLoading ? null : verifyOTP, child: const Text('Verify OTP')),
+            const SizedBox(height: 16),
+
+            const Text(
+              "Farmigo",
+              style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
+            ),
+
+            const SizedBox(height: 6),
+
+            Text(
+              "Your Gateway to Perfect Getaways",
+              style: TextStyle(color: Colors.grey.shade600),
+            ),
+
+            const SizedBox(height: 30),
+
+            // CARD
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 20),
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 20,
                   ),
                 ],
-              ],
+              ),
+              child: Column(
+                children: [
+                  // LOGIN / SIGNUP TOGGLE
+                  Container(
+                    height: 45,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade200,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Row(
+                      children: [
+                        _tabButton("Login", !useEmailLogin, onTap: () => setState(() => useEmailLogin = false)),
+                        _tabButton("Email", useEmailLogin, onTap: () => setState(() => useEmailLogin = true)),
+                      ],
+                    ),
+                  ),
 
-              const SizedBox(height: 12),
-              TextButton(onPressed: () => Get.toNamed('/signup'), child: const Text('Sign up with email')),
-            ],
-          ),
+                  const SizedBox(height: 20),
+
+                  if (useEmailLogin) ...[
+                    _inputField(
+                      controller: emailController,
+                      hint: "Email",
+                      icon: Icons.email,
+                    ),
+                    const SizedBox(height: 14),
+                    _inputField(
+                      controller: passwordController,
+                      hint: "Password",
+                      icon: Icons.lock,
+                      isPassword: true,
+                    ),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: () {},
+                        child: const Text("Forgot Password?"),
+                      ),
+                    ),
+                    _primaryButton(
+                      text: "Login →",
+                      loading: isLoading,
+                      onTap: signInUser,
+                    ),
+                  ] else ...[
+                    _inputField(
+                      controller: phoneController,
+                      hint: "Mobile Number",
+                      icon: Icons.phone,
+                      keyboard: TextInputType.phone,
+                    ),
+                    const SizedBox(height: 16),
+                    _primaryButton(
+                      text: otpSent ? "Verify OTP" : "Send OTP",
+                      loading: isLoading,
+                      onTap: otpSent ? verifyOTP : sendOTP,
+                    ),
+                    if (otpSent) ...[
+                      const SizedBox(height: 16),
+                      _inputField(
+                        controller: otpController,
+                        hint: "Enter OTP",
+                        icon: Icons.lock_outline,
+                        keyboard: TextInputType.number,
+                      ),
+                    ]
+                  ],
+
+                  const SizedBox(height: 20),
+
+                  Row(
+                    children: const [
+                      Expanded(child: Divider()),
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 8),
+                        child: Text("Or continue with"),
+                      ),
+                      Expanded(child: Divider()),
+                    ],
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _socialBtn(Icons.g_mobiledata),
+                      _socialBtn(Icons.facebook),
+                      _socialBtn(Icons.apple),
+                    ],
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  TextButton(
+                    onPressed: () => Get.toNamed('/signup'),
+                    child: const Text("Sign up with email"),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 20),
+TextButton(
+  onPressed: () {
+    Get.offAllNamed('/home');
+  },
+  child: const Text("Skip for now"),
+),
+          ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
+
 }
