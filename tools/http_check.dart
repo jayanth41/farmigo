@@ -1,6 +1,7 @@
 // This script is a local tooling helper; printing is acceptable here.
 // ignore_for_file: avoid_print
 
+import 'package:flutter/foundation.dart';
 import 'dart:io';
 
 void main(List<String> args) async {
@@ -11,7 +12,7 @@ void main(List<String> args) async {
   ];
 
   for (final url in urls) {
-    print('\n---- Trying: $url');
+  debugPrint('\n---- Trying: $url');
     try {
       final uri = Uri.parse(url);
       final httpClient = HttpClient();
@@ -20,13 +21,13 @@ void main(List<String> args) async {
       // set a simple user-agent to avoid some hosts rejecting blank agents
       req.headers.set(HttpHeaders.userAgentHeader, 'DartHttpClient/1.0');
       final resp = await req.close();
-      print('Status: \\${resp.statusCode}');
-      print('Headers:\n${resp.headers}');
+      debugPrint('Status: \\${resp.statusCode}');
+      debugPrint('Headers:\n${resp.headers}');
       final bodyBytes = await resp.fold<List<int>>(<int>[], (a, b) { a.addAll(b); return a; });
-      print('Downloaded bytes: ${bodyBytes.length}');
+      debugPrint('Downloaded bytes: ${bodyBytes.length}');
       httpClient.close(force: true);
     } catch (e) {
-      print('Exception: $e');
+      debugPrint('Exception: $e');
     }
   }
 }

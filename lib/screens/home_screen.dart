@@ -13,6 +13,8 @@ import '../widgets/category_tabs.dart';
 import '../widgets/offers_carousel.dart';
 import '../widgets/app_drawer.dart';
 import '../widgets/properties_grid.dart';
+import 'owner_dashboard.dart';
+
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -88,7 +90,18 @@ class _EditProfilePageState extends State<EditProfilePage> {
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
-          children: [
+          children: [ElevatedButton(
+  onPressed: () {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => OwnerDashboard(),
+      ),
+    );
+  },
+  child: const Text("Owner Dashboard"),
+),
+
             TextField(controller: _nameController, decoration: const InputDecoration(labelText: 'Full name')),
             const SizedBox(height: 12),
             TextField(controller: _phoneController, decoration: const InputDecoration(labelText: 'Phone'), keyboardType: TextInputType.phone),
@@ -294,9 +307,9 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> loadProfile() async {
     // start loading
     setState(() => _isProfileLoading = true);
-    print('[HomeScreen] loadProfile: fetching profile...');
+  debugPrint('[HomeScreen] loadProfile: fetching profile...');
     final data = await UserService().fetchUserProfile();
-    print('[HomeScreen] loadProfile: fetch returned: $data');
+  debugPrint('[HomeScreen] loadProfile: fetch returned: $data');
     if (!mounted) return;
     setState(() {
       _profile = data;
