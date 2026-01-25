@@ -85,6 +85,9 @@ class CategoryTabs extends StatelessWidget {
   }
 }
 
+// Note: A more feature-rich CategoryGrid is implemented below. Older simple
+// wrappers were removed to avoid duplicate class definitions.
+
 /// Square category grid used on Home screen with selection state - UPDATED
 class CategoryGrid extends StatefulWidget {
   final void Function(String category)? onTap;
@@ -174,7 +177,7 @@ class _CategoryGridState extends State<CategoryGrid> {
                 boxShadow: isSelected
                     ? [
                         BoxShadow(
-                          color: const Color(0xFF2D5016).withOpacity(0.3),
+                          color: const Color.fromRGBO(45, 80, 22, 0.3),
                           blurRadius: 8,
                           offset: const Offset(0, 4),
                         ),
