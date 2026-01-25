@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../widgets/app_drawer.dart';
 import '../models/farmhouse_model.dart';
 import '../controllers/favorites_controller.dart';
+import '../services/booking_service.dart';
 
 class FarmhouseDetailsScreen extends StatefulWidget {
   final String name;
@@ -92,6 +94,12 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
   @override
   void initState() {
     super.initState();
+
+    // Log current authenticated user id for debugging (uses debugPrint to
+    // avoid analyzer avoid_print lint).
+    final user = Supabase.instance.client.auth.currentUser;
+    debugPrint("USER ID = ${user?.id}");
+
     try {
       favoritesController = Get.find<FavoritesController>();
     } catch (e) {
@@ -131,7 +139,7 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                       color: Colors.grey[300],
                       child: const Icon(
                         Icons.image_not_supported,
-                        size: 80,
+                        size: 60,
                         color: Colors.grey,
                       ),
                     );
@@ -167,9 +175,19 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                       ),
                       Obx(
                         () => GestureDetector(
-                          onTap: () {
-                            favoritesController.toggleFavorite(farmhouse);
-                            ScaffoldMessenger.of(context).showSnackBar(
+                          onTap: () async {
+                            final messenger = ScaffoldMessenger.of(context);
+                            await favoritesController.toggleFavorite(
+                              FarmhouseModel(
+                                id: widget.id!,
+                                name: widget.name,
+                                location: widget.location,
+                                price: widget.price,
+                                distance: widget.distance,
+                                imageUrl: widget.imageUrl,
+                              ),
+                            );
+                            messenger.showSnackBar(
                               SnackBar(
                                 content: Text(
                                   favoritesController.isFavorited(farmhouse.id)
@@ -703,6 +721,7 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                                       color: Colors.grey[300],
                                       child: const Icon(
                                         Icons.image_not_supported,
+                                        size: 60,
                                         color: Colors.grey,
                                       ),
                                     );
@@ -772,6 +791,7 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                                     color: Colors.grey[300],
                                     child: const Icon(
                                       Icons.image_not_supported,
+                                      size: 60,
                                       color: Colors.grey,
                                     ),
                                   );
@@ -871,32 +891,29 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
           ],
         ),
         child: ElevatedButton(
-          onPressed: () {
-            if (selectedCheckInDate == null || selectedCheckOutDate == null) {
+          onPressed: () async {
+            if (widget.id == null) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text(
-                    'Please select both check-in and check-out dates',
-                  ),
-                  duration: Duration(seconds: 2),
-                  backgroundColor: Colors.red,
-                ),
+                const SnackBar(content: Text("Invalid property")),
               );
               return;
             }
 
-            final nights = selectedCheckOutDate!
-                .difference(selectedCheckInDate!)
-                .inDays;
-            final totalPrice = calculatedPrice * nights;
+            final messenger = ScaffoldMessenger.of(context);
 
-            ScaffoldMessenger.of(context).showSnackBar(
+            final success = await BookingService.createBooking(
+              propertyId: widget.id!,
+              visitDate: selectedCheckInDate != null
+                  ? "${selectedCheckInDate!.year}-${selectedCheckInDate!.month.toString().padLeft(2, '0')}-${selectedCheckInDate!.day.toString().padLeft(2, '0')}"
+                  : "2026-02-01",
+            );
+
+            if (!mounted) return;
+
+            messenger.showSnackBar(
               SnackBar(
-                content: Text(
-                  'Booking Confirmed!\nTotal: ₹${totalPrice.toStringAsFixed(0)}',
-                ),
-                duration: const Duration(seconds: 2),
-                backgroundColor: Colors.green,
+                content:
+                    Text(success ? "Booking successful" : "Booking failed"),
               ),
             );
           },

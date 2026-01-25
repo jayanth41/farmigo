@@ -48,21 +48,16 @@ class ImageWithFallback extends StatelessWidget {
       errorBuilder: (context, error, stackTrace) {
         debugPrint('Image.network error for $imageUrl: $error');
         if (stackTrace != null) debugPrint('$stackTrace');
-        // Attempt to show a local asset fallback if you add one at
-        // assets/images/fallback.png. If that asset is missing we'll
-        // still show a simple placeholder that won't crash.
+        // Simple, consistent grey placeholder with an icon.
         return Container(
           height: height,
           width: width,
-          color: const Color.fromRGBO(200, 200, 200, 1.0),
+          color: Colors.grey[300],
           alignment: Alignment.center,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: const [
-              Icon(Icons.broken_image, size: 48, color: Colors.black54),
-              SizedBox(height: 8),
-              Text('Image unavailable', style: TextStyle(color: Colors.black54)),
-            ],
+          child: const Icon(
+            Icons.image_not_supported,
+            size: 60,
+            color: Colors.grey,
           ),
         );
       },
