@@ -749,20 +749,20 @@ class _HomeScreenState extends State<HomeScreen> {
                           onPressed: () =>
                               locationController.requestLocationPermission(),
                           icon: Icon(
-                            locationController.locationEnabled.value
+                            locationController.isLocationEnabled.value
                                 ? Icons.location_on
                                 : Icons.location_off,
                             size: 16,
                           ),
                           label: Text(
-                            locationController.locationEnabled.value
+                            locationController.isLocationEnabled.value
                                 ? 'Located'
                                 : 'Enable',
                             style: const TextStyle(fontSize: 12),
                           ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: locationController
-                                    .locationEnabled.value
+                                    .isLocationEnabled.value
                                 ? AppColors.primary
                                 : Colors.grey[400],
                             padding: const EdgeInsets.symmetric(
