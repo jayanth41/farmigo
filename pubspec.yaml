@@ -16,7 +16,7 @@ dependencies:
   get: ^4.7.3
   pinput: ^6.0.1
   shared_preferences: ^2.2.2
-  lottie: ^3.0.0
+  lottie: ^3.1.0
   animated_text_kit: ^4.2.2
 
   # Backend
@@ -42,3 +42,4 @@ flutter:
   assets:
     - assets/lottie/
     - assets/images/
+    - assets/animations/splash.json

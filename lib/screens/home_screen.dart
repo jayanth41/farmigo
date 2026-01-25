@@ -119,18 +119,20 @@ class _EditProfilePageState extends State<EditProfilePage> {
  
 
 class _HomeScreenState extends State<HomeScreen> {
+  final LocationController locationController =
+  Get.put(LocationController());
   int _selectedIndex = 0;
   final TextEditingController _searchController = TextEditingController();
   late FavoritesController favoritesController;
   Map<String, dynamic>? _profile;
   bool _isProfileLoading = true;
   bool _didPromptForProfile = false;
-  late LocationController locationController;
+
 
   // Location & Category selectors
   String _selectedState = 'Telangana';
   String _selectedCategory = 'All';
-  bool _showOffers = true;
+  final bool _showOffers = true;
 
   // Advanced filter state
   RangeValues _priceRange = const RangeValues(0, 10000);
@@ -156,37 +158,7 @@ class _HomeScreenState extends State<HomeScreen> {
   // Filtered list for search results
   List<Map<String, dynamic>> _filteredFarmhouses = [];
 
-  // All Indian States
-  static const List<String> indianStates = [
-    'Andhra Pradesh',
-    'Arunachal Pradesh',
-    'Assam',
-    'Bihar',
-    'Chhattisgarh',
-    'Goa',
-    'Gujarat',
-    'Haryana',
-    'Himachal Pradesh',
-    'Jharkhand',
-    'Karnataka',
-    'Kerala',
-    'Madhya Pradesh',
-    'Maharashtra',
-    'Manipur',
-    'Meghalaya',
-    'Mizoram',
-    'Nagaland',
-    'Odisha',
-    'Punjab',
-    'Rajasthan',
-    'Sikkim',
-    'Tamil Nadu',
-    'Telangana',
-    'Tripura',
-    'Uttar Pradesh',
-    'Uttarakhand',
-    'West Bengal',
-  ];
+  // (states list removed - unused after UI changes)
 
   // Dummy farmhouse data
   static const List<Map<String, dynamic>> farmhouses = [
@@ -417,87 +389,9 @@ class _HomeScreenState extends State<HomeScreen> {
         Navigator.of(context).pushNamed(route);
       } catch (_) {}
     }
-    locationController = Get.find<LocationController>();
   }
 
-  void _showStateSelector() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (ctx) {
-        List<String> filtered = List.from(indianStates);
-        return StatefulBuilder(builder: (context, setModalState) {
-          void updateQuery(String q) {
-            filtered = indianStates
-                .where((s) => s.toLowerCase().contains(q.toLowerCase()))
-                .toList();
-            setModalState(() {});
-          }
-
-          return Padding(
-            padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom),
-            child: SizedBox(
-              height: MediaQuery.of(context).size.height * 0.6,
-              child: Column(
-                children: [
-                  const SizedBox(height: 12),
-                  Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: TextField(
-                      autofocus: true,
-                      decoration: const InputDecoration(
-                        prefixIcon: Icon(Icons.search),
-                        hintText: 'Search state',
-                        border: OutlineInputBorder(
-                            borderRadius:
-                                BorderRadius.all(Radius.circular(8))),
-                        isDense: true,
-                        contentPadding: EdgeInsets.symmetric(
-                            vertical: 12, horizontal: 12),
-                      ),
-                      onChanged: updateQuery,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Expanded(
-                    child: ListView.builder(
-                      itemCount: filtered.length,
-                      itemBuilder: (context, i) {
-                        final s = filtered[i];
-                        return ListTile(
-                          title: Text(s),
-                          onTap: () {
-                            setState(() {
-                              _selectedState = s;
-                              _applyFilters();
-                            });
-                            Navigator.of(context).pop();
-                          },
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        });
-      },
-    );
-  }
+  // state selector removed (not used) to reduce analyzer noise
 
   @override
   void dispose() {
@@ -522,8 +416,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
         bool matchesSearch = name.contains(query) || location.contains(query);
 
-        if (!(price >= _priceRange.start && price <= _priceRange.end))
+        if (!(price >= _priceRange.start && price <= _priceRange.end)) {
           return false;
+        }
         if (distance > _maxDistance) return false;
         if (_luxuryOnly && price < 3500) return false;
         final rating =
@@ -533,8 +428,9 @@ class _HomeScreenState extends State<HomeScreen> {
         final farmAmenities =
             (farm['amenities'] as List?)?.cast<String>() ?? <String>[];
         for (final entry in _amenities.entries) {
-          if (entry.value && !farmAmenities.contains(entry.key))
+          if (entry.value && !farmAmenities.contains(entry.key)) {
             return false;
+          }
         }
 
         final farmState = (farm['state'] as String?)?.toLowerCase() ?? '';
@@ -543,10 +439,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
         if (selectedState.isNotEmpty &&
             selectedState != 'all' &&
-            farmState != selectedState) return false;
+            farmState != selectedState) {
+          return false;
+        }
         if (selectedCategory.isNotEmpty &&
             selectedCategory != 'all' &&
-            farmCategory != selectedCategory) return false;
+            farmCategory != selectedCategory) {
+          return false;
+        }
 
         return matchesSearch;
       }).toList();
@@ -643,135 +543,52 @@ class _HomeScreenState extends State<HomeScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Column(
                 children: [
-                  // Top bar with menu, logo, title, and filter icon
+                  // Top bar with drawer, centered logo+title, and filter action
                   Row(
                     children: [
                       // Hamburger menu icon
                       Builder(
                         builder: (context) => IconButton(
-                          icon: const Icon(Icons.menu,
-                              color: AppColors.primary, size: 28),
+                          icon: const Icon(Icons.menu, color: AppColors.primary, size: 28),
                           onPressed: () => Scaffold.of(context).openDrawer(),
                         ),
                       ),
-                      const SizedBox(width: 4),
-                      // Logo image or fallback
-                      Image.asset(
-                        'assets/images/logo_f.png',
-                        width: 40,
-                        height: 40,
-                        fit: BoxFit.contain,
-                        errorBuilder: (ctx, err, st) => Container(
-                          width: 40,
-                          height: 40,
-                          decoration: const BoxDecoration(
-                            color: AppColors.primary,
-                            shape: BoxShape.circle,
+
+                      // Small location button next to menu (kept compact)
+                      Obx(() => Padding(
+                        padding: const EdgeInsets.only(right: 6.0),
+                        child: IconButton(
+                          icon: Icon(
+                            locationController.isLocationEnabled.value ? Icons.location_on : Icons.location_off,
+                            color: locationController.isLocationEnabled.value ? AppColors.primary : Colors.grey[500],
+                            size: 20,
                           ),
-                          alignment: Alignment.center,
-                          child: const Text('🏡',
-                              style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 20)),
+                          onPressed: () => locationController.requestLocationPermission(),
+                          tooltip: 'Location',
+                        ),
+                      )),
+
+                      // Center logo + title
+                      Expanded(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Image.asset('assets/images/logo_f.png', height: 28, width: 28, errorBuilder: (_, __, ___) => const Icon(Icons.park, color: AppColors.primary)),
+                            const SizedBox(width: 8),
+                            const Text('Farmigo', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textMain)),
+                          ],
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      // Brand name (flexible to avoid overflow)
-                      Flexible(
-                        child: Text(
-                          'FARMIGO',
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ),
-                      const Spacer(),
-                      // Filter button (NEW - in top)
+
+                      // Filter button (right)
                       IconButton(
-                        icon: const Icon(Icons.tune,
-                            color: AppColors.primary, size: 24),
+                        icon: const Icon(Icons.tune, color: AppColors.primary, size: 24),
                         onPressed: () => setState(() => _selectedIndex = 3),
                         tooltip: 'Filters',
                       ),
                     ],
                   ),
                   const SizedBox(height: 12),
-                  // Location access row (NEW - in top)
-                  Row(
-                    children: [
-                      // Location dropdown
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: _showStateSelector,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 10),
-                            decoration: BoxDecoration(
-                              border:
-                                  Border.all(color: AppColors.primary),
-                              borderRadius: BorderRadius.circular(12),
-                              color: Colors.white,
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(Icons.location_on,
-                                    size: 16, color: AppColors.primary),
-                                const SizedBox(width: 6),
-                                Flexible(
-                                  child: Text(
-                                    _selectedState,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 13,
-                                      color: Colors.black87,
-                                    ),
-                                  ),
-                                ),
-                                const Icon(Icons.keyboard_arrow_down,
-                                    size: 18, color: Colors.black54),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-
-                  const SizedBox.shrink(),
-                      const SizedBox(width: 12),
-                      // Enable location button (NEW)
-                      Obx(
-                        () => ElevatedButton.icon(
-                          onPressed: () =>
-                              locationController.requestLocationPermission(),
-                          icon: Icon(
-                            locationController.isLocationEnabled.value
-                                ? Icons.location_on
-                                : Icons.location_off,
-                            size: 16,
-                          ),
-                          label: Text(
-                            locationController.isLocationEnabled.value
-                                ? 'Located'
-                                : 'Enable',
-                            style: const TextStyle(fontSize: 12),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: locationController
-                                    .isLocationEnabled.value
-                                ? AppColors.primary
-                                : Colors.grey[400],
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 8),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
                 ],
               ),
             ),
@@ -791,21 +608,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     CategoryGrid(
                       selectedCategory: _selectedCategory,
                       onTap: (c) {
-                        if (c.toLowerCase().contains('car')) {
-                          try {
-                            Get.toNamed(AppRoutes.carRentals);
-                          } catch (_) {
-                            Navigator.of(context)
-                                .pushNamed(AppRoutes.carRentals);
-                          }
-                          return;
-                        }
-
-                        setState(() {
-                          _selectedCategory = c;
-                          _applyFilters();
-                        });
-                      },
+                          // Selection only: update filter state and refresh results.
+                          setState(() {
+                            _selectedCategory = c;
+                            _applyFilters();
+                          });
+                        },
                     ),
 
                     // VERTICAL SPACING (NEW - 16 pixels)

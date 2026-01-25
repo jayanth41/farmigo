@@ -1,5 +1,9 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
-import '../theme/app_colors.dart';
+import 'package:lottie/lottie.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'login_screen.dart';
+import 'home_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -12,22 +16,42 @@ class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _fadeAnimation;
+  late Animation<double> _scaleAnimation;
 
   @override
   void initState() {
     super.initState();
 
-    // Animation controller for fade-in effect
-    _controller =
-        AnimationController(vsync: this, duration: const Duration(seconds: 2));
-    _fadeAnimation = CurvedAnimation(parent: _controller, curve: Curves.easeIn);
-    _controller.forward();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    );
 
-    // Navigate to Home after 4 seconds
-    Future.delayed(const Duration(seconds: 4), () {
-      if (!mounted) return;
+    _fadeAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeIn,
+    );
+
+    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOutBack),
+    );
+
+    _controller.forward();
+    _checkAuth();
+  }
+
+  Future<void> _checkAuth() async {
+    await Future.delayed(const Duration(seconds: 5));
+
+    final user = Supabase.instance.client.auth.currentUser;
+
+    if (!mounted) return;
+
+    if (user == null) {
+      Navigator.pushReplacementNamed(context, '/login');
+    } else {
       Navigator.pushReplacementNamed(context, '/home');
-    });
+    }
   }
 
   @override
@@ -39,143 +63,60 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
-        children: [
-          // BACKGROUND GRADIENT
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  AppColors.primary,
-                  Color(0xFF2E7D32),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
+      backgroundColor: const Color(0xFF2ECC71),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color.fromARGB(255, 29, 163, 85), Color(0xFF2ECC71)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
           ),
-
-          // CENTER CONTENT WITH FADE-IN
-          FadeTransition(
+        ),
+        child: Center(
+          child: FadeTransition(
             opacity: _fadeAnimation,
-            child: Center(
+            child: ScaleTransition(
+              scale: _scaleAnimation,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Logo in a rounded white box
-                  Container(
-                    width: 110,
-                    height: 110,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color.fromRGBO(0, 0, 0, 0.08),
-                          blurRadius: 14,
-                          offset: Offset(0, 6),
-                        ),
-                      ],
-                    ),
-                    child: Center(
-                      child: Image.asset(
-                        'assets/images/logo_f.png',
-                        width: 60,
-                        height: 60,
-                        fit: BoxFit.contain,
-                        errorBuilder: (c, e, s) {
-                          return const Icon(Icons.park,
-                              size: 60, color: AppColors.primary);
-                        },
-                      ),
-                    ),
+                  // Lottie Animation
+                  Lottie.asset(
+                    "assets/animations/splash.json",
+                    height: 180,
                   ),
 
-                  const SizedBox(height: 26),
+                  const SizedBox(height: 20),
 
-                  // Brand Name
                   const Text(
-                    'Farmigo',
+                    "FARMIGO",
                     style: TextStyle(
-                      fontSize: 36,
-                      fontWeight: FontWeight.bold,
                       color: Colors.white,
-                      letterSpacing: 1.2,
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.5,
                     ),
                   ),
 
                   const SizedBox(height: 8),
 
                   const Text(
-                    'Your Gateway to Perfect Getaways',
+                    "Your Gateway to Perfect Getaways",
                     style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w400),
-                  ),
-
-                  const SizedBox(height: 30),
-
-                  // Features Row
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _smallFeature(Icons.home, 'Farmhouses'),
-                      const SizedBox(width: 20),
-                      _smallFeature(Icons.hotel, 'Hotels'),
-                      const SizedBox(width: 20),
-                      _smallFeature(Icons.flight, 'Flights'),
-                      const SizedBox(width: 20),
-                      _smallFeature(Icons.directions_car, 'Cars'),
-                    ],
-                  ),
-
-                  const SizedBox(height: 32),
-
-                  // Animated Progress Indicator
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 60.0),
-                    child: Column(
-                      children: [
-                        LinearProgressIndicator(
-                          color: Colors.white,
-                          backgroundColor:
-                              const Color.fromRGBO(255, 255, 255, 0.12),
-                          minHeight: 6,
-                        ),
-                        const SizedBox(height: 12),
-                        const Text(
-                          'Preparing your experience...',
-                          style: TextStyle(
-                              color: Colors.white70, fontSize: 12),
-                        ),
-                      ],
+                      color: Colors.white70,
+                      fontSize: 14,
                     ),
                   ),
+
+                  const SizedBox(height: 40),
+
+                  const CircularProgressIndicator(color: Colors.white),
                 ],
               ),
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _smallFeature(IconData icon, String label) {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: Colors.white24,
-          ),
-          child: Icon(icon, color: Colors.white, size: 22),
         ),
-        const SizedBox(height: 6),
-        Text(label,
-            style: const TextStyle(color: Colors.white70, fontSize: 11)),
-      ],
+      ),
     );
   }
 }
