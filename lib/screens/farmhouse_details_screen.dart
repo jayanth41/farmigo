@@ -903,9 +903,7 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
 
             final success = await BookingService.createBooking(
               propertyId: widget.id!,
-              visitDate: selectedCheckInDate != null
-                  ? "${selectedCheckInDate!.year}-${selectedCheckInDate!.month.toString().padLeft(2, '0')}-${selectedCheckInDate!.day.toString().padLeft(2, '0')}"
-                  : "2026-02-01",
+              visitDate: selectedCheckInDate ?? DateTime(2026, 2, 1),
             );
 
             if (!mounted) return;

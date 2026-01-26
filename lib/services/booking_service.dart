@@ -5,34 +5,31 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class BookingService {
   /// Creates a booking row in the `bookings` table.
   /// Returns true when the insert succeeded, false otherwise.
-  static Future<bool> createBooking({
-    required String propertyId,
-    required String visitDate,
-    String status = 'pending',
-  }) async {
-    try {
-      final supabase = Supabase.instance.client;
-      final user = supabase.auth.currentUser;
-      if (user == null) {
-        debugPrint('[BookingService] no authenticated user');
-        return false;
-      }
+ static Future<bool> createBooking({
+  required String propertyId,
+  required DateTime visitDate,
+  String status = 'pending',
+}) async {
+  try {
+    final supabase = Supabase.instance.client;
+final user = supabase.auth.currentUser;
 
-      final response = await supabase.from('bookings').insert({
-        'property_id': propertyId,
-        'user_id': user.id,
-        'visit_date': visitDate,
-        'status': status,
-      });
+// TEMP: allow booking without login
+final userId = user?.id ?? 'test-user-id';
 
-      // Supabase client returns the inserted row(s) on success. We'll
-      // treat any non-null response as success.
-      debugPrint('[BookingService] insert response: $response');
-      return response != null;
-    } catch (e, st) {
-      debugPrint('[BookingService] exception creating booking: $e');
-      debugPrint('$st');
-      return false;
-    }
+
+   await supabase.from('bookings').insert({
+  'property_id': propertyId,
+  'user_id': userId,
+  'visit_date': visitDate.toIso8601String(),
+  'status': status,
+});
+
+
+    return true;
+  } catch (e) {
+    debugPrint('Booking error: $e');
+    return false;
   }
+}
 }

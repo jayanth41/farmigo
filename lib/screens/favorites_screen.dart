@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../widgets/app_drawer.dart';
-import '../theme/app_colors.dart';
 import '../controllers/favorites_controller.dart';
+import '../theme/app_colors.dart';
 import 'farmhouse_details_screen.dart';
 import '../widgets/image_with_fallback.dart';
 import '../navigation/app_routes.dart';
@@ -28,11 +28,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     if (_selectedCategory == 'All') {
       return favoritesController.favorites.toList();
     }
-    return favoritesController.favorites
-        .where((fav) =>
-            fav.category == _selectedCategory ||
-            (fav.category ?? 'All') == _selectedCategory)
-        .toList();
+  return favoritesController.favorites.where((fav) => fav.category == _selectedCategory).toList();
   }
 
   @override
@@ -41,7 +37,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
       backgroundColor: Colors.grey[50],
       drawer: const AppDrawer(),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF2D5016),
+        backgroundColor: AppColors.primary,
         elevation: 0,
         title: const Text(
           'My Favorites',

@@ -1,8 +1,7 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
 
-/// Simple data model for an offer card.
+/// Offer data model
 class OfferItem {
   final String title;
   final String subtitle;
@@ -17,35 +16,41 @@ class OfferItem {
   });
 }
 
-/// Reusable OfferCard widget (UI only).
+/// Single offer card
 class OfferCard extends StatelessWidget {
   final OfferItem offer;
-  final double borderRadius;
 
-  const OfferCard({super.key, required this.offer, this.borderRadius = 14.0});
+  const OfferCard({super.key, required this.offer});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 8.0),
-      padding: const EdgeInsets.all(16.0),
+      margin: const EdgeInsets.symmetric(horizontal: 12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: offer.color,
-        borderRadius: BorderRadius.circular(borderRadius),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(offer.icon, size: 28, color: Colors.white),
+          Icon(offer.icon, size: 30, color: Colors.white),
           const Spacer(),
           Text(
             offer.title,
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(height: 6),
           Text(
             offer.subtitle,
-            style: const TextStyle(color: Colors.white70, fontSize: 13),
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 14,
+            ),
           ),
         ],
       ),
@@ -53,76 +58,50 @@ class OfferCard extends StatelessWidget {
   }
 }
 
-/// OffersCarousel: auto-scrolling PageView with infinite loop and indicators.
+/// Carousel widget
 class OffersCarousel extends StatefulWidget {
   final List<OfferItem> offers;
   final double height;
-  final Duration autoScrollDelay;
 
   const OffersCarousel({
     super.key,
     required this.offers,
     this.height = 140,
-    this.autoScrollDelay = const Duration(seconds: 3),
-  }) : assert(offers.length > 0, 'offers must not be empty');
+  });
 
   @override
   State<OffersCarousel> createState() => _OffersCarouselState();
 }
 
 class _OffersCarouselState extends State<OffersCarousel> {
-  late final PageController _pageController;
-  Timer? _autoTimer;
-  bool _isUserInteracting = false;
+  final PageController _pageController = PageController(viewportFraction: 0.85);
   int _currentIndex = 0;
-
-  int get _realCount => widget.offers.length;
-
-  // start in the middle so user can scroll backwards/forwards for illusion of infinite
-  int get _initialPage => _realCount * 1000;
+  Timer? _timer;
 
   @override
   void initState() {
     super.initState();
-    _pageController = PageController(viewportFraction: 0.86, initialPage: _initialPage);
-    _currentIndex = _initialPage % _realCount;
-    _pageController.addListener(_onPageChanged);
-    _startAutoScroll();
-  }
 
-  void _onPageChanged() {
-    final page = _pageController.page;
-    if (page == null) return;
-    final int newIndex = page.round() % _realCount;
-    if (newIndex != _currentIndex) {
-      setState(() => _currentIndex = newIndex);
-    }
-  }
+    // Auto scroll every 3 seconds
+    _timer = Timer.periodic(const Duration(seconds: 3), (timer) {
+      if (!mounted) return;
 
-  void _startAutoScroll() {
-    _autoTimer?.cancel();
-    _autoTimer = Timer.periodic(widget.autoScrollDelay, (_) {
-      if (_isUserInteracting || !mounted) return;
-      final next = _pageController.page?.round() ?? _pageController.initialPage;
-      final target = next + 1;
-      _pageController.animateToPage(target, duration: const Duration(milliseconds: 600), curve: Curves.easeInOut);
+      int nextPage = _currentIndex + 1;
+      if (nextPage == widget.offers.length) {
+        nextPage = 0;
+      }
+
+      _pageController.animateToPage(
+        nextPage,
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeInOut,
+      );
     });
-  }
-
-  void _pauseAutoScroll() {
-    _isUserInteracting = true;
-  }
-
-  void _resumeAutoScrollDelayed() {
-    _isUserInteracting = false;
-    // restart timer to ensure delay resets
-    _startAutoScroll();
   }
 
   @override
   void dispose() {
-    _autoTimer?.cancel();
-    _pageController.removeListener(_onPageChanged);
+    _timer?.cancel();
     _pageController.dispose();
     super.dispose();
   }
@@ -130,59 +109,40 @@ class _OffersCarouselState extends State<OffersCarousel> {
   @override
   Widget build(BuildContext context) {
     return Column(
-      mainAxisSize: MainAxisSize.min,
       children: [
         SizedBox(
           height: widget.height,
-          child: NotificationListener<ScrollNotification>(
-            onNotification: (notification) {
-              if (notification is ScrollStartNotification) {
-                _pauseAutoScroll();
-              } else if (notification is ScrollEndNotification) {
-                // give a short delay before resuming to avoid immediate jump
-                Future.delayed(const Duration(milliseconds: 500), () {
-                  if (mounted) _resumeAutoScrollDelayed();
-                });
-              }
-              return false;
+          child: PageView.builder(
+            controller: _pageController,
+            itemCount: widget.offers.length,
+            onPageChanged: (index) {
+              setState(() => _currentIndex = index);
             },
-            child: PageView.builder(
-              controller: _pageController,
-              itemBuilder: (context, index) {
-                final int itemIndex = index % _realCount;
-                final offer = widget.offers[itemIndex];
-                return Center(
-                  child: SizedBox(
-                    width: MediaQuery.of(context).size.width * 0.86,
-                    child: OfferCard(offer: offer),
-                  ),
-                );
-              },
-            ),
+            itemBuilder: (context, index) {
+              return OfferCard(offer: widget.offers[index]);
+            },
           ),
         ),
-        const SizedBox(height: 12),
-        _buildIndicators(),
-      ],
-    );
-  }
+        const SizedBox(height: 10),
 
-  Widget _buildIndicators() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(_realCount, (i) {
-        final bool active = i == _currentIndex;
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          margin: const EdgeInsets.symmetric(horizontal: 4),
-          width: active ? 18 : 8,
-          height: 8,
-          decoration: BoxDecoration(
-            color: active ? Colors.black87 : Colors.black26,
-            borderRadius: BorderRadius.circular(8),
-          ),
-        );
-      }),
+        // DOT INDICATORS
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(widget.offers.length, (index) {
+            final bool active = index == _currentIndex;
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              width: active ? 14 : 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: active ? Colors.black : Colors.grey[300],
+                borderRadius: BorderRadius.circular(10),
+              ),
+            );
+          }),
+        ),
+      ],
     );
   }
 }

@@ -3,8 +3,7 @@
 ## Summary of Changes
 
 ### ✅ Step 1: Dependencies Added
-- `firebase_core: ^2.27.0`
-- `firebase_auth: ^4.17.0`
+
 
 ### ✅ Step 2: Firebase Configuration Generated
 - Created `lib/firebase_options.dart` with credentials from `google-services.json`
