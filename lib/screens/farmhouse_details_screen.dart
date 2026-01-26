@@ -911,6 +911,10 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
               propertyId: widget.id!,
               visitDate: selectedCheckInDate!,
               propertyName: widget.name,
+              location: widget.location,
+              checkOutDate: selectedCheckOutDate,
+              guests: null,
+              totalPrice: calculatedPrice,
               status: 'upcoming',
             );
 
