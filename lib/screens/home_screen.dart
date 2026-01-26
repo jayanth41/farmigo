@@ -119,7 +119,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
  
 
 class _HomeScreenState extends State<HomeScreen> {
-  final LocationController locationController =
+  //late LocationController locationController;
+  late LocationController locationController =
   Get.put(LocationController());
   int _selectedIndex = 0;
   final TextEditingController _searchController = TextEditingController();
