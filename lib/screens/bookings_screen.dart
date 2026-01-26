@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../theme/app_colors.dart';
 import 'package:get/get.dart';
 import '../controllers/bookings_controller.dart';
 import '../widgets/app_drawer.dart';

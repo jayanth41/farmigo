@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-import 'controllers/favorites_controller.dart';
-import 'controllers/bookings_controller.dart';
 import 'navigation/app_routes.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -16,40 +14,26 @@ import 'screens/profile_screen.dart';
 import 'screens/car_rentals_screen.dart';
 import 'screens/farmhouses_screen.dart';
 import 'screens/signup_screen.dart';
-import 'theme/app_theme.dart';
-import 'package:firebase_core/firebase_core.dart';
-
-import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Initialize Supabase (replace URL and anonKey with your project's values)
-  try {
+  
     await Supabase.initialize(
       url: 'https://kvnwikjxjimztjqsycti.supabase.co',
       anonKey:
           'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt2bndpa2p4amltenRqcXN5Y3RpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg4ODgxMDcsImV4cCI6MjA4NDQ2NDEwN30.e-mZfYqzztQNbBQ4n0R3aKFFYhdGI6rZgKvgyJNx2Fw',
     );
-    debugPrint('Supabase initialized successfully');
-  } catch (e) {
-    debugPrint('Supabase initialization error: $e');
-  }
+    final response =
+    await Supabase.instance.client.auth.signInAnonymously();
+if (response.user != null) {
+    debugPrint("USER ID = ${response.user?.id}");
+} else {
+  debugPrint("USER IS NULL");
 
-  // Initialize Controllers
-  Get.put<FavoritesController>(FavoritesController());
-  Get.put<BookingsController>(BookingsController());
-
-  // Initialize Firebase (kept for legacy paths; safe to remove if fully migrated)
-  try {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
-  } catch (e) {
-    debugPrint('Firebase init warning (may be unused): $e');
-  }
-
-  runApp(const MyApp());
+}
+    runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {

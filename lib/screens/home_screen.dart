@@ -130,7 +130,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
 
   // Location & Category selectors
-  String _selectedState = 'Telangana';
+  final String _selectedState = 'Telangana';
   String _selectedCategory = 'All';
   final bool _showOffers = true;
 
@@ -325,7 +325,10 @@ class _HomeScreenState extends State<HomeScreen> {
     // If user is authenticated but no profile exists, prompt them once to
     // complete their profile by opening the EditProfilePage.
     final authUser = Supabase.instance.client.auth.currentUser;
-    if (authUser != null && _profile == null && !_didPromptForProfile) {
+    if (authUser != null &&
+    (_profile == null || _profile!['profile_completed'] == false) &&
+    !_didPromptForProfile) {
+
       _didPromptForProfile = true;
       // Delay navigation until after current frame to avoid navigator errors.
       WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -522,176 +525,233 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _homePage() {
-    return Stack(
+  return SafeArea(
+    child: Column(
       children: [
-        Column(
-          children: [
-            // UPDATED HEADER WITH LOCATION AND FILTERS IN TOP
-            Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFFF2FBF2),
-                borderRadius:
-                    const BorderRadius.vertical(bottom: Radius.circular(20)),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color.fromRGBO(0, 0, 0, 0.03),
-                    blurRadius: 6,
-                    offset: const Offset(0, 3),
+        // ---------- HEADER ----------
+        Container(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
+            boxShadow: [
+              BoxShadow(
+                color: Color.fromRGBO(0, 0, 0, 0.05),
+                blurRadius: 10,
+                offset: Offset(0, 4),
+              )
+            ],
+          ),
+          child: Column(
+            children: [
+              Row(
+  children: [
+    Builder(
+      builder: (context) => IconButton(
+        icon: const Icon(Icons.menu, color: AppColors.primary),
+        onPressed: () => Scaffold.of(context).openDrawer(),
+      ),
+    ),
+
+    const SizedBox(width: 6),
+
+    // App logo fallback: simple rounded green badge with 'F'
+    Container(
+      width: 36,
+      height: 36,
+      decoration: BoxDecoration(
+        color: AppColors.primary,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(color: AppColors.primary.withOpacity(0.12), blurRadius: 4, offset: const Offset(0, 2)),
+        ],
+      ),
+      child: const Center(
+        child: Text(
+          'F',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 18),
+        ),
+      ),
+    ),
+
+    const SizedBox(width: 8),
+
+    const Text(
+      "Farmigo",
+      style: TextStyle(
+        fontSize: 24,
+        fontWeight: FontWeight.w800,
+        color: AppColors.primary,
+      ),
+    ),
+
+    const Spacer(),
+
+    IconButton(
+      icon: const Icon(Icons.tune, color: AppColors.primary),
+      onPressed: () => setState(() => _selectedIndex = 3),
+    ),
+  ],
+),
+
+
+              const SizedBox(height: 12),
+
+              // SEARCH BAR
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                decoration: BoxDecoration(
+                  color: AppColors.bgSoft,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: TextField(
+                  controller: _searchController,
+                  decoration: const InputDecoration(
+                    hintText: "Search farmhouses, villas...",
+                    border: InputBorder.none,
+                    icon: Icon(Icons.search),
                   ),
-                ],
+                ),
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Column(
-                children: [
-                  // Top bar with drawer, centered logo+title, and filter action
-                  Row(
-                    children: [
-                      // Hamburger menu icon
-                      Builder(
-                        builder: (context) => IconButton(
-                          icon: const Icon(Icons.menu, color: AppColors.primary, size: 28),
-                          onPressed: () => Scaffold.of(context).openDrawer(),
-                        ),
-                      ),
+            ],
+          ),
+        ),
 
-                      // Small location button next to menu (kept compact)
-                      Obx(() => Padding(
-                        padding: const EdgeInsets.only(right: 6.0),
-                        child: IconButton(
-                          icon: Icon(
-                            locationController.isLocationEnabled.value ? Icons.location_on : Icons.location_off,
-                            color: locationController.isLocationEnabled.value ? AppColors.primary : Colors.grey[500],
-                            size: 20,
-                          ),
-                          onPressed: () => locationController.requestLocationPermission(),
-                          tooltip: 'Location',
-                        ),
-                      )),
+        // ---------- BODY ----------
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.only(bottom: 120),
+            children: [
+              const SizedBox(height: 16),
+Padding(
+  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+  child: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      RichText(
+  text: const TextSpan(
+    style: TextStyle(color: AppColors.textMain),
+    children: [
+      TextSpan(text: "Hello 👋\n", style: TextStyle(fontSize: 14)),
+      TextSpan(
+        text: "Where would you like to go?",
+        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+      ),
+    ],
+  ),
+),
 
-                      // Center logo + title
-                      Expanded(
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Image.asset('assets/images/logo_f.png', height: 28, width: 28, errorBuilder: (_, __, ___) => const Icon(Icons.park, color: AppColors.primary)),
-                            const SizedBox(width: 8),
-                            const Text('Farmigo', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textMain)),
-                          ],
-                        ),
-                      ),
+      SizedBox(height: 2),
+      Text(
+        "Where would you like to go?",
+        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+      ),
+    ],
+  ),
+),
 
-                      // Filter button (right)
-                      IconButton(
-                        icon: const Icon(Icons.tune, color: AppColors.primary, size: 24),
-                        onPressed: () => setState(() => _selectedIndex = 3),
-                        tooltip: 'Filters',
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                ],
+
+
+              // CATEGORIES
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: const Text(
+                  "Categories",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                ),
               ),
-            ),
-
-            // MAIN CONTENT
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: () async {
-                  _applyFilters();
-                  await Future.delayed(const Duration(milliseconds: 500));
+              const SizedBox(height: 8),
+              CategoryGrid(
+                selectedCategory: _selectedCategory,
+                onTap: (c) {
+                  setState(() {
+                    _selectedCategory = c;
+                    _applyFilters();
+                  });
                 },
-                child: ListView(
-                  padding: const EdgeInsets.only(bottom: 180),
+              ),
+
+              const SizedBox(height: 20),
+
+              // OFFERS
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: const Text(
+                  "Best Offers",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                ),
+              ),
+              const SizedBox(height: 8),
+
+              OffersCarousel(
+                offers: const [
+                  OfferItem(
+                      title: 'Weekend Deals',
+                      subtitle: 'Up to 40% off',
+                      icon: Icons.local_fire_department,
+                      color: Color(0xFF6EE7B7)),
+                  OfferItem(
+                      title: 'Early Bird',
+                      subtitle: 'Save 15%',
+                      icon: Icons.percent,
+                      color: Color(0xFF86C9FF)),
+                  OfferItem(
+                      title: 'First Booking',
+                      subtitle: '20% off',
+                      icon: Icons.star_border,
+                      color: Color(0xFFAAF27A)),
+                ],
+              ),
+
+              const SizedBox(height: 20),
+
+              // FEATURED
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                child: Row(
                   children: [
-                    // Category grid
-                    // Category grid (square boxes) with selected state
-                    CategoryGrid(
-                      selectedCategory: _selectedCategory,
-                      onTap: (c) {
-                          // Selection only: update filter state and refresh results.
-                          setState(() {
-                            _selectedCategory = c;
-                            _applyFilters();
-                          });
-                        },
-                    ),
-
-                    // VERTICAL SPACING (NEW - 16 pixels)
-                    const SizedBox(height: 16),
-
-                    // Offers carousel - TOGGLE between offers and grid
-                    if (_showOffers)
-                      OffersCarousel(
-                        offers: const [
-                          OfferItem(
-                              title: 'Weekend Deals',
-                              subtitle: 'Up to 40% off',
-                              icon: Icons.local_fire_department,
-                              color: Color(0xFF6EE7B7)),
-                          OfferItem(
-                              title: 'Early Bird',
-                              subtitle: 'Save 15%',
-                              icon: Icons.percent,
-                              color: Color(0xFF86C9FF)),
-                          OfferItem(
-                              title: 'First Booking',
-                              subtitle: '20% off',
-                              icon: Icons.star_border,
-                              color: Color(0xFFAAF27A)),
-                        ],
+                    const Expanded(
+                      child: Text(
+                        "Featured Properties",
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.w700),
                       ),
-
-                    const SizedBox(height: 16),
-
-                    // Properties header with View all button
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16.0, vertical: 6.0),
-                      child: Row(
-                        children: [
-                          const Expanded(
-                            child: Text('Featured Properties',
-                                style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w700)),
-                          ),
-                          TextButton(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => AllPropertiesScreen(
-                                      properties: _filteredFarmhouses),
-                                ),
-                              );
-                            },
-                            style: TextButton.styleFrom(
-                                foregroundColor:
-                                    const Color.fromARGB(255, 66, 202, 85)),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: const [
-                                Text('View all'),
-                                SizedBox(width: 6),
-                                Icon(Icons.arrow_forward, size: 16),
-                              ],
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => AllPropertiesScreen(
+                              properties: _filteredFarmhouses,
                             ),
                           ),
-                        ],
-                      ),
-                    ),
+                        );
+                      },
+                      child: const Row(
+  mainAxisSize: MainAxisSize.min,
+  children: [
+    Text('View all'),
+    SizedBox(width: 4),
+    Icon(Icons.arrow_forward_ios, size: 14),
+  ],
+),
 
-                    // Properties grid
-                    PropertiesGrid(properties: _filteredFarmhouses),
+                    )
                   ],
                 ),
               ),
-            ),
-          ],
+
+              PropertiesGrid(properties: _filteredFarmhouses),
+            ],
+          ),
         ),
       ],
-    );
-  }
+    ),
+  );
+}
+
 
   Widget _filtersPage() {
     final amenitiesKeys = _amenities.keys.toList();

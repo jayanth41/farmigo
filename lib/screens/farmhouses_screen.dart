@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'all_properties_screen.dart';
+import '../widgets/properties_grid.dart';
+import '../widgets/app_drawer.dart';
+import '../theme/app_colors.dart';
 
 /// Screen that shows a list of farmhouses (dummy data copied from Home).
 class FarmhousesScreen extends StatelessWidget {
@@ -64,7 +66,20 @@ class FarmhousesScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Reuse the AllPropertiesScreen to display the list of farmhouses
-    return AllPropertiesScreen(properties: _farmhouses);
-}
+    return Scaffold(
+      drawer: const AppDrawer(),
+      appBar: AppBar(
+        title: const Text('Farmhouses'),
+        backgroundColor: AppColors.primary,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12.0),
+        child: ListView(
+          children: [
+            PropertiesGrid(properties: _farmhouses),
+          ],
+        ),
+      ),
+    );
+  }
 }

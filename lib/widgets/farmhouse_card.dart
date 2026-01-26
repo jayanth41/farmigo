@@ -45,52 +45,13 @@ class FarmhouseCard extends StatefulWidget {
 class _FarmhouseCardState extends State<FarmhouseCard> {
   late FavoritesController favoritesController;
 
-  final PageController _pageController = PageController();
-  Timer? _timer;
-  int _currentIndex = 0;
-
-  List<String> get _imageList {
-    if (widget.images != null && widget.images!.isNotEmpty) {
-      return widget.images!;
-    }
-    if (widget.image.isNotEmpty) {
-      return [widget.image];
-    }
-    return [];
-  }
-
   @override
   void initState() {
     super.initState();
-
     if (!Get.isRegistered<FavoritesController>()) {
       Get.put(FavoritesController());
     }
     favoritesController = Get.find<FavoritesController>();
-
-    _startAutoSlide();
-  }
-
-  void _startAutoSlide() {
-    if (_imageList.length <= 1) return;
-
-    _timer = Timer.periodic(const Duration(seconds: 3), (timer) {
-      if (!mounted) return;
-
-      _currentIndex = (_currentIndex + 1) % _imageList.length;
-      _pageController.animateToPage(
-        _currentIndex,
-        duration: const Duration(milliseconds: 400),
-        curve: Curves.easeInOut,
-      );
-    });
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    _pageController.dispose();
-    super.dispose();
   }
 
   void _toggleFavorite() async {
@@ -112,24 +73,12 @@ class _FarmhouseCardState extends State<FarmhouseCard> {
     }
 
     if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          wasFav
-              ? '${widget.name} removed from favorites'
-              : '${widget.name} added to favorites',
-        ),
-        duration: const Duration(milliseconds: 800),
-      ),
-    );
     setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
-    final isFavorite =
-        favoritesController.isFavorited(widget.name);
+    final isFavorite = favoritesController.isFavorited(widget.name);
 
     return GestureDetector(
       onTap: () {
@@ -161,144 +110,99 @@ class _FarmhouseCardState extends State<FarmhouseCard> {
         );
       },
       child: Container(
-        width: 340,
-        margin: const EdgeInsets.only(right: 16, bottom: 12),
+        margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
-          color: AppColors.white,
+          color: Colors.white,
           borderRadius: BorderRadius.circular(18),
           boxShadow: const [
             BoxShadow(
               color: Color.fromRGBO(0, 0, 0, 0.08),
-              blurRadius: 18,
-              offset: Offset(0, 10),
+              blurRadius: 12,
+              offset: Offset(0, 6),
             ),
           ],
         ),
+        child: Container(
+  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+  padding: const EdgeInsets.all(10),
+  decoration: BoxDecoration(
+    color: Colors.white,
+    borderRadius: BorderRadius.circular(16),
+    boxShadow: const [
+      BoxShadow(color: Colors.black12, blurRadius: 6),
+    ],
+  ),
+  child: Row(
+    children: [
+      ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: ImageWithFallback(
+          imageUrl: widget.image,
+          height: 110,
+          width: 120,
+          fit: BoxFit.cover,
+        ),
+      ),
+
+      const SizedBox(width: 12),
+
+      Expanded(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            /// IMAGE SLIDER
-            Stack(
+            Text(widget.name,
+                style: const TextStyle(
+                    fontSize: 16, fontWeight: FontWeight.bold)),
+
+            const SizedBox(height: 4),
+
+            Row(
               children: [
-                ClipRRect(
-                  borderRadius:
-                      const BorderRadius.vertical(top: Radius.circular(18)),
-                  child: SizedBox(
-                    height: 170,
-                    width: double.infinity,
-                    child: PageView.builder(
-                      controller: _pageController,
-                      itemCount: _imageList.length,
-                      onPageChanged: (index) {
-                        setState(() => _currentIndex = index);
-                      },
-                      itemBuilder: (_, index) {
-                        return ImageWithFallback(
-                          imageUrl: _imageList[index],
-                          fit: BoxFit.cover,
-                        );
-                      },
-                    ),
-                  ),
-                ),
-
-                /// DOT INDICATOR
-                if (_imageList.length > 1)
-                  Positioned(
-                    bottom: 10,
-                    left: 0,
-                    right: 0,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(
-                        _imageList.length,
-                        (i) => Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 3),
-                          width: _currentIndex == i ? 8 : 6,
-                          height: 6,
-                          decoration: BoxDecoration(
-                            color: _currentIndex == i
-                                ? Colors.white
-                                : Colors.white54,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-
-                if (widget.discount != null)
-                  Positioned(
-                    top: 12,
-                    left: 12,
-                    child: _discountBadge("${widget.discount}% OFF"),
-                  ),
-
-                Positioned(
-                  top: 12,
-                  right: 12,
-                  child: GestureDetector(
-                    onTap: _toggleFavorite,
-                    child: Container(
-                      height: 36,
-                      width: 36,
-                      decoration: BoxDecoration(
-                        color: AppColors.white,
-                        shape: BoxShape.circle,
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color.fromRGBO(0, 0, 0, 0.15),
-                            blurRadius: 8,
-                          )
-                        ],
-                      ),
-                      child: Icon(
-                        isFavorite
-                            ? Icons.favorite
-                            : Icons.favorite_border,
-                        size: 18,
-                        color: isFavorite
-                            ? Colors.red
-                            : AppColors.textMuted,
-                      ),
-                    ),
-                  ),
+                const Icon(Icons.location_on, size: 14, color: Colors.grey),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(widget.location,
+                      style: const TextStyle(fontSize: 13)),
                 ),
               ],
             ),
 
-            /// CONTENT (unchanged)
-            Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.name,
-                    style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${widget.reviews} reviews',
-                    style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textMuted),
-                  ),
-                ],
-              ),
+            const SizedBox(height: 6),
+
+            Row(
+              children: [
+                const Icon(Icons.star, size: 14, color: Colors.orange),
+                Text("${widget.rating} (${widget.reviews})"),
+              ],
             ),
           ],
         ),
       ),
+
+      Column(
+        children: [
+          Text(
+            "₹${widget.price.toInt()}",
+            style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: AppColors.primary),
+          ),
+          const Text("/night", style: TextStyle(fontSize: 12)),
+        ],
+      ),
+    ],
+  ),
+),
+
+      ),
     );
   }
 
-  Widget _discountBadge(String text) {
+  Widget _badge(String text) {
     return Container(
       padding:
-          const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         color: AppColors.primary,
         borderRadius: BorderRadius.circular(20),
