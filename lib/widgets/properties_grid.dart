@@ -27,18 +27,37 @@ class PropertiesGrid extends StatelessWidget {
 
     return Column(
       children: properties.map((farmhouse) {
+        // Defensive conversions: data coming from maps may omit keys or be null.
+        final idStr = (farmhouse['id'] != null) ? farmhouse['id'].toString() : (farmhouse['name']?.toString() ?? '');
+        final nameStr = (farmhouse['name']?.toString() ?? 'Untitled');
+        final locationStr = (farmhouse['location']?.toString() ?? 'Unknown location');
+        final categoryStr = (farmhouse['category']?.toString() ?? 'Farmhouses');
+        final priceVal = (farmhouse['price'] is int)
+            ? (farmhouse['price'] as int).toDouble()
+            : (farmhouse['price'] as double? ?? 0.0);
+        final distanceStr = farmhouse['distance']?.toString() ?? '';
+        final imageUrlStr = farmhouse['imageUrl']?.toString() ?? '';
+        final imagesList = (farmhouse['images'] as List?)?.map((e) => e.toString()).toList() ?? <String>[];
+        final ratingVal = (farmhouse['rating'] is int)
+            ? (farmhouse['rating'] as int).toDouble()
+            : (farmhouse['rating'] as double? ?? 0.0);
+        final reviewsVal = farmhouse['reviews'] as int? ?? 0;
+        final amenitiesList = (farmhouse['amenities'] as List?)?.cast<String>() ?? const <String>[];
+        final discountVal = farmhouse['discount'] as int?;
+
         return FarmhouseCard(
-          category: farmhouse['category'] as String? ?? 'Farmhouses',
-          name: farmhouse['name'],
-          location: farmhouse['location'],
-          price: (farmhouse['price'] is int) ? (farmhouse['price'] as int).toDouble() : (farmhouse['price'] as double? ?? 0.0),
-          distance: farmhouse['distance'] ?? '',
-          imageUrl: farmhouse['imageUrl'] ?? '',
-          images: List<String>.from(farmhouse['images'] ?? []),
-          rating: (farmhouse['rating'] is int) ? (farmhouse['rating'] as int).toDouble() : (farmhouse['rating'] as double? ?? 0.0),
-          reviews: farmhouse['reviews'] as int? ?? 0,
-          amenities: (farmhouse['amenities'] as List?)?.cast<String>() ?? const [],
-          discount: farmhouse['discount'] as int?,
+          category: categoryStr,
+          id: idStr,
+          name: nameStr,
+          location: locationStr,
+          price: priceVal,
+          distance: distanceStr,
+          imageUrl: imageUrlStr,
+          images: imagesList,
+          rating: ratingVal,
+          reviews: reviewsVal,
+          amenities: amenitiesList,
+          discount: discountVal,
         );
       }).toList(),
     );

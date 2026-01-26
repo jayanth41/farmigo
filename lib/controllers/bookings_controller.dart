@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -8,22 +9,21 @@ class BookingsController extends GetxController {
   Future<void> fetchBookings() async {
     try {
       isLoading.value = true;
-
       final user = Supabase.instance.client.auth.currentUser;
-      if (user == null) {
-        bookings.clear();
-        return;
+      final supabase = Supabase.instance.client;
+
+      dynamic res;
+      if (user != null) {
+        res = await supabase.from('bookings').select().eq('user_id', user.id);
+      } else {
+        // Show guest bookings for non-authenticated users (bookings created with user_id = 'guest')
+        res = await supabase.from('bookings').select().eq('user_id', 'guest');
       }
 
-      final res = await Supabase.instance.client
-          .from('bookings')
-          .select()
-          .eq('user_id', user.id);
-
-      bookings.value = List<Map<String, dynamic>>.from(res);
+      bookings.value = List<Map<String, dynamic>>.from(res ?? []);
     } catch (e) {
       bookings.clear();
-      print("Error fetching bookings: $e");
+      debugPrint("Error fetching bookings: $e");
     } finally {
       isLoading.value = false;
     }

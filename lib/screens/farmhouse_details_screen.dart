@@ -5,6 +5,7 @@ import '../widgets/app_drawer.dart';
 import '../models/farmhouse_model.dart';
 import '../controllers/favorites_controller.dart';
 import '../services/booking_service.dart';
+import 'bookings_screen.dart';
 
 class FarmhouseDetailsScreen extends StatefulWidget {
   final String name;
@@ -108,7 +109,7 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
       favoritesController = Get.find<FavoritesController>();
     }
     farmhouse = FarmhouseModel(
-      id: widget.id ?? widget.name,
+      id: widget.id!,
       name: widget.name,
       location: widget.location,
       price: widget.price,
@@ -899,21 +900,55 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
               return;
             }
 
-            final messenger = ScaffoldMessenger.of(context);
+            if (selectedCheckInDate == null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Please select a check-in date")),
+              );
+              return;
+            }
 
             final success = await BookingService.createBooking(
               propertyId: widget.id!,
-              visitDate: selectedCheckInDate ?? DateTime(2026, 2, 1),
+              visitDate: selectedCheckInDate!,
+              propertyName: widget.name,
+              status: 'upcoming',
             );
 
             if (!mounted) return;
+            final localContext = context;
 
-            messenger.showSnackBar(
-              SnackBar(
-                content:
-                    Text(success ? "Booking successful" : "Booking failed"),
-              ),
-            );
+            if (success) {
+              // Show success dialog then navigate to bookings screen
+              showDialog(
+                context: localContext,
+                builder: (ctx) => AlertDialog(
+                  title: const Text('Congratulations'),
+                  content: const Text('Your booking is confirmed.'),
+                  actions: [
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        Navigator.push(
+                          localContext,
+                          MaterialPageRoute(
+                            builder: (_) => const BookingsScreen(),
+                          ),
+                        );
+                      },
+                      child: const Text('View Bookings'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: const Text('Close'),
+                    ),
+                  ],
+                ),
+              );
+            } else {
+              ScaffoldMessenger.of(localContext).showSnackBar(
+                const SnackBar(content: Text('Booking failed')),
+              );
+            }
           },
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.green,

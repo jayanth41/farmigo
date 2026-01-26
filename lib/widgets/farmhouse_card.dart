@@ -10,6 +10,7 @@ import 'image_with_fallback.dart';
 
 class FarmhouseCard extends StatefulWidget {
   final String image;
+  final String id;
   final String name;
   final String location;
   final String category;
@@ -26,6 +27,7 @@ class FarmhouseCard extends StatefulWidget {
     String? image,
     String? imageUrl,
     this.category = 'Farmhouses',
+    required this.id,
     required this.name,
     required this.location,
     required this.price,
@@ -56,7 +58,7 @@ class _FarmhouseCardState extends State<FarmhouseCard> {
 
   void _toggleFavorite() async {
     final farmhouse = FarmhouseModel(
-      id: widget.name,
+      id: widget.id,
       name: widget.name,
       location: widget.location,
       price: widget.price,
@@ -78,7 +80,7 @@ class _FarmhouseCardState extends State<FarmhouseCard> {
 
   @override
   Widget build(BuildContext context) {
-    final isFavorite = favoritesController.isFavorited(widget.name);
+    final isFavorite = favoritesController.isFavorited(widget.id);
 
     return GestureDetector(
       onTap: () {
@@ -94,7 +96,7 @@ class _FarmhouseCardState extends State<FarmhouseCard> {
                         distance: widget.distance ?? '',
                         imageUrl: widget.image,
                         images: widget.images,
-                        id: widget.name,
+                        id: widget.id,
                       )
                     : BookingDetailsScreen(
                         name: widget.name,
