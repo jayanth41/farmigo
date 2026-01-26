@@ -299,13 +299,19 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _filteredFarmhouses = List.from(farmhouses);
     _searchController.addListener(_onSearchChanged);
+    
+    // Initialize FavoritesController
     if (!Get.isRegistered<FavoritesController>()) {
       Get.put(FavoritesController());
     }
+    favoritesController = Get.find<FavoritesController>();
+    
+    // Initialize LocationController - IMPORTANT FIX
     if (!Get.isRegistered<LocationController>()) {
       Get.put(LocationController());
     }
-    favoritesController = Get.find<FavoritesController>();
+    locationController = Get.find<LocationController>();
+    
     // Load Supabase-backed user profile (if authenticated)
     loadProfile();
   }

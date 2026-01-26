@@ -1,10 +1,10 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 import 'package:firebase_auth/firebase_auth.dart';
-
 import '../theme/app_colors.dart';
+import 'otp_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -12,379 +12,331 @@ class LoginScreen extends StatefulWidget {
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
-Widget _tabButton(String text, bool active, {required VoidCallback onTap}) {
-  return Expanded(
-    child: GestureDetector(
-      onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          color: active ? AppColors.primary : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          text,
-          style: TextStyle(
-            color: active ? Colors.white : Colors.black,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-    ),
-  );
-}
-
-Widget _inputField({
-  required TextEditingController controller,
-  required String hint,
-  required IconData icon,
-  bool isPassword = false,
-  TextInputType keyboard = TextInputType.text,
-}) {
-  return TextField(
-    controller: controller,
-    keyboardType: keyboard,
-    obscureText: isPassword,
-    decoration: InputDecoration(
-      hintText: hint,
-      prefixIcon: Icon(icon),
-      filled: true,
-      fillColor: Colors.grey.shade100,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide.none,
-      ),
-    ),
-  );
-}
-
-Widget _primaryButton({
-  required String text,
-  required bool loading,
-  required VoidCallback onTap,
-}) {
-  return SizedBox(
-    width: double.infinity,
-    height: 50,
-    child: ElevatedButton(
-      onPressed: loading ? null : onTap,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: AppColors.primary,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-        ),
-      ),
-      child: loading
-          ? const CircularProgressIndicator(color: Colors.white)
-          : Text(text, style: const TextStyle(fontSize: 16)),
-    ),
-  );
-}
-
-Widget _socialBtn(IconData icon) {
-  return Container(
-    height: 48,
-    width: 48,
-    decoration: BoxDecoration(
-      border: Border.all(color: Colors.grey.shade300),
-      borderRadius: BorderRadius.circular(12),
-    ),
-    child: Icon(icon),
-  );
-}
-
 
 class _LoginScreenState extends State<LoginScreen> {
-  final TextEditingController phoneController = TextEditingController();
-  final TextEditingController otpController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  bool _useEmailLogin = false;
+  bool _isLoading = false;
 
-  String? verificationId;
-  bool otpSent = false;
-  bool useEmailLogin = false;
-  bool isLoading = false;
+  // ---------------- SEND OTP ----------------
+  Future<void> _sendOTP() async {
+    String phone = _phoneController.text.trim();
 
-  @override
-  void dispose() {
-    phoneController.dispose();
-    otpController.dispose();
-    emailController.dispose();
-    passwordController.dispose();
-    super.dispose();
-  }
-
-  void _showSnackBar(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-  }
-
-  Future<void> sendOTP() async {
-    final phoneRaw = phoneController.text.trim();
-    if (phoneRaw.isEmpty) {
-      _showSnackBar('Enter a phone number');
+    if (phone.isEmpty || phone.length != 10) {
+      _showSnackBar('Enter valid 10-digit mobile number');
       return;
     }
 
-    String phone = phoneRaw.replaceAll(' ', '');
-    if (!phone.startsWith('+')) {
-      if (phone.length == 10) phone = '+91$phone';
-    }
-
-    setState(() => isLoading = true);
+    setState(() => _isLoading = true);
 
     try {
       await _auth.verifyPhoneNumber(
-        phoneNumber: phone,
+        phoneNumber: '+91$phone',
         timeout: const Duration(seconds: 60),
-        verificationCompleted: (PhoneAuthCredential credential) async {
+        verificationCompleted: (credential) async {
           await _auth.signInWithCredential(credential);
           if (mounted) {
-            Get.offAllNamed('/home');
+            Navigator.pushReplacementNamed(context, '/home');
           }
         },
         verificationFailed: (e) {
-          if (kDebugMode) debugPrint('verifyPhoneNumber failed: $e');
+          setState(() => _isLoading = false);
           _showSnackBar(e.message ?? 'Verification failed');
         },
-        codeSent: (verId, _) {
-          setState(() {
-            verificationId = verId;
-            otpSent = true;
-          });
-          _showSnackBar('OTP sent');
+        codeSent: (verificationId, _) {
+          setState(() => _isLoading = false);
+
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => OTPScreen(
+                verificationId: verificationId,
+                phoneNumber: '+91$phone',
+              ),
+            ),
+          );
         },
         codeAutoRetrievalTimeout: (_) {},
       );
     } catch (e) {
-      if (kDebugMode) debugPrint('sendOTP error: $e');
-      _showSnackBar('Failed to send OTP: $e');
-    } finally {
-      if (mounted) setState(() => isLoading = false);
+      setState(() => _isLoading = false);
+      _showSnackBar('Error: ${e.toString()}');
     }
   }
 
-  Future<void> verifyOTP() async {
-    final code = otpController.text.trim();
-    if (code.isEmpty || verificationId == null) {
-      _showSnackBar('Enter OTP');
-      return;
-    }
-
-    setState(() => isLoading = true);
-    try {
-      final credential = PhoneAuthProvider.credential(
-        verificationId: verificationId!,
-        smsCode: code,
-      );
-      await _auth.signInWithCredential(credential);
-      if (mounted) Get.offAllNamed('/home');
-    } catch (e) {
-      if (kDebugMode) debugPrint('verifyOTP error: $e');
-      _showSnackBar('OTP verification failed: $e');
-    } finally {
-      if (mounted) setState(() => isLoading = false);
-    }
-  }
-
-  Future<void> signInUser() async {
-    final email = emailController.text.trim();
-    final password = passwordController.text.trim();
+  // ---------------- EMAIL/PASSWORD LOGIN ----------------
+  Future<void> _signInWithEmail(String email, String password) async {
     if (email.isEmpty || password.isEmpty) {
       _showSnackBar('Please enter email and password');
       return;
     }
 
-    setState(() => isLoading = true);
+    setState(() => _isLoading = true);
+
     try {
-      final res = await Supabase.instance.client.auth.signInWithPassword(
+      final res = await supabase.Supabase.instance.client.auth.signInWithPassword(
         email: email,
         password: password,
       );
+
       final user = res.user;
       if (user != null) {
-        if (kDebugMode) debugPrint('Login success: ${user.email}');
+        if (kDebugMode) debugPrint('✅ Login success: ${user.email}');
         if (mounted) {
           _showSnackBar('Login successful');
           Get.offAllNamed('/home');
         }
       } else {
-        _showSnackBar('Login failed - check credentials');
+        _showSnackBar('Login failed - check credentials or confirm email');
       }
     } catch (e) {
-      if (kDebugMode) debugPrint('Login error: $e');
+      if (kDebugMode) debugPrint('❌ Login error: $e');
       _showSnackBar('Login failed: $e');
     } finally {
-      if (mounted) setState(() => isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
+  void _showSnackBar(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg)),
+    );
+  }
+
   @override
-Widget build(BuildContext context) {
-  return Scaffold(
-    backgroundColor: const Color(0xFFF2F5F3),
-    body: SafeArea(
-      child: SingleChildScrollView(
-        child: Column(
-          children: [
-            const SizedBox(height: 40),
+  void dispose() {
+    _phoneController.dispose();
+    emailController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
 
-            // LOGO
-            Container(
-              height: 70,
-              width: 70,
-              decoration: BoxDecoration(
-                color: AppColors.primary,
-                borderRadius: BorderRadius.circular(18),
-              ),
-              child: const Icon(Icons.park, color: Colors.white, size: 40),
-            ),
+  // ---------------- UI ----------------
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 40),
 
-            const SizedBox(height: 16),
-
-            const Text(
-              "Farmigo",
-              style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
-            ),
-
-            const SizedBox(height: 6),
-
-            Text(
-              "Your Gateway to Perfect Getaways",
-              style: TextStyle(color: Colors.grey.shade600),
-            ),
-
-            const SizedBox(height: 30),
-
-            // CARD
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 20),
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 20,
+                // APP LOGO / TITLE
+                const Text(
+                  'Welcome 👋',
+                  style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
                   ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  // LOGIN / SIGNUP TOGGLE
-                  Container(
-                    height: 45,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade200,
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Row(
-                      children: [
-                        _tabButton("Login", !useEmailLogin, onTap: () => setState(() => useEmailLogin = false)),
-                        _tabButton("Email", useEmailLogin, onTap: () => setState(() => useEmailLogin = true)),
-                      ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Login to continue',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(height: 40),
+
+                // TOGGLE BUTTON
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () =>
+                        setState(() => _useEmailLogin = !_useEmailLogin),
+                    child: Text(
+                      _useEmailLogin ? 'Use phone login' : 'Use email login',
+                      style: const TextStyle(color: AppColors.primary),
                     ),
                   ),
+                ),
 
-                  const SizedBox(height: 20),
+                const SizedBox(height: 20),
 
-                  if (useEmailLogin) ...[
-                    _inputField(
-                      controller: emailController,
-                      hint: "Email",
-                      icon: Icons.email,
+                // PHONE LOGIN
+                if (!_useEmailLogin) ...[
+                  const Text(
+                    'Mobile Number',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
                     ),
-                    const SizedBox(height: 14),
-                    _inputField(
-                      controller: passwordController,
-                      hint: "Password",
-                      icon: Icons.lock,
-                      isPassword: true,
-                    ),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton(
-                        onPressed: () {},
-                        child: const Text("Forgot Password?"),
-                      ),
-                    ),
-                    _primaryButton(
-                      text: "Login →",
-                      loading: isLoading,
-                      onTap: signInUser,
-                    ),
-                  ] else ...[
-                    _inputField(
-                      controller: phoneController,
-                      hint: "Mobile Number",
-                      icon: Icons.phone,
-                      keyboard: TextInputType.phone,
-                    ),
-                    const SizedBox(height: 16),
-                    _primaryButton(
-                      text: otpSent ? "Verify OTP" : "Send OTP",
-                      loading: isLoading,
-                      onTap: otpSent ? verifyOTP : sendOTP,
-                    ),
-                    if (otpSent) ...[
-                      const SizedBox(height: 16),
-                      _inputField(
-                        controller: otpController,
-                        hint: "Enter OTP",
-                        icon: Icons.lock_outline,
-                        keyboard: TextInputType.number,
-                      ),
-                    ]
-                  ],
-
-                  const SizedBox(height: 20),
-
+                  ),
+                  const SizedBox(height: 8),
                   Row(
-                    children: const [
-                      Expanded(child: Divider()),
-                      Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 8),
-                        child: Text("Or continue with"),
-                      ),
-                      Expanded(child: Divider()),
-                    ],
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      _socialBtn(Icons.g_mobiledata),
-                      _socialBtn(Icons.facebook),
-                      _socialBtn(Icons.apple),
+                      // COUNTRY CODE
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 16,
+                        ),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade300),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Text(
+                          '+91',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      // PHONE FIELD
+                      Expanded(
+                        child: TextField(
+                          controller: _phoneController,
+                          keyboardType: TextInputType.phone,
+                          maxLength: 10,
+                          decoration: InputDecoration(
+                            counterText: '',
+                            hintText: 'Enter mobile number',
+                            filled: true,
+                            fillColor: Colors.grey[100],
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                        ),
+                      ),
                     ],
                   ),
-
-                  const SizedBox(height: 20),
-
-                  TextButton(
-                    onPressed: () => Get.toNamed('/signup'),
-                    child: const Text("Sign up with email"),
+                  const SizedBox(height: 40),
+                  // CONTINUE BUTTON
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _isLoading ? null : _sendOTP,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: _isLoading
+                          ? const SizedBox(
+                              height: 22,
+                              width: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text(
+                              'Continue',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                    ),
+                  ),
+                ] else ...[
+                  // EMAIL LOGIN
+                  TextField(
+                    controller: emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: InputDecoration(
+                      labelText: 'Email',
+                      filled: true,
+                      fillColor: Colors.grey[100],
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: passwordController,
+                    obscureText: true,
+                    decoration: InputDecoration(
+                      labelText: 'Password',
+                      filled: true,
+                      fillColor: Colors.grey[100],
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _isLoading
+                          ? null
+                          : () => _signInWithEmail(
+                                emailController.text.trim(),
+                                passwordController.text.trim(),
+                              ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: _isLoading
+                          ? const SizedBox(
+                              height: 22,
+                              width: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text(
+                              'Login',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Center(
+                    child: TextButton(
+                      onPressed: () => Get.toNamed('/signup'),
+                      child: const Text('Don\'t have an account? Sign up'),
+                    ),
                   ),
                 ],
-              ),
-            ),
 
-            const SizedBox(height: 20),
-TextButton(
-  onPressed: () {
-    Get.offAllNamed('/home');
-  },
-  child: const Text("Skip for now"),
-),
-          ],
+                const SizedBox(height: 20),
+
+                // TERMS
+                Center(
+                  child: Text(
+                    'By continuing, you agree to our\nTerms & Privacy Policy',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
-    ),
-  );
-}
-
+    );
+  }
 }
