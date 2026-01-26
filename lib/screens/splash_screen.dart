@@ -1,7 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:lottie/lottie.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -20,36 +18,24 @@ class _SplashScreenState extends State<SplashScreen>
   void initState() {
     super.initState();
 
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 2),
-    );
+    _controller =
+        AnimationController(vsync: this, duration: const Duration(seconds: 2));
 
-    _fadeAnimation = CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeIn,
-    );
+    _fadeAnimation =
+        CurvedAnimation(parent: _controller, curve: Curves.easeIn);
 
     _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeOutBack),
     );
 
     _controller.forward();
-    _checkAuth();
+    _goToLogin();
   }
 
-  Future<void> _checkAuth() async {
-    await Future.delayed(const Duration(seconds: 5));
-
-    final user = Supabase.instance.client.auth.currentUser;
-
+  Future<void> _goToLogin() async {
+    await Future.delayed(const Duration(seconds: 4));
     if (!mounted) return;
-
-    if (user == null) {
-      Navigator.pushReplacementNamed(context, '/login');
-    } else {
-      Navigator.pushReplacementNamed(context, '/home');
-    }
+    Navigator.pushReplacementNamed(context, '/login');
   }
 
   @override
@@ -58,63 +44,137 @@ class _SplashScreenState extends State<SplashScreen>
     super.dispose();
   }
 
+  Widget _buildIcon(IconData icon, String label) {
+    return Column(
+      children: [
+        CircleAvatar(
+          radius: 22,
+          backgroundColor: Colors.white.withOpacity(0.2),
+          child: Icon(icon, color: Colors.white),
+        ),
+        const SizedBox(height: 6),
+        Text(label,
+            style: const TextStyle(color: Colors.white70, fontSize: 12)),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF2ECC71),
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [Color.fromARGB(255, 29, 163, 85), Color(0xFF2ECC71)],
+            colors: [
+              Color.fromARGB(255, 29, 163, 85),
+              Color(0xFF2ECC71),
+            ],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
         ),
-        child: Center(
-          child: FadeTransition(
-            opacity: _fadeAnimation,
-            child: ScaleTransition(
-              scale: _scaleAnimation,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Lottie Animation
-                  Lottie.asset(
-                    "assets/animations/splash.json",
-                    height: 180,
+        child: FadeTransition(
+          opacity: _fadeAnimation,
+          child: ScaleTransition(
+            scale: _scaleAnimation,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // LOGO
+                Container(
+                  height: 90,
+                  width: 90,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(22),
                   ),
-
-                  const SizedBox(height: 20),
-
-                  const Text(
-                    "FARMIGO",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.5,
-                    ),
+                  child: const Icon(
+                    Icons.park,
+                    size: 50,
+                    color: Color.fromARGB(255, 29, 163, 85),
                   ),
+                ),
 
-                  const SizedBox(height: 8),
+                const SizedBox(height: 20),
 
-                  const Text(
-                    "Your Gateway to Perfect Getaways",
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 14,
-                    ),
+                const Text(
+                  "Farmigo",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 34,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.2,
                   ),
+                ),
 
-                  const SizedBox(height: 40),
+                const SizedBox(height: 6),
 
-                  const CircularProgressIndicator(color: Colors.white),
-                ],
-              ),
+                const Text(
+                  "Your Gateway to Perfect Getaways",
+                  style: TextStyle(color: Colors.white70, fontSize: 14),
+                ),
+
+                const SizedBox(height: 24),
+
+                // ICON ROW
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: const [
+                    _SplashIcon(icon: Icons.home, label: "Farmhouses"),
+                    SizedBox(width: 20),
+                    _SplashIcon(icon: Icons.hotel, label: "Hotels"),
+                    SizedBox(width: 20),
+                    _SplashIcon(icon: Icons.flight, label: "Flights"),
+                    SizedBox(width: 20),
+                    _SplashIcon(icon: Icons.directions_car, label: "Cars"),
+                  ],
+                ),
+
+                const SizedBox(height: 30),
+
+                const Text(
+                  "Preparing your experience...",
+                  style: TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+
+                const SizedBox(height: 12),
+
+                const SizedBox(
+                  width: 140,
+                  child: LinearProgressIndicator(
+                    color: Colors.white,
+                    backgroundColor: Colors.white24,
+                    minHeight: 4,
+                  ),
+                ),
+              ],
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+class _SplashIcon extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  const _SplashIcon({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        CircleAvatar(
+          radius: 20,
+          backgroundColor: Colors.white.withOpacity(0.2),
+          child: Icon(icon, color: Colors.white, size: 18),
+        ),
+        const SizedBox(height: 6),
+        Text(label,
+            style: const TextStyle(color: Colors.white70, fontSize: 11)),
+      ],
     );
   }
 }

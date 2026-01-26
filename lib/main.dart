@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:firebase_core/firebase_core.dart';
+
 
 import 'navigation/app_routes.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -17,7 +19,7 @@ import 'screens/signup_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
+  await Firebase.initializeApp();
   // Initialize Supabase (replace URL and anonKey with your project's values)
   
     await Supabase.initialize(
