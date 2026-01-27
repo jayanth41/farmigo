@@ -25,26 +25,54 @@ class OfferCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 12),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: offer.color,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
+        gradient: LinearGradient(
+          colors: [
+            offer.color.withOpacity(0.95),
+            offer.color.withOpacity(0.75),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          ),
+        boxShadow: [
+          BoxShadow(
+            color: offer.color.withOpacity(0.35),
+            blurRadius: 14,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(offer.icon, size: 30, color: Colors.white),
+          //Icon bubble
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.25),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              offer.icon,
+              size: 26,
+              color: Colors.white,
+            ),
+          ),
           const Spacer(),
           Text(
             offer.title,
             style: const TextStyle(
               color: Colors.white,
               fontSize: 18,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 6),
+        const SizedBox(height: 6),
           Text(
             offer.subtitle,
             style: const TextStyle(
@@ -66,7 +94,7 @@ class OffersCarousel extends StatefulWidget {
   const OffersCarousel({
     super.key,
     required this.offers,
-    this.height = 140,
+    this.height = 150,
   });
 
   @override
@@ -133,10 +161,10 @@ class _OffersCarouselState extends State<OffersCarousel> {
             return AnimatedContainer(
               duration: const Duration(milliseconds: 300),
               margin: const EdgeInsets.symmetric(horizontal: 4),
-              width: active ? 14 : 8,
+              width: active ? 16 : 8,
               height: 8,
               decoration: BoxDecoration(
-                color: active ? Colors.black : Colors.grey[300],
+                color: active ? Colors.green : Colors.grey.shade300,
                 borderRadius: BorderRadius.circular(10),
               ),
             );

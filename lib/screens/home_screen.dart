@@ -131,7 +131,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
 
   // Location & Category selectors
-  final String _selectedState = 'Telangana';
+  String _selectedState = 'Telangana';
   String _selectedCategory = 'All';
   final bool _showOffers = true;
 
@@ -514,8 +514,6 @@ class _HomeScreenState extends State<HomeScreen> {
             BottomNavigationBarItem(icon: Icon(Icons.favorite), label: 'Favorites'),
             BottomNavigationBarItem(
                 icon: Icon(Icons.calendar_today), label: 'Bookings'),
-            BottomNavigationBarItem(
-                icon: Icon(Icons.tune_outlined), label: 'Filters'),
             BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
           ],
         ),
@@ -531,7 +529,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return const ProfileScreen();
   }
 
-  Widget _homePage() {
+ Widget _homePage() {
   return SafeArea(
     child: Column(
       children: [
@@ -539,7 +537,11 @@ class _HomeScreenState extends State<HomeScreen> {
         Container(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
           decoration: const BoxDecoration(
-            color: Colors.white,
+            gradient: LinearGradient(
+              colors: [Color(0xFFE8F8F0), Color(0xFFFFFFFF)],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
             borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
             boxShadow: [
               BoxShadow(
@@ -552,55 +554,54 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             children: [
               Row(
-  children: [
-    Builder(
-      builder: (context) => IconButton(
-        icon: const Icon(Icons.menu, color: AppColors.primary),
-        onPressed: () => Scaffold.of(context).openDrawer(),
-      ),
-    ),
+                children: [
+                  Builder(
+                    builder: (context) => IconButton(
+                      icon: const Icon(Icons.menu, color: AppColors.primary),
+                      onPressed: () => Scaffold.of(context).openDrawer(),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
 
-    const SizedBox(width: 6),
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Center(
+                      child: Text(
+                        'F',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 18,
+                        ),
+                      ),
+                    ),
+                  ),
 
-    // App logo fallback: simple rounded green badge with 'F'
-    Container(
-      width: 36,
-      height: 36,
-      decoration: BoxDecoration(
-        color: AppColors.primary,
-        borderRadius: BorderRadius.circular(8),
-        boxShadow: [
-          BoxShadow(color: AppColors.primary.withOpacity(0.12), blurRadius: 4, offset: const Offset(0, 2)),
-        ],
-      ),
-      child: const Center(
-        child: Text(
-          'F',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 18),
-        ),
-      ),
-    ),
+                  const SizedBox(width: 8),
 
-    const SizedBox(width: 8),
+                  const Text(
+                    "Farmigo",
+                    style: TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.primary,
+                    ),
+                  ),
 
-    const Text(
-      "Farmigo",
-      style: TextStyle(
-        fontSize: 24,
-        fontWeight: FontWeight.w800,
-        color: AppColors.primary,
-      ),
-    ),
+                  const Spacer(),
+                  
 
-    const Spacer(),
-
-    IconButton(
-      icon: const Icon(Icons.tune, color: AppColors.primary),
-      onPressed: () => setState(() => _selectedIndex = 3),
-    ),
-  ],
-),
-
+                  IconButton(
+                    icon: const Icon(Icons.tune, color: AppColors.primary),
+                    onPressed: () => setState(() => _selectedIndex = 3),
+                  ),
+                ],
+              ),
 
               const SizedBox(height: 12),
 
@@ -608,8 +609,14 @@ class _HomeScreenState extends State<HomeScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 decoration: BoxDecoration(
-                  color: AppColors.bgSoft,
+                  color: Colors.white,
                   borderRadius: BorderRadius.circular(14),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color.fromRGBO(0, 0, 0, 0.05),
+                      blurRadius: 6,
+                    )
+                  ],
                 ),
                 child: TextField(
                   controller: _searchController,
@@ -630,44 +637,47 @@ class _HomeScreenState extends State<HomeScreen> {
             padding: const EdgeInsets.only(bottom: 120),
             children: [
               const SizedBox(height: 16),
-Padding(
-  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-  child: Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      RichText(
-  text: const TextSpan(
-    style: TextStyle(color: AppColors.textMain),
-    children: [
-      TextSpan(text: "Hello 👋\n", style: TextStyle(fontSize: 14)),
-      TextSpan(
-        text: "Where would you like to go?",
-        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-      ),
-    ],
-  ),
-),
 
-      SizedBox(height: 2),
-      Text(
-        "Where would you like to go?",
-        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-      ),
-    ],
-  ),
-),
-
-
-
-              // CATEGORIES
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: const Text(
-                  "Categories",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                child: RichText(
+                  text: const TextSpan(
+                    style: TextStyle(color: Color.fromARGB(255, 63, 62, 62)),
+                    children: [
+                      TextSpan(text: "Hello 👋\n", style: TextStyle(fontSize: 16),),
+                      TextSpan(
+                        text: "Where would you like ",
+                        style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primary,
+                            ),
+                      ),
+                      TextSpan(
+                        text: "to go?",
+                        style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primary,
+                            ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              const SizedBox(height: 8),
+
+              const SizedBox(height: 16),
+
+              // CATEGORIES
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  "Categories",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+                ),
+              ),
+              const SizedBox(height: 8.5),
+
               CategoryGrid(
                 selectedCategory: _selectedCategory,
                 onTap: (c) {
@@ -681,11 +691,11 @@ Padding(
               const SizedBox(height: 20),
 
               // OFFERS
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: const Text(
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
                   "Best Offers",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
                 ),
               ),
               const SizedBox(height: 8),
@@ -693,20 +703,23 @@ Padding(
               OffersCarousel(
                 offers: const [
                   OfferItem(
-                      title: 'Weekend Deals',
-                      subtitle: 'Up to 40% off',
-                      icon: Icons.local_fire_department,
-                      color: Color(0xFF6EE7B7)),
+                    title: 'Weekend Deals',
+                    subtitle: 'Up to 40% off',
+                    icon: Icons.local_fire_department,
+                    color: Color.fromARGB(255, 62, 179, 132), // figma green
+                  ),
                   OfferItem(
-                      title: 'Early Bird',
-                      subtitle: 'Save 15%',
-                      icon: Icons.percent,
-                      color: Color(0xFF86C9FF)),
+                    title: 'Early Bird',
+                    subtitle: 'Save 15%',
+                    icon: Icons.percent,
+                    color: Color.fromARGB(255, 108, 162, 207), // figma blue
+                  ),
                   OfferItem(
-                      title: 'First Booking',
-                      subtitle: '20% off',
-                      icon: Icons.star_border,
-                      color: Color(0xFFAAF27A)),
+                    title: 'First Booking',
+                    subtitle: '20% off',
+                    icon: Icons.star_border,
+                    color: Color.fromARGB(255, 58, 196, 67),
+                  ),
                 ],
               ),
 
@@ -722,7 +735,7 @@ Padding(
                       child: Text(
                         "Featured Properties",
                         style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.w700),
+                            fontSize: 18, fontWeight: FontWeight.w500),
                       ),
                     ),
                     TextButton(
@@ -737,14 +750,13 @@ Padding(
                         );
                       },
                       child: const Row(
-  mainAxisSize: MainAxisSize.min,
-  children: [
-    Text('View all'),
-    SizedBox(width: 4),
-    Icon(Icons.arrow_forward_ios, size: 14),
-  ],
-),
-
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text('View all'),
+                          SizedBox(width: 4),
+                          Icon(Icons.arrow_forward_ios, size: 14),
+                        ],
+                      ),
                     )
                   ],
                 ),
@@ -758,6 +770,7 @@ Padding(
     ),
   );
 }
+
 
 
   Widget _filtersPage() {
