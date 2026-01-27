@@ -129,10 +129,10 @@ class _CategoryGridState extends State<CategoryGrid> {
   @override
   Widget build(BuildContext context) {
     final List<Map<String, dynamic>> items = [
-      {'label': 'All', 'icon': Icons.home},
       {'label': 'Farmhouses', 'icon': Icons.agriculture},
       {'label': 'Villas', 'icon': Icons.villa},
       {'label': 'Hotels', 'icon': Icons.hotel},
+      {'label': 'flights', 'icon': Icons.flight},
       {'label': 'Car Rentals', 'icon': Icons.directions_car},
       {'label': 'Hourly Rentals', 'icon': Icons.access_time},
     ];
@@ -145,8 +145,8 @@ class _CategoryGridState extends State<CategoryGrid> {
         itemCount: items.length,
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 3,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
+          crossAxisSpacing: 14,
+          mainAxisSpacing: 14,
           childAspectRatio: 1,
         ),
         itemBuilder: (_, i) {
@@ -154,7 +154,6 @@ class _CategoryGridState extends State<CategoryGrid> {
           final label = item['label'] as String;
           final icon = item['icon'] as IconData;
           final isSelected = label == _localSelectedCategory;
-          final bg = _palette[i % _palette.length];
 
           return GestureDetector(
             onTap: () {
@@ -164,49 +163,40 @@ class _CategoryGridState extends State<CategoryGrid> {
               widget.onTap?.call(label);
             },
             child: AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              transform: isSelected
-    ? (Matrix4.identity()..scale(1.05))
-    : Matrix4.identity(),
-
+              duration: const Duration(milliseconds: 200),
               decoration: BoxDecoration(
-color: isSelected ? AppColors.primary : Colors.white,
-                borderRadius: BorderRadius.circular(16),
+                color: isSelected ? AppColors.primary : Colors.white,
+                borderRadius: BorderRadius.circular(18),
                 border: Border.all(
                   color: isSelected
-                      ? const Color(0xFF2D5016)
-                      : AppColors.border,
-                  width: 2,
+                      ? AppColors.primary
+                      : Colors.grey.shade300,
+                  width: 1,
                 ),
-                boxShadow: isSelected
-                    ? [
+                boxShadow:[
                         BoxShadow(
                           color: const Color.fromRGBO(45, 80, 22, 0.3),
-                          blurRadius: 8,
-                          offset: const Offset(0, 4),
+                          blurRadius: 6,
+                          offset: const Offset(0, 3),
                         ),
                       ]
-                    : [],
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Container(
-                    width: 48,
-                    height: 48,
+                    padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: isSelected ? Colors.white : AppColors.primary,
                       shape: BoxShape.circle,
                     ),
-                    child: Center(
                       child: Icon(
                         icon,
-                        size: 30,
+                        size: 26,
                         color: isSelected ? AppColors.primary : AppColors.white,
-
                       ),
                     ),
-                  ),
+                
                   const SizedBox(height: 8),
                   Text(
                     label,

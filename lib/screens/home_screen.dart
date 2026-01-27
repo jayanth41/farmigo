@@ -92,23 +92,39 @@ class _EditProfilePageState extends State<EditProfilePage> {
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
-          children: [ElevatedButton(
-  onPressed: () {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => OwnerDashboard(),
-      ),
-    );
-  },
-  child: const Text("Owner Dashboard"),
-),
-
-            TextField(controller: _nameController, decoration: const InputDecoration(labelText: 'Full name')),
+          children: [
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const OwnerDashboard(),
+                  ),
+                );
+              },
+              child: const Text("Owner Dashboard"),
+            ),
+            TextField(
+              controller: _nameController, 
+              decoration: const InputDecoration(labelText: 'Full name'),
+            ),
             const SizedBox(height: 12),
-            TextField(controller: _phoneController, decoration: const InputDecoration(labelText: 'Phone'), keyboardType: TextInputType.phone),
+            TextField(
+              controller: _phoneController, 
+              decoration: const InputDecoration(labelText: 'Phone'), 
+              keyboardType: TextInputType.phone,
+            ),
             const SizedBox(height: 20),
-            ElevatedButton(onPressed: _isSaving ? null : _save, child: _isSaving ? const SizedBox(width:20,height:20,child:CircularProgressIndicator(strokeWidth:2)) : const Text('Save')),
+            ElevatedButton(
+              onPressed: _isSaving ? null : _save, 
+              child: _isSaving 
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ) 
+                : const Text('Save'),
+            ),
           ],
         ),
       ),
@@ -117,12 +133,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
 }
 
 
- 
-
 class _HomeScreenState extends State<HomeScreen> {
-  //late LocationController locationController;
-  late LocationController locationController =
-  Get.put(LocationController());
+  late LocationController locationController = Get.put(LocationController());
   int _selectedIndex = 0;
   final TextEditingController _searchController = TextEditingController();
   late FavoritesController favoritesController;
@@ -130,9 +142,8 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isProfileLoading = true;
   bool _didPromptForProfile = false;
 
-
   // Location & Category selectors
-  final String _selectedState = 'Telangana';
+  String _selectedState = 'Telangana';
   String _selectedCategory = 'All';
   final bool _showOffers = true;
 
@@ -160,9 +171,6 @@ class _HomeScreenState extends State<HomeScreen> {
   // Filtered list for search results
   List<Map<String, dynamic>> _filteredFarmhouses = [];
 
-  // (states list removed - unused after UI changes)
-
-  // Dummy farmhouse data
   // Reference to farmhouses data (defined in data file)
   static const List<Map<String, dynamic>> farmhouses = farmhousesData;
 
@@ -178,7 +186,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     favoritesController = Get.find<FavoritesController>();
     
-    // Initialize LocationController - IMPORTANT FIX
+    // Initialize LocationController
     if (!Get.isRegistered<LocationController>()) {
       Get.put(LocationController());
     }
@@ -191,9 +199,9 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> loadProfile() async {
     // start loading
     setState(() => _isProfileLoading = true);
-  debugPrint('[HomeScreen] loadProfile: fetching profile...');
+    debugPrint('[HomeScreen] loadProfile: fetching profile...');
     final data = await UserService().fetchUserProfile();
-  debugPrint('[HomeScreen] loadProfile: fetch returned: $data');
+    debugPrint('[HomeScreen] loadProfile: fetch returned: $data');
     if (!mounted) return;
     setState(() {
       _profile = data;
@@ -204,8 +212,8 @@ class _HomeScreenState extends State<HomeScreen> {
     // complete their profile by opening the EditProfilePage.
     final authUser = Supabase.instance.client.auth.currentUser;
     if (authUser != null &&
-    (_profile == null || _profile!['profile_completed'] == false) &&
-    !_didPromptForProfile) {
+        (_profile == null || _profile!['profile_completed'] == false) &&
+        !_didPromptForProfile) {
 
       _didPromptForProfile = true;
       // Delay navigation until after current frame to avoid navigator errors.
@@ -213,7 +221,7 @@ class _HomeScreenState extends State<HomeScreen> {
         if (!mounted) return;
         await Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => EditProfilePage(profile: {})),
+          MaterialPageRoute(builder: (_) => const EditProfilePage(profile: {})),
         );
         // Refresh after potential profile creation.
         await loadProfile();
@@ -271,8 +279,6 @@ class _HomeScreenState extends State<HomeScreen> {
       } catch (_) {}
     }
   }
-
-  // state selector removed (not used) to reduce analyzer noise
 
   @override
   void dispose() {
@@ -361,7 +367,11 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      drawer: AppDrawer(profile: _profile, isProfileLoading: _isProfileLoading, onItemSelected: _onDrawerItemSelected,),
+      drawer: AppDrawer(
+        profile: _profile, 
+        isProfileLoading: _isProfileLoading, 
+        onItemSelected: _onDrawerItemSelected,
+      ),
       backgroundColor: AppColors.bgSoft,
       body: _buildBody(),
       bottomNavigationBar: Container(
@@ -385,8 +395,6 @@ class _HomeScreenState extends State<HomeScreen> {
             BottomNavigationBarItem(icon: Icon(Icons.favorite), label: 'Favorites'),
             BottomNavigationBarItem(
                 icon: Icon(Icons.calendar_today), label: 'Bookings'),
-            BottomNavigationBarItem(
-                icon: Icon(Icons.tune_outlined), label: 'Filters'),
             BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
           ],
         ),
@@ -403,233 +411,232 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _homePage() {
-  return SafeArea(
-    child: Column(
-      children: [
-        // ---------- HEADER ----------
-        Container(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
-            boxShadow: [
-              BoxShadow(
-                color: Color.fromRGBO(0, 0, 0, 0.05),
-                blurRadius: 10,
-                offset: Offset(0, 4),
-              )
-            ],
-          ),
-          child: Column(
-            children: [
-              Row(
-  children: [
-    Builder(
-      builder: (context) => IconButton(
-        icon: const Icon(Icons.menu, color: AppColors.primary),
-        onPressed: () => Scaffold.of(context).openDrawer(),
-      ),
-    ),
-
-    const SizedBox(width: 6),
-
-    // App logo fallback: simple rounded green badge with 'F'
-    Container(
-      width: 36,
-      height: 36,
-      decoration: BoxDecoration(
-        color: AppColors.primary,
-        borderRadius: BorderRadius.circular(8),
-        boxShadow: [
-          BoxShadow(color: AppColors.primary.withOpacity(0.12), blurRadius: 4, offset: const Offset(0, 2)),
-        ],
-      ),
-      child: const Center(
-        child: Text(
-          '🏡',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 18),
-        ),
-      ),
-    ),
-
-    const SizedBox(width: 8),
-
-    const Text(
-      "Farmigo",
-      style: TextStyle(
-        fontSize: 24,
-        fontWeight: FontWeight.w800,
-        color: AppColors.primary,
-      ),
-    ),
-
-    const Spacer(),
-
-    IconButton(
-      icon: const Icon(Icons.tune, color: AppColors.primary),
-      onPressed: () => setState(() => _selectedIndex = 3),
-    ),
-  ],
-),
-
-
-              const SizedBox(height: 12),
-
-              // SEARCH BAR
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                decoration: BoxDecoration(
-                  color: AppColors.bgSoft,
-                  borderRadius: BorderRadius.circular(14),
+    return SafeArea(
+      child: Column(
+        children: [
+          // ---------- HEADER ----------
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFFE8F8F0), Color(0xFFFFFFFF)],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+              borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
+              boxShadow: [
+                BoxShadow(
+                  color: Color.fromRGBO(0, 0, 0, 0.05),
+                  blurRadius: 10,
+                  offset: Offset(0, 4),
+                )
+              ],
+            ),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Builder(
+                      builder: (context) => IconButton(
+                        icon: const Icon(Icons.menu, color: AppColors.primary),
+                        onPressed: () => Scaffold.of(context).openDrawer(),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    // App logo: simple rounded green badge with house emoji
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary.withOpacity(0.12), 
+                            blurRadius: 4, 
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: const Center(
+                        child: Text(
+                          '🏡',
+                          style: TextStyle(
+                            color: Colors.white, 
+                            fontWeight: FontWeight.w800, 
+                            fontSize: 18,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Text(
+                      "Farmigo",
+                      style: TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.tune, color: AppColors.primary),
+                      onPressed: () => setState(() => _selectedIndex = 3),
+                    ),
+                  ],
                 ),
-                child: TextField(
-                  controller: _searchController,
-                  decoration: const InputDecoration(
-                    hintText: "Search farmhouses, villas...",
-                    border: InputBorder.none,
-                    icon: Icon(Icons.search),
+                const SizedBox(height: 12),
+                // SEARCH BAR
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color.fromRGBO(0, 0, 0, 0.05),
+                        blurRadius: 6,
+                      )
+                    ],
+                  ),
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: const InputDecoration(
+                      hintText: "Search farmhouses, villas...",
+                      border: InputBorder.none,
+                      icon: Icon(Icons.search),
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-
-        // ---------- BODY ----------
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.only(bottom: 120),
-            children: [
-              const SizedBox(height: 16),
-Padding(
-  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-  child: Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      RichText(
-  text: const TextSpan(
-    style: TextStyle(color: AppColors.textMain),
-    children: [
-      TextSpan(text: "Hello 👋\n", style: TextStyle(fontSize: 14)),
-      TextSpan(
-        text: "Where would you like to go?",
-        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-      ),
-    ],
-  ),
-),
-
-      SizedBox(height: 2),
-      Text(
-        "",
-        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-      ),
-    ],
-  ),
-),
-
-
-
-              // CATEGORIES
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: const Text(
-                  "Categories",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+          // ---------- BODY ----------
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.only(bottom: 120),
+              children: [
+                const SizedBox(height: 16),
+                // GREETING
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: RichText(
+                    text: const TextSpan(
+                      style: TextStyle(color: Color.fromARGB(255, 63, 62, 62)),
+                      children: [
+                        TextSpan(
+                          text: "Hello 👋\n", 
+                          style: TextStyle(fontSize: 16),
+                        ),
+                        TextSpan(
+                          text: "Where would you like to go?",
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              CategoryGrid(
-                selectedCategory: _selectedCategory,
-                onTap: (c) {
-                  setState(() {
-                    _selectedCategory = c;
-                    _applyFilters();
-                  });
-                },
-              ),
-
-              const SizedBox(height: 20),
-
-              // OFFERS
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: const Text(
-                  "Best Offers",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                const SizedBox(height: 16),
+                // CATEGORIES
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  child: Text(
+                    "Categories",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 8),
-
-              OffersCarousel(
-                offers: const [
-                  OfferItem(
+                const SizedBox(height: 8.5),
+                CategoryGrid(
+                  selectedCategory: _selectedCategory,
+                  onTap: (c) {
+                    setState(() {
+                      _selectedCategory = c;
+                      _applyFilters();
+                    });
+                  },
+                ),
+                const SizedBox(height: 20),
+                // OFFERS
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  child: Text(
+                    "Best Offers",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                OffersCarousel(
+                  offers: const [
+                    OfferItem(
                       title: 'Weekend Deals',
                       subtitle: 'Up to 40% off',
                       icon: Icons.local_fire_department,
-                      color: Color(0xFF6EE7B7)),
-                  OfferItem(
+                      color: Color.fromARGB(255, 62, 179, 132),
+                    ),
+                    OfferItem(
                       title: 'Early Bird',
                       subtitle: 'Save 15%',
                       icon: Icons.percent,
-                      color: Color(0xFF86C9FF)),
-                  OfferItem(
+                      color: Color.fromARGB(255, 108, 162, 207),
+                    ),
+                    OfferItem(
                       title: 'First Booking',
                       subtitle: '20% off',
                       icon: Icons.star_border,
-                      color: Color(0xFFAAF27A)),
-                ],
-              ),
-
-              const SizedBox(height: 20),
-
-              // FEATURED
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                child: Row(
-                  children: [
-                    const Expanded(
-                      child: Text(
-                        "Featured Properties",
-                        style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.w700),
-                      ),
+                      color: Color.fromARGB(255, 58, 196, 67),
                     ),
-                    TextButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => AllPropertiesScreen(
-                              properties: _filteredFarmhouses,
-                            ),
-                          ),
-                        );
-                      },
-                      child: const Row(
-  mainAxisSize: MainAxisSize.min,
-  children: [
-    Text('View all'),
-    SizedBox(width: 4),
-    Icon(Icons.arrow_forward_ios, size: 14),
-  ],
-),
-
-                    )
                   ],
                 ),
-              ),
-
-              PropertiesGrid(properties: _filteredFarmhouses),
-            ],
+                const SizedBox(height: 20),
+                // FEATURED
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  child: Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          "Featured Properties",
+                          style: TextStyle(
+                            fontSize: 18, 
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => AllPropertiesScreen(
+                                properties: _filteredFarmhouses,
+                              ),
+                            ),
+                          );
+                        },
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text('View all'),
+                            SizedBox(width: 4),
+                            Icon(Icons.arrow_forward_ios, size: 14),
+                          ],
+                        ),
+                      )
+                    ],
+                  ),
+                ),
+                PropertiesGrid(properties: _filteredFarmhouses),
+              ],
+            ),
           ),
-        ),
-      ],
-    ),
-  );
-}
-
+        ],
+      ),
+    );
+  }
 
   Widget _filtersPage() {
     final amenitiesKeys = _amenities.keys.toList();
@@ -640,8 +647,10 @@ Padding(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Filters',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+            const Text(
+              'Filters',
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 12),
             // 1. Price range
             const Text('Price range'),
@@ -650,12 +659,13 @@ Padding(
               min: 0,
               max: 10000,
               divisions: 100,
-              labels: RangeLabels('₹${_priceRange.start.toInt()}',
-                  '₹${_priceRange.end.toInt()}'),
+              labels: RangeLabels(
+                '₹${_priceRange.start.toInt()}',
+                '₹${_priceRange.end.toInt()}',
+              ),
               onChanged: (r) => setState(() => _priceRange = r),
             ),
             const SizedBox(height: 8),
-
             // 2. Minimum rating
             const Text('Minimum rating'),
             Slider(
@@ -667,7 +677,6 @@ Padding(
               onChanged: (v) => setState(() => _minRating = v),
             ),
             const SizedBox(height: 8),
-
             // 3. Amenities
             const Text('Amenities'),
             Wrap(
@@ -682,7 +691,6 @@ Padding(
               }),
             ),
             const SizedBox(height: 12),
-
             // 4. Property type
             const Text('Property type'),
             const SizedBox(height: 6),
@@ -697,19 +705,20 @@ Padding(
               }).toList(),
             ),
             const SizedBox(height: 12),
-
-            // Other optional filters
-            const Text('Max distance (km)'),
+            // Sort option
+            const Text('Sort by'),
             DropdownButton<String>(
               value: _sortOption,
               items: const [
                 DropdownMenuItem(value: 'Relevance', child: Text('Relevance')),
                 DropdownMenuItem(
-                    value: 'Price: Low to High',
-                    child: Text('Price: Low to High')),
+                  value: 'Price: Low to High',
+                  child: Text('Price: Low to High'),
+                ),
                 DropdownMenuItem(
-                    value: 'Price: High to Low',
-                    child: Text('Price: High to Low')),
+                  value: 'Price: High to Low',
+                  child: Text('Price: High to Low'),
+                ),
                 DropdownMenuItem(value: 'Distance', child: Text('Distance')),
                 DropdownMenuItem(value: 'Rating', child: Text('Rating')),
               ],
@@ -725,7 +734,8 @@ Padding(
                       setState(() => _selectedIndex = 0);
                     },
                     style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary),
+                      backgroundColor: AppColors.primary,
+                    ),
                     child: const Text('Apply'),
                   ),
                 ),
