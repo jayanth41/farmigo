@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -24,7 +25,7 @@ void main() async {
   try {
     await Supabase.initialize(
       url: 'https://kvnwikjxjimztjqsycti.supabase.co',
-      anonKey: 'YOUR_ANON_KEY_HERE',
+      anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt2bndpa2p4amltenRqc3ljdGkiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTcxNzU4NzM4MywiZXhwIjoyMDMzMTYzMzgzfQ.1f-u3kSrcI4H3xB23J22G4on2a3M2R62K5c0ZaR-i-c',
     );
     debugPrint('✅ Supabase initialized');
   } catch (e) {
@@ -32,9 +33,11 @@ void main() async {
   }
 
   // Initialize Firebase
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  if (!kIsWeb) {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  }
 
   // Register GetX controllers
   Get.put(FavoritesController());

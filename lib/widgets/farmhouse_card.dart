@@ -97,6 +97,7 @@ class _FarmhouseCardState extends State<FarmhouseCard> {
                         imageUrl: widget.image,
                         images: widget.images,
                         id: widget.id,
+                       // images: item.images,
                       )
                     : BookingDetailsScreen(
                         name: widget.name,

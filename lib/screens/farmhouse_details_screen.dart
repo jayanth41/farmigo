@@ -5,7 +5,9 @@ import '../widgets/app_drawer.dart';
 import '../models/farmhouse_model.dart';
 import '../controllers/favorites_controller.dart';
 import '../services/booking_service.dart';
+import '../data/farmhouses_data.dart'; // ADDED: Import farmhouses data
 import 'bookings_screen.dart';
+import 'dart:async';
 
 class FarmhouseDetailsScreen extends StatefulWidget {
   final String name;
@@ -37,6 +39,9 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
   String selectedPeopleRange = 'Below 10';
   late FavoritesController favoritesController;
   late FarmhouseModel farmhouse;
+  late PageController _pageController;
+  int _currentPage = 0;
+  Timer? _autoSlideTimer;
 
   final Map<String, double> pricePerRange = {
     'Below 10': 8000,
@@ -65,46 +70,36 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
     'https://media.istockphoto.com/id/2156753581/photo/creative-composition-of-living-room-interior-with-kitchen-space-and-lobby-in-the-modern.jpg?s=612x612&w=0&k=20&c=ysbREUGzXC0IeNko4TLj4_RFiZnGlq7tjqOXr2Liu3Q=',
   ];
 
-  static const List<Map<String, dynamic>> similarFarmhouses = [
-    {
-      'name': 'Green Valley Farmhouse',
-      'price': 3500,
-      'rating': 4.8,
-      'reviews': 156,
-      'category': 'Farmhouses',
-      'image': 'https://media.istockphoto.com/id/1483523217/photo/a-woman-in-white-dress-walks-down-a-pier-over-turquoise-ocean-in-the-maldives-during-sunset.webp?a=1&b=1&s=612x612&w=0&k=20&c=dh6Ic9mGAR4P_Ol3_KWdRx1i-imb-2FZQVF67TRNvvk='
-    },
-    {
-      'name': 'Countryside Retreat',
-      'price': 4200,
-      'rating': 4.6,
-      'reviews': 89,
-      'category': 'Retreats',
-      'image': 'https://media.istockphoto.com/id/1302442919/photo/luxury-beach-villa-at-night.webp?a=1&b=1&s=612x612&w=0&k=20&c=b0GO1cEmtHSuwmdlmkJGZVhiBoAtn-gNp6LYcPg12AQ='
-    },
-    {
-      'name': 'Rural Paradise',
-      'price': 3800,
-      'rating': 4.9,
-      'reviews': 234,
-      'category': 'Cottages',
-      'image': 'https://media.istockphoto.com/id/146765403/photo/a-luxurious-florida-beach-hotel-during-sunrise.jpg?s=612x612&w=0&k=20&c=pxw9Q78KbvqV6_pS_C-v_m6S_WQjKWLBSdqgRtqMUUg='
-    },
-  ];
+  List<Map<String, dynamic>> similarFarmhouses = [];
 
   @override
   void initState() {
     super.initState();
+    _pageController = PageController();
+    _autoSlideTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
+      if (!mounted) return;
 
-    // Log current authenticated user id for debugging (uses debugPrint to
-    // avoid analyzer avoid_print lint).
+      final imagesLength = widget.images?.length ?? 1;
+      if (imagesLength <= 1) return;
+
+      int nextPage = _currentPage + 1;
+      if (nextPage >= imagesLength) {
+        nextPage = 0;
+      }
+
+      _pageController.animateToPage(
+        nextPage,
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeInOut,
+      );
+    });
+
     final user = Supabase.instance.client.auth.currentUser;
     debugPrint("USER ID = ${user?.id}");
 
     try {
       favoritesController = Get.find<FavoritesController>();
     } catch (e) {
-      // Controller not found, initialize it
       Get.put(FavoritesController());
       favoritesController = Get.find<FavoritesController>();
     }
@@ -116,6 +111,121 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
       distance: widget.distance,
       imageUrl: widget.imageUrl,
     );
+
+    // ADDED: Load similar farmhouses
+    _loadSimilarFarmhouses();
+  }
+
+  @override
+  void dispose() {
+    _autoSlideTimer?.cancel();
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  // ADDED: Method to load similar farmhouses
+// COPY THIS ENTIRE METHOD to replace the existing _loadSimilarFarmhouses() in your farmhouse_details_screen.dart
+
+  // ADDED: Method to load similar farmhouses
+  void _loadSimilarFarmhouses() {
+    try {
+      // Get the farmhouses list from data file
+      final allFarmhouses = farmhousesData;
+
+      // Extract state from location
+      final currentState = _getStateFromLocation(widget.location);
+
+      debugPrint('[DEBUG] Current state: $currentState, Current price: ${widget.price}');
+
+      // Filter similar farmhouses based on:
+      // 1. Same state
+      // 2. Similar price range (within 50% of current price)
+      // 3. Exclude the current farmhouse
+      final filtered = allFarmhouses.where((farm) {
+        // Don't include the current farmhouse
+        if (farm['name'] == widget.name) {
+          debugPrint('[DEBUG] Skipping current: ${farm['name']}');
+          return false;
+        }
+
+        final farmState = farm['state'] ?? '';
+        final farmPrice = (farm['price'] as num).toDouble();
+        
+        // Same state check
+        if (farmState != currentState) {
+          debugPrint('[DEBUG] Different state: ${farm['name']} is $farmState');
+          return false;
+        }
+
+        // Similar price range (±50%)
+        final currentPrice = widget.price;
+        final minPrice = currentPrice * 0.5;
+        final maxPrice = currentPrice * 1.5;
+
+        if (farmPrice < minPrice || farmPrice > maxPrice) {
+          debugPrint('[DEBUG] Outside price range: ${farm['name']} is ₹$farmPrice (range: ₹$minPrice - ₹$maxPrice)');
+          return false;
+        }
+
+        debugPrint('[DEBUG] MATCH: ${farm['name']} - State: $farmState, Price: ₹$farmPrice');
+        return true;
+      }).toList();
+
+      debugPrint('[DEBUG] Found ${filtered.length} similar farmhouses');
+
+      // Take only first 3 and convert to display format
+      setState(() {
+        similarFarmhouses = filtered.take(3).map((farm) {
+          // Handle images - ensure it's a List<String>
+          List<String> images = [];
+          if (farm['images'] != null && farm['images'] is List) {
+            try {
+              images = List<String>.from(farm['images'].map((i) => i.toString()));
+            } catch (e) {
+              debugPrint('[DEBUG] Error converting images: $e');
+              images = [];
+            }
+          }
+
+          return {
+            'name': farm['name'] ?? 'Unknown',
+            'location': farm['location'] ?? 'Unknown',
+            'image': farm['imageUrl'] ?? '',
+            'price': (farm['price'] as num?)?.toDouble() ?? 0.0,
+            'rating': (farm['rating'] as num?)?.toDouble() ?? 0.0,
+            'reviews': farm['reviews'] ?? 0,
+            'distance': farm['distance'] ?? 'N/A',
+            'state': farm['state'] ?? 'Unknown',
+            'category': farm['category'] ?? 'Unknown',
+            'amenities': farm['amenities'] ?? [],
+            'images': images,
+          };
+        }).toList();
+      });
+
+      debugPrint('Loaded ${similarFarmhouses.length} similar farmhouses');
+    } catch (e) {
+      debugPrint('Error loading similar farmhouses: $e');
+    }
+  }
+
+  // ADDED: Helper method to get state from location
+  String _getStateFromLocation(String location) {
+    // Map locations to states
+    final stateMap = {
+      'Anajpur': 'Telangana',
+      'Tandur': 'Telangana',
+      'Yadagirigutta': 'Telangana',
+      'Vikarabad': 'Telangana',
+      'Hyderabad': 'Telangana',
+      'Secunderabad': 'Telangana',
+      'Lonavala': 'Maharashtra',
+      'Goa': 'Goa',
+    };
+
+    // Extract first part of location
+    final firstPart = location.split(',').first.trim();
+    return stateMap[firstPart] ?? 'Telangana';
   }
 
   @override
@@ -128,23 +238,40 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
           children: [
             Stack(
               children: [
-                Image.network(
-                  widget.imageUrl,
+                SizedBox(
                   height: 300,
                   width: double.infinity,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      height: 300,
-                      width: double.infinity,
-                      color: Colors.grey[300],
-                      child: const Icon(
-                        Icons.image_not_supported,
-                        size: 60,
-                        color: Colors.grey,
-                      ),
-                    );
-                  },
+                  child: PageView.builder(
+                    controller: _pageController,
+                    itemCount: (widget.images?.isNotEmpty ?? false)
+                        ? widget.images!.length
+                        : 1,
+                    onPageChanged: (index) {
+                      setState(() {
+                        _currentPage = index;
+                      });
+                    },
+                    itemBuilder: (context, index) {
+                      final imageUrl = (widget.images?.isNotEmpty ?? false)
+                          ? widget.images![index]
+                          : widget.imageUrl;
+
+                      return Image.network(
+                        imageUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            color: Colors.grey[300],
+                            child: const Icon(
+                              Icons.image_not_supported,
+                              size: 60,
+                              color: Colors.grey,
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
                 ),
                 Positioned(
                   top: 16,
@@ -162,7 +289,7 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
-                                color: Color.fromRGBO(0, 0, 0, 0.2),
+                                color: const Color.fromRGBO(0, 0, 0, 0.2),
                                 blurRadius: 8,
                               ),
                             ],
@@ -206,9 +333,9 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                               shape: BoxShape.circle,
                               boxShadow: [
                                 BoxShadow(
-                                    color: Color.fromRGBO(0, 0, 0, 0.2),
-                                    blurRadius: 8,
-                                  ),
+                                  color: const Color.fromRGBO(0, 0, 0, 0.2),
+                                  blurRadius: 8,
+                                ),
                               ],
                             ),
                             child: Icon(
@@ -737,7 +864,7 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                                     end: Alignment.bottomCenter,
                                     colors: [
                                       Colors.transparent,
-                                      Color.fromRGBO(0, 0, 0, 0.3),
+                                      const Color.fromRGBO(0, 0, 0, 0.3),
                                     ],
                                   ),
                                 ),
@@ -758,120 +885,164 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: similarFarmhouses.length,
-                    itemBuilder: (context, index) {
-                      final farmhouse = similarFarmhouses[index];
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: Colors.grey[300]!,
-                            width: 1,
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            ClipRRect(
-                              borderRadius: const BorderRadius.only(
-                                topLeft: Radius.circular(12),
-                                bottomLeft: Radius.circular(12),
-                              ),
-                              child: Image.network(
-                                farmhouse['image'],
-                                width: 100,
-                                height: 100,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Container(
-                                    width: 100,
-                                    height: 100,
-                                    color: Colors.grey[300],
-                                    child: const Icon(
-                                      Icons.image_not_supported,
-                                      size: 60,
-                                      color: Colors.grey,
-                                    ),
-                                  );
-                                },
+                  similarFarmhouses.isEmpty
+                      ? Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          child: Center(
+                            child: Text(
+                              'No similar properties found',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey[600],
                               ),
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 12,
-                                  horizontal: 8,
+                          ),
+                        )
+                      : ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: similarFarmhouses.length,
+                          itemBuilder: (context, index) {
+                            final farmhouse = similarFarmhouses[index];
+                            return GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => FarmhouseDetailsScreen(
+                                      id: farmhouse['name'],
+                                      name: farmhouse['name'],
+                                      location: farmhouse['location'],
+                                      price: (farmhouse['price'] as num)
+                                          .toDouble(),
+                                      distance: farmhouse['distance'],
+                                      imageUrl: farmhouse['image'],
+                                      images: farmhouse['images'] ?? [],
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: Container(
+                                margin: const EdgeInsets.only(bottom: 12),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: Colors.grey[300]!,
+                                    width: 1,
+                                  ),
                                 ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                child: Row(
                                   children: [
-                                    Text(
-                                      farmhouse['name'],
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.black,
+                                    ClipRRect(
+                                      borderRadius: const BorderRadius.only(
+                                        topLeft: Radius.circular(12),
+                                        bottomLeft: Radius.circular(12),
                                       ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
+                                      child: Image.network(
+                                        farmhouse['image'],
+                                        width: 100,
+                                        height: 100,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (context, error,
+                                            stackTrace) {
+                                          return Container(
+                                            width: 100,
+                                            height: 100,
+                                            color: Colors.grey[300],
+                                            child: const Icon(
+                                              Icons.image_not_supported,
+                                              size: 60,
+                                              color: Colors.grey,
+                                            ),
+                                          );
+                                        },
+                                      ),
                                     ),
-                                    const SizedBox(height: 4),
-                                    Row(
-                                      children: [
-                                        const Icon(
-                                          Icons.star,
-                                          size: 14,
-                                          color: Colors.amber,
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 12,
+                                          horizontal: 8,
                                         ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          '${farmhouse['rating']}',
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w500,
-                                            color: Colors.black,
-                                          ),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              farmhouse['name'],
+                                              style: const TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.black,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              farmhouse['location'],
+                                              style: const TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.grey,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Row(
+                                              children: [
+                                                const Icon(
+                                                  Icons.star,
+                                                  size: 14,
+                                                  color: Colors.amber,
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Text(
+                                                  '${farmhouse['rating']}',
+                                                  style: const TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w500,
+                                                    color: Colors.black,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Text(
+                                                  '(${farmhouse['reviews']})',
+                                                  style: const TextStyle(
+                                                    fontSize: 12,
+                                                    color: Colors.grey,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 8),
+                                            Text(
+                                              '₹${farmhouse['price'].toStringAsFixed(0)}/night',
+                                              style: const TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.green,
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          '(${farmhouse['reviews']})',
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.grey,
-                                          ),
-                                        ),
-                                      ],
+                                      ),
                                     ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      '₹${farmhouse['price']}/night',
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.green,
+                                    Padding(
+                                      padding: const EdgeInsets.all(12),
+                                      child: Icon(
+                                        Icons.arrow_forward,
+                                        color: Colors.grey[400],
+                                        size: 20,
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.all(12),
-                              child: Icon(
-                                Icons.arrow_forward,
-                                color: Colors.grey[400],
-                                size: 20,
-                              ),
-                            ),
-                          ],
+                            );
+                          },
                         ),
-                      );
-                    },
-                  ),
                   const SizedBox(height: 100),
                 ],
               ),
@@ -884,8 +1055,8 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           boxShadow: [
-              BoxShadow(
-              color: Color.fromRGBO(0, 0, 0, 0.1),
+            BoxShadow(
+              color: const Color.fromRGBO(0, 0, 0, 0.1),
               blurRadius: 8,
               offset: const Offset(0, -2),
             ),
@@ -922,7 +1093,6 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
             final localContext = context;
 
             if (success) {
-              // Show success dialog then navigate to bookings screen
               showDialog(
                 context: localContext,
                 builder: (ctx) => AlertDialog(
