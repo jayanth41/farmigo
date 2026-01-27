@@ -143,7 +143,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _didPromptForProfile = false;
 
   // Location & Category selectors
-  String _selectedState = 'Telangana';
+  final String _selectedState = 'Telangana';
   String _selectedCategory = 'All';
   final bool _showOffers = true;
 
@@ -460,7 +460,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       child: const Center(
                         child: Text(
-                          '🏡',
+                          'F',
                           style: TextStyle(
                             color: Colors.white, 
                             fontWeight: FontWeight.w800, 
