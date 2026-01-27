@@ -36,4 +36,3 @@ class BookingsController extends GetxController {
 }
 
 }
-
