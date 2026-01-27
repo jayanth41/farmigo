@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../theme/app_colors.dart';
@@ -113,7 +112,7 @@ class _FarmhouseCardState extends State<FarmhouseCard> {
         );
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
+        margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(18),
@@ -125,97 +124,123 @@ class _FarmhouseCardState extends State<FarmhouseCard> {
             ),
           ],
         ),
-        child: Container(
-  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-  padding: const EdgeInsets.all(10),
-  decoration: BoxDecoration(
-    color: Colors.white,
-    borderRadius: BorderRadius.circular(16),
-    boxShadow: const [
-      BoxShadow(color: Colors.black12, blurRadius: 6),
-    ],
-  ),
-  child: Row(
-    children: [
-      ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: ImageWithFallback(
-          imageUrl: widget.image,
-          height: 110,
-          width: 120,
-          fit: BoxFit.cover,
-        ),
-      ),
-
-      const SizedBox(width: 12),
-
-      Expanded(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(widget.name,
-                style: const TextStyle(
-                    fontSize: 16, fontWeight: FontWeight.bold)),
-
-            const SizedBox(height: 4),
-
-            Row(
+            // IMAGE PART
+            Stack(
               children: [
-                const Icon(Icons.location_on, size: 14, color: Colors.grey),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(widget.location,
-                      style: const TextStyle(fontSize: 13)),
+                ClipRRect(
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(18)),
+                  child: ImageWithFallback(
+                    imageUrl: widget.image,
+                    height: 160,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+
+                // DISCOUNT BADGE
+                if (widget.discount != null)
+                  Positioned(
+                    top: 12,
+                    left: 12,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        "${widget.discount}% OFF",
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12),
+                      ),
+                    ),
+                  ),
+
+                // FAVORITE ICON
+                Positioned(
+                  top: 12,
+                  right: 12,
+                  child: GestureDetector(
+                    onTap: _toggleFavorite,
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        isFavorite
+                            ? Icons.favorite
+                            : Icons.favorite_border,
+                        color: AppColors.primary,
+                        size: 20,
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
 
-            const SizedBox(height: 6),
+            // DETAILS
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(widget.name,
+                      style: const TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.w700)),
 
-            Row(
-              children: [
-                const Icon(Icons.star, size: 14, color: Colors.orange),
-                Text("${widget.rating} (${widget.reviews})"),
-              ],
+                  const SizedBox(height: 4),
+
+                  Row(
+                    children: [
+                      const Icon(Icons.location_on,
+                          size: 14, color: Colors.grey),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(widget.location,
+                            style: const TextStyle(fontSize: 13)),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 6),
+
+                  Row(
+                    children: [
+                      const Icon(Icons.star,
+                          size: 14, color: Colors.orange),
+                      const SizedBox(width: 4),
+                      Text(
+                        "${widget.rating} (${widget.reviews})",
+                        style: const TextStyle(fontSize: 13),
+                      ),
+                      const Spacer(),
+                      Text(
+                        "₹${widget.price.toInt()}",
+                        style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary),
+                      ),
+                      const SizedBox(width: 4),
+                      const Text("/night",
+                          style: TextStyle(fontSize: 12)),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ],
         ),
-      ),
-
-      Column(
-        children: [
-          Text(
-            "₹${widget.price.toInt()}",
-            style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: AppColors.primary),
-          ),
-          const Text("/night", style: TextStyle(fontSize: 12)),
-        ],
-      ),
-    ],
-  ),
-),
-
-      ),
-    );
-  }
-
-  Widget _badge(String text) {
-    return Container(
-      padding:
-          const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: AppColors.primary,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        text,
-        style: const TextStyle(
-            color: Colors.white,
-            fontSize: 12,
-            fontWeight: FontWeight.w600),
       ),
     );
   }

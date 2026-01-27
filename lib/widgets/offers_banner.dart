@@ -7,72 +7,74 @@ class OffersBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Expanded(
-                  child: Text(
-                    'Exclusive offers',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // HEADER ROW
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  "Exclusive Offers",
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textMain,
                   ),
                 ),
-                TextButton(
-                  onPressed: () {
-                    // TODO: navigate to offers screen
-                  },
-                  style: TextButton.styleFrom(foregroundColor: AppColors.primary),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: const [
-                      Text('View all'),
-                      SizedBox(width: 6),
-                      Icon(Icons.arrow_forward, size: 16),
-                    ],
+              ),
+              TextButton(
+                onPressed: () {
+                  // TODO: navigate to offers screen
+                },
+                child: const Row(
+                  children: [
+                    Text("View all"),
+                    SizedBox(width: 4),
+                    Icon(Icons.arrow_forward_ios, size: 14),
+                  ],
+                ),
+              )
+            ],
+          ),
+
+          const SizedBox(height: 8),
+
+          SizedBox(
+            height: 130,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: const [
+                _OfferCard(
+                  title: "Weekend Deals",
+                  subtitle: "Up to 40% off",
+                  icon: Icons.local_fire_department,
+                  gradient: LinearGradient(
+                    colors: [Color(0xFF34D399), Color(0xFF10B981)],
                   ),
                 ),
+                _OfferCard(
+                  title: "Early Bird",
+                  subtitle: "Save 15%",
+                  icon: Icons.percent,
+                  gradient: LinearGradient(
+                    colors: [Color(0xFF60A5FA), Color(0xFF3B82F6)],
+                  ),
+                ),
+                _OfferCard(
+                  title: "First Booking",
+                  subtitle: "20% off",
+                  icon: Icons.star_border,
+                  gradient: LinearGradient(
+                    colors: [Color(0xFF4ADE80), Color(0xFF22C55E)],
+                  ),
+                ),
+                SizedBox(width: 6),
               ],
             ),
-            const SizedBox(height: 8),
-            SizedBox(
-              height: 120,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                children: const [
-                  SizedBox(width: 4),
-                  _OfferCard(
-                    title: "Weekend Deals",
-                    subtitle: "Up to 40% off",
-                    icon: Icons.local_fire_department,
-                    color: Color(0xFF6EE7B7), // lighter green
-                  ),
-                  _OfferCard(
-                    title: "Early Bird",
-                    subtitle: "Save 15%",
-                    icon: Icons.percent,
-                    color: Color(0xFF86C9FF), // light blue
-                  ),
-                  _OfferCard(
-                    title: "First Booking",
-                    subtitle: "20% off",
-                    icon: Icons.star_border,
-                    color: Color(0xFFAAF27A), // pale green
-                  ),
-                  SizedBox(width: 8),
-                ],
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -82,34 +84,52 @@ class _OfferCard extends StatelessWidget {
   final String title;
   final String subtitle;
   final IconData icon;
-  final Color color;
+  final Gradient gradient;
 
   const _OfferCard({
     required this.title,
     required this.subtitle,
     required this.icon,
-    required this.color,
+    required this.gradient,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 220,
+      width: 240,
       margin: const EdgeInsets.only(right: 14),
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(14),
+        gradient: gradient,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 26, color: Colors.white),
+          // ICON CIRCLE
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.25),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: Colors.white, size: 22),
+          ),
+
           const Spacer(),
+
           Text(
             title,
             style: const TextStyle(
-              fontSize: 15,
+              fontSize: 16,
               fontWeight: FontWeight.w700,
               color: Colors.white,
             ),
