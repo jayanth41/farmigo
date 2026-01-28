@@ -36,7 +36,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _didPromptForProfile = false;
 
   // Location & Category selectors
-  final String _selectedState = 'Telangana';
+ String _selectedState = 'Telangana';
   String _selectedCategory = 'All';
 
   // Advanced filter state (shared with filters screen)
@@ -347,8 +347,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         borderRadius: BorderRadius.circular(8),
                         boxShadow: [
                           BoxShadow(
-                            color: AppColors.primary.withOpacity(0.12), 
-                            blurRadius: 4, 
+                            color: AppColors.primary.withOpacity(0.12),
+                            blurRadius: 4,
                             offset: const Offset(0, 2),
                           ),
                         ],
@@ -357,7 +357,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: Text(
                           'F',
                           style: TextStyle(
-                            fontWeight: FontWeight.w800, 
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
                             fontSize: 18,
                           ),
                         ),
@@ -409,6 +410,74 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
                 const SizedBox(height: 12),
+                const SizedBox(height: 12),
+
+                // LOCATION BAR
+                Row(
+                  children: [
+                    // State selector
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () {
+                          // open state selector bottom sheet
+                          locationController.openStateSelector(context);
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Color.fromRGBO(0, 0, 0, 0.05),
+                                blurRadius: 6,
+                              )
+                            ],
+                          ),
+                          child: Obx(() => Row(
+                                children: [
+                                  const Icon(Icons.location_on, size: 18, color: AppColors.primary),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    locationController.selectedState.value,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  const Icon(Icons.keyboard_arrow_down),
+                                ],
+                              )),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(width: 5),
+
+                    // Enable location button
+                    Obx(() => ElevatedButton.icon(
+                          onPressed: () {
+                            locationController.requestLocationPermission();
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          icon: const Icon(Icons.near_me_outlined, size: 18),
+                          label: Text(
+                            locationController.isLocationEnabled.value ? "Enabled" : "Enable",
+                            style: const TextStyle(fontSize: 13),
+                          ),
+                        )),
+                    ],
+                  ),
+
+                const SizedBox(height: 12),
+
                 // SEARCH BAR
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -434,6 +503,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
+
           // ---------- BODY ----------
           Expanded(
             child: ListView(
@@ -448,7 +518,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       style: TextStyle(color: Color.fromARGB(255, 63, 62, 62)),
                       children: [
                         TextSpan(
-                          text: "Hello 👋\n", 
+                          text: "Hello 👋\n",
                           style: TextStyle(fontSize: 16),
                         ),
                         TextSpan(
@@ -524,7 +594,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: Text(
                           "Featured Properties",
                           style: TextStyle(
-                            fontSize: 18, 
+                            fontSize: 18,
                             fontWeight: FontWeight.w500,
                           ),
                         ),

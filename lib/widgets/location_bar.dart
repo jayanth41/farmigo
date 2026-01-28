@@ -37,7 +37,7 @@ class LocationBar extends StatelessWidget {
             child: Row(
               children: const [
                 Icon(Icons.location_on, size: 16, color: AppColors.primary),
-                SizedBox(width: 6),
+                SizedBox(width: 4),
                 Text(
                   "All India",
                   style: TextStyle(
