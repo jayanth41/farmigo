@@ -1,7 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:provider/provider.dart';
+import '../controllers/auth_controller.dart';
 import '../services/user_service.dart';
 
 class SignupPage extends StatefulWidget {
@@ -14,22 +15,22 @@ class SignupPage extends StatefulWidget {
 class _SignupPageState extends State<SignupPage> {
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
+  final confirmPasswordController = TextEditingController();
   final nameController = TextEditingController();
   final phoneController = TextEditingController();
-
-  bool _isLoading = false;
 
   @override
   void dispose() {
     emailController.dispose();
     passwordController.dispose();
+    confirmPasswordController.dispose();
     nameController.dispose();
     phoneController.dispose();
     super.dispose();
   }
 
-  Future<void> signUpUser(String email, String password, String name, String phone) async {
-    if (email.isEmpty || password.isEmpty || name.isEmpty || phone.isEmpty) {
+  Future<void> signUpUser(String email, String password, String confirmPassword, String name, String phone) async {
+    if (email.isEmpty || password.isEmpty || confirmPassword.isEmpty || name.isEmpty || phone.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Please fill all fields')),
@@ -38,35 +39,31 @@ class _SignupPageState extends State<SignupPage> {
       return;
     }
 
-    setState(() => _isLoading = true);
-
     try {
-      final res = await Supabase.instance.client.auth.signUp(
-        email: email,
-        password: password,
-      );
+      final authCtrl = context.read<AuthController>();
+      final success = await authCtrl.signUp(email: email, password: password, confirmPassword: confirmPassword);
 
-      final user = res.user;
+      if (success) {
+        if (kDebugMode) debugPrint('✅ Signup success: $email');
 
-      if (user != null) {
-        if (kDebugMode) debugPrint('✅ Signup success: ${user.email}');
-
+        // Create user profile in users table
         try {
           await UserService().createUserIfNotExists(name: name, phone: phone);
           if (kDebugMode) debugPrint("✅ Profile ensured in users table");
-        } catch (_) {}
+        } catch (e) {
+          if (kDebugMode) debugPrint("⚠️ Warning creating profile: $e");
+        }
 
         if (!mounted) return;
 
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Signup successful')),
+          const SnackBar(content: Text('✅ Signup successful'), backgroundColor: Colors.green),
         );
-
-        Get.offAllNamed('/home');
+        // AuthController's auth state listener will trigger home navigation via auth guard
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Check your email for confirmation link')),
+            SnackBar(content: Text('❌ ${authCtrl.errorMessage}')),
           );
         }
       }
@@ -77,8 +74,6 @@ class _SignupPageState extends State<SignupPage> {
           SnackBar(content: Text('Error during signup: $e')),
         );
       }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -161,18 +156,30 @@ class _SignupPageState extends State<SignupPage> {
                       icon: Icons.lock,
                       isPassword: true,
                     ),
+                    const SizedBox(height: 14),
+                    _inputField(
+                      controller: confirmPasswordController,
+                      hint: "Confirm Password",
+                      icon: Icons.lock,
+                      isPassword: true,
+                    ),
 
                     const SizedBox(height: 24),
 
-                    _primaryButton(
-                      text: "Sign Up →",
-                      loading: _isLoading,
-                      onTap: () => signUpUser(
-                        emailController.text.trim(),
-                        passwordController.text.trim(),
-                        nameController.text.trim(),
-                        phoneController.text.trim(),
-                      ),
+                    Consumer<AuthController>(
+                      builder: (context, authCtrl, _) {
+                        return _primaryButton(
+                          text: "Sign Up →",
+                          loading: authCtrl.isLoading,
+                          onTap: () => signUpUser(
+                            emailController.text.trim(),
+                            passwordController.text.trim(),
+                            confirmPasswordController.text.trim(),
+                            nameController.text.trim(),
+                            phoneController.text.trim(),
+                          ),
+                        );
+                      },
                     ),
 
                     const SizedBox(height: 16),

@@ -120,12 +120,6 @@ class _CategoryGridState extends State<CategoryGrid> {
     }
   }
 
-  static const List<Color> _palette = [
-    AppColors.primaryDark,
-    AppColors.greenDark,
-    AppColors.tealDark,
-  ];
-
   @override
   Widget build(BuildContext context) {
     final List<Map<String, dynamic>> items = [

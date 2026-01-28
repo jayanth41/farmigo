@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../theme/app_colors.dart';
+import '../controllers/settings_controller.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -9,13 +11,16 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  bool pushNotif = true;
-  bool emailNotif = true;
-  bool smsNotif = false;
-  bool darkMode = false;
-
-  String language = "English";
-  String currency = "USD";
+  @override
+  void initState() {
+    super.initState();
+    // Initialize settings controller when screen loads
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!context.read<SettingsController>().isInitialized) {
+        context.read<SettingsController>().initialize();
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -25,76 +30,86 @@ class _SettingsScreenState extends State<SettingsScreen> {
         title: const Text("Settings"),
         backgroundColor: AppColors.primary,
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          _sectionTitle("Notifications", Icons.notifications),
-          _switchTile(
-            title: "Push Notifications",
-            subtitle: "Receive notifications about bookings",
-            value: pushNotif,
-            onChanged: (v) => setState(() => pushNotif = v),
-          ),
-          _switchTile(
-            title: "Email Notifications",
-            subtitle: "Get updates via email",
-            value: emailNotif,
-            onChanged: (v) => setState(() => emailNotif = v),
-          ),
-          _switchTile(
-            title: "SMS Notifications",
-            subtitle: "Receive SMS alerts",
-            value: smsNotif,
-            onChanged: (v) => setState(() => smsNotif = v),
-          ),
+      body: Consumer<SettingsController>(
+        builder: (context, settingsController, child) {
+          if (!settingsController.isInitialized) {
+            return const Center(
+              child: CircularProgressIndicator(),
+            );
+          }
 
-          const SizedBox(height: 20),
+          return ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              _sectionTitle("Notifications", Icons.notifications),
+              _switchTile(
+                title: "Push Notifications",
+                subtitle: "Receive notifications about bookings",
+                value: settingsController.pushNotifications,
+                onChanged: (v) => settingsController.setPushNotifications(v),
+              ),
+              _switchTile(
+                title: "Email Notifications",
+                subtitle: "Get updates via email",
+                value: settingsController.emailNotifications,
+                onChanged: (v) => settingsController.setEmailNotifications(v),
+              ),
+              _switchTile(
+                title: "SMS Notifications",
+                subtitle: "Receive SMS alerts",
+                value: settingsController.smsNotifications,
+                onChanged: (v) => settingsController.setSmsNotifications(v),
+              ),
 
-          _sectionTitle("Appearance", Icons.dark_mode),
-          _switchTile(
-            title: "Dark Mode",
-            subtitle: "Use dark theme",
-            value: darkMode,
-            onChanged: (v) => setState(() => darkMode = v),
-          ),
+              const SizedBox(height: 20),
 
-          const SizedBox(height: 20),
+              _sectionTitle("Appearance", Icons.dark_mode),
+              _switchTile(
+                title: "Dark Mode",
+                subtitle: "Use dark theme",
+                value: settingsController.darkMode,
+                onChanged: (v) => settingsController.setDarkMode(v),
+              ),
 
-          _sectionTitle("Language & Region", Icons.language),
-          _dropdownTile(
-            title: "Language",
-            value: language,
-            items: const ["English", "Hindi", "Telugu"],
-            onChanged: (v) => setState(() => language = v!),
-          ),
-          _dropdownTile(
-            title: "Currency",
-            value: currency,
-            items: const ["USD", "INR"],
-            onChanged: (v) => setState(() => currency = v!),
-          ),
+              const SizedBox(height: 20),
 
-          const SizedBox(height: 20),
+              _sectionTitle("Language & Region", Icons.language),
+              _dropdownTile(
+                title: "Language",
+                value: settingsController.language,
+                items: const ["English", "Hindi", "Telugu"],
+                onChanged: (v) => settingsController.setLanguage(v ?? 'English'),
+              ),
+              _dropdownTile(
+                title: "Currency",
+                value: settingsController.currency,
+                items: const ["USD", "INR"],
+                onChanged: (v) => settingsController.setCurrency(v ?? 'USD'),
+              ),
 
-          _sectionTitle("Privacy & Security", Icons.lock),
-          _navTile("Change Password"),
-          _navTile("Privacy Settings"),
-          _navTile("Two-Factor Authentication"),
+              const SizedBox(height: 20),
 
-          const SizedBox(height: 20),
+              _sectionTitle("Privacy & Security", Icons.lock),
+              _navTile("Change Password"),
+              _navTile("Privacy Settings"),
+              _navTile("Two-Factor Authentication"),
 
-          _sectionTitle("Data & Storage", Icons.storage),
-          _actionTile(
-            title: "Clear Cache",
-            color: Colors.orange,
-            onTap: () {},
-          ),
-          _actionTile(
-            title: "Delete Account",
-            color: Colors.red,
-            onTap: () {},
-          ),
-        ],
+              const SizedBox(height: 20),
+
+              _sectionTitle("Data & Storage", Icons.storage),
+              _actionTile(
+                title: "Clear Cache",
+                color: Colors.orange,
+                onTap: () {},
+              ),
+              _actionTile(
+                title: "Delete Account",
+                color: Colors.red,
+                onTap: () {},
+              ),
+            ],
+          );
+        },
       ),
     );
   }
