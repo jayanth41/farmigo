@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../screens/filters_screen.dart';
+import '../screens/about_us_screen.dart';
+import '../screens/help_support_screen.dart';
+import '../screens/terms_policy_screen.dart';
 import '../theme/app_colors.dart';
 import '../navigation/app_routes.dart';
 
@@ -231,12 +234,27 @@ class AppDrawer extends StatelessWidget {
             () => _navigateTo(context, AppRoutes.settings)),
           _item(Icons.card_giftcard, "Offers & Coupons",
             () => _navigateTo(context, AppRoutes.offers)),
-          _item(Icons.help_outline, "Help & Support",
-            () => _navigateTo(context, '/help')),
-          _item(Icons.info_outline, "About Us",
-            () => _navigateTo(context, '/about')),
-          _item(Icons.privacy_tip_outlined, "Terms & Privacy Policy",
-            () => _navigateTo(context, '/terms')),
+          _item(Icons.help_outline, "Help & Support", () {
+            Navigator.pop(context);
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const HelpSupportScreen()),
+            );
+          }),
+          _item(Icons.info_outline, "About Us", () {
+            Navigator.pop(context);
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const AboutUsScreen()),
+            );
+          }),
+          _item(Icons.privacy_tip_outlined, "Terms & Privacy Policy", () {
+            Navigator.pop(context);
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const TermsPolicyScreen()),
+            );
+          }),
                 ],
               ),
             ),
