@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:provider/provider.dart';
 
 import 'firebase_options.dart';
 import 'navigation/app_routes.dart';
@@ -19,6 +20,9 @@ import 'screens/offers_screen.dart';
 import 'screens/settings_screen.dart';
 import 'controllers/favorites_controller.dart';
 import 'controllers/bookings_controller.dart';
+import 'controllers/settings_controller.dart';
+import 'controllers/app_location_controller.dart';
+import 'controllers/auth_controller.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -58,27 +62,48 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GetMaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Farmigo',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        useMaterial3: true,
-      ),
-      home: const SplashScreen(),
-      getPages: [
-        GetPage(name: AppRoutes.home, page: () => const HomeScreen()),
-        GetPage(name: AppRoutes.favorites, page: () => const FavoritesScreen()),
-        GetPage(name: AppRoutes.farmhouses, page: () => const FarmhousesScreen()),
-  GetPage(name: AppRoutes.offers, page: () => const OffersScreen()),
-  GetPage(name: AppRoutes.settings, page: () => const SettingsScreen()),
-        GetPage(name: AppRoutes.carRentals, page: () => const CarRentalsScreen()),
-        GetPage(name: AppRoutes.bookings, page: () => const BookingsScreen()),
-        GetPage(name: AppRoutes.profile, page: () => const ProfileScreen()),
-        GetPage(name: '/login', page: () => const LoginScreen()),
-        GetPage(name: '/signup', page: () => const SignupPage()),
-        GetPage(name: '/splash', page: () => const SplashScreen()),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider<AuthController>(
+          create: (_) => AuthController(),
+        ),
+        ChangeNotifierProvider<SettingsController>(
+          create: (_) => SettingsController(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => AppLocationController()..initialize(),
+        ),
       ],
+      child: GetMaterialApp(
+        debugShowCheckedModeBanner: false,
+        title: 'Farmigo',
+        theme: ThemeData(
+          primarySwatch: Colors.blue,
+          useMaterial3: true,
+        ),
+        home: Consumer<AuthController>(
+          builder: (context, auth, _) {
+            // Auth guard: logged-in users go to Home, others to Login
+            if (auth.isAuthenticated) {
+              return const HomeScreen();
+            }
+            return const LoginScreen();
+          },
+        ),
+        getPages: [
+          GetPage(name: AppRoutes.home, page: () => const HomeScreen()),
+          GetPage(name: AppRoutes.favorites, page: () => const FavoritesScreen()),
+          GetPage(name: AppRoutes.farmhouses, page: () => const FarmhousesScreen()),
+          GetPage(name: AppRoutes.offers, page: () => const OffersScreen()),
+          GetPage(name: AppRoutes.settings, page: () => const SettingsScreen()),
+          GetPage(name: AppRoutes.carRentals, page: () => const CarRentalsScreen()),
+          GetPage(name: AppRoutes.bookings, page: () => const BookingsScreen()),
+          GetPage(name: AppRoutes.profile, page: () => const ProfileScreen()),
+          GetPage(name: '/login', page: () => const LoginScreen()),
+          GetPage(name: '/signup', page: () => const SignupPage()),
+          GetPage(name: '/splash', page: () => const SplashScreen()),
+        ],
+      ),
     );
   }
 }

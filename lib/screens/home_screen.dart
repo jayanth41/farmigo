@@ -17,7 +17,8 @@ import '../widgets/app_drawer.dart';
 import '../widgets/properties_grid.dart';
 import 'owner_dashboard.dart';
 import 'filters_screen.dart';
-
+import 'package:provider/provider.dart';
+import '../controllers/app_location_controller.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -477,6 +478,22 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
 
                 const SizedBox(height: 12),
+
+                // Live location name (from provider-based AppLocationController with reverse geocoding)
+                Consumer<AppLocationController>(
+                  builder: (context, loc, child) {
+                    if (!loc.isPermissionGranted) {
+                      return const SizedBox.shrink();
+                    }
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6),
+                      child: Text(
+                        'Current location: ${loc.locationName}',
+                        style: const TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                    );
+                  },
+                ),
 
                 // SEARCH BAR
                 Container(

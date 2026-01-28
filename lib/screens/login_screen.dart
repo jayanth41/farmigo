@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
 import '../theme/app_colors.dart';
+import '../controllers/auth_controller.dart';
 import 'otp_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -68,36 +68,21 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  // ---------------- EMAIL/PASSWORD LOGIN ----------------
-  Future<void> _signInWithEmail(String email, String password) async {
-    if (email.isEmpty || password.isEmpty) {
-      _showSnackBar('Please enter email and password');
-      return;
-    }
-
-    setState(() => _isLoading = true);
-
-    try {
-      final res = await supabase.Supabase.instance.client.auth.signInWithPassword(
-        email: email,
-        password: password,
+  // EMAIL/PASSWORD LOGIN using AuthController
+  Future<void> _signInWithEmailViaAuth(BuildContext context, String email, String password) async {
+    final authCtrl = context.read<AuthController>();
+    final success = await authCtrl.signIn(email: email, password: password);
+    
+    if (!mounted) return;
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('✅ Login successful'), backgroundColor: Colors.green),
       );
-
-      final user = res.user;
-      if (user != null) {
-        if (kDebugMode) debugPrint('✅ Login success: ${user.email}');
-        if (mounted) {
-          _showSnackBar('Login successful');
-          Get.offAllNamed('/home');
-        }
-      } else {
-        _showSnackBar('Login failed - check credentials or confirm email');
-      }
-    } catch (e) {
-      if (kDebugMode) debugPrint('❌ Login error: $e');
-      _showSnackBar('Login failed: $e');
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+      // AuthController's auth state listener will trigger home navigation via auth guard
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('❌ ${authCtrl.errorMessage}'), backgroundColor: Colors.red),
+      );
     }
   }
 
@@ -275,40 +260,45 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 24),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _isLoading
-                          ? null
-                          : () => _signInWithEmail(
-                                emailController.text.trim(),
-                                passwordController.text.trim(),
-                              ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                      child: _isLoading
-                          ? const SizedBox(
-                              height: 22,
-                              width: 22,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Text(
-                              'Login',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
+                  Consumer<AuthController>(
+                    builder: (context, authCtrl, _) {
+                      return SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: authCtrl.isLoading
+                              ? null
+                              : () => _signInWithEmailViaAuth(
+                                    context,
+                                    emailController.text.trim(),
+                                    passwordController.text.trim(),
+                                  ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
                             ),
-                    ),
+                          ),
+                          child: authCtrl.isLoading
+                              ? const SizedBox(
+                                  height: 22,
+                                  width: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Text(
+                                  'Login',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                        ),
+                      );
+                    },
                   ),
                   const SizedBox(height: 16),
                   Center(
