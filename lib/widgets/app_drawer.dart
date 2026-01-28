@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import '../screens/filters_screen.dart';
 import '../theme/app_colors.dart';
 import '../navigation/app_routes.dart';
 
@@ -22,6 +23,11 @@ class AppDrawer extends StatelessWidget {
   void _navigateTo(BuildContext context, String route) {
     Navigator.pop(context);
     try {
+      // Special-case home to clear stack and avoid going back to splash
+      if (route == AppRoutes.home) {
+        Get.offAllNamed(route);
+        return;
+      }
       Get.toNamed(route);
     } catch (_) {
       Navigator.of(context).pushReplacementNamed(route);
@@ -173,8 +179,40 @@ class AppDrawer extends StatelessWidget {
             () => _navigateTo(context, AppRoutes.favorites)),
           _item(Icons.calendar_month_outlined, "My Bookings",
             () => _navigateTo(context, AppRoutes.bookings)),
-          _item(Icons.tune_outlined, "Filters",
-            () => _navigateTo(context, '/filters')),
+          _item(Icons.tune_outlined, "Filters", () {
+            // Close drawer first
+            Navigator.pop(context);
+            // Open FiltersScreen directly because it requires constructor args
+            Navigator.of(context).push(MaterialPageRoute(
+              builder: (ctx) => FiltersScreen(
+                initialFilters: {
+                  'priceRange': const RangeValues(0.0, 10000.0),
+                  'maxDistance': 100.0,
+                  'luxuryOnly': false,
+                  'minRating': 0.0,
+                  'amenities': {
+                    'Pool': false,
+                    'WiFi': false,
+                    'Kitchen': false,
+                    'Breakfast': false,
+                  },
+                  'propertyTypes': {
+                    'Farmhouse': false,
+                    'Villa': false,
+                    'Hotel': false,
+                    'Apartment': false,
+                    'Cottage': false,
+                    'Homestay': false,
+                  },
+                  'sortOption': 'Relevance',
+                },
+                onFiltersApplied: (filters) {
+                  // No-op: the drawer doesn't own filter state. If needed,
+                  // pass a callback from Home to Drawer in future.
+                },
+              ),
+            ));
+          }),
           _item(Icons.person_outline, "Profile",
             () => _navigateTo(context, AppRoutes.profile)),
 
