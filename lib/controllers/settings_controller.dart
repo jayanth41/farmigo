@@ -23,6 +23,7 @@ class SettingsController extends ChangeNotifier {
   bool get emailNotifications => _emailNotifications;
   bool get smsNotifications => _smsNotifications;
   bool get darkMode => _darkMode;
+  ThemeMode get themeMode => _darkMode ? ThemeMode.dark : ThemeMode.light;
   String get language => _language;
   String get currency => _currency;
   bool get isInitialized => _isInitialized;
