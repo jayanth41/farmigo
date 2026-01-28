@@ -307,6 +307,50 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: const Text('Don\'t have an account? Sign up'),
                     ),
                   ),
+                  const SizedBox(height: 24),
+                  
+                  // GOOGLE SIGN-IN BUTTON
+                  Consumer<AuthController>(
+                    builder: (context, authCtrl, _) {
+                      return SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: authCtrl.isLoading
+                              ? null
+                              : () async {
+                                  final success = await authCtrl.signInWithGoogle();
+                                  if (!mounted) return;
+                                  if (success) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('✅ Google Sign-In successful'),
+                                        backgroundColor: Colors.green,
+                                      ),
+                                    );
+                                  } else {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('❌ ${authCtrl.errorMessage}'),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  }
+                                },
+                          icon: const Icon(Icons.g_mobiledata),
+                          label: const Text('Sign in with Google'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: Colors.black,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            side: const BorderSide(color: Colors.grey),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                 ],
 
                 const SizedBox(height: 20),
