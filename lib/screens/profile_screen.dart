@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_application_1/screens/owner_dashboard.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../theme/app_colors.dart';

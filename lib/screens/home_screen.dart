@@ -36,7 +36,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _didPromptForProfile = false;
 
   // Location & Category selectors
-  String _selectedState = 'Telangana';
+  final String _selectedState = 'Telangana';
   String _selectedCategory = 'All';
 
   // Advanced filter state (shared with filters screen)
@@ -355,7 +355,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       child: const Center(
                         child: Text(
-                          '🏡',
+                          'F',
                           style: TextStyle(
                             fontWeight: FontWeight.w800, 
                             fontSize: 18,
