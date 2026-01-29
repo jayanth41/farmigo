@@ -27,6 +27,30 @@ class AppTheme {
   static const Color darkTextSecondary = Color(0xFFBDBDBD);
   static const Color darkBorder = Color(0xFF424242);
 
+  // Booking Card Colors
+  static const Color bookingCardColor = Color(0xFFFFFFFF);
+  static const double bookingCardRadius = 12.0;
+  static const Color bookingCardShadowColor = Color(0x1A000000);
+  static const double bookingImageWidth = 150.0;
+  static const double bookingImageHeight = 150.0;
+
+  // Booking Badge Colors - Confirmed
+  static const Color bookingBadgeConfirmedBg = Color(0xFFE8F5E9);
+  static const Color bookingBadgeConfirmedFg = Color(0xFF2E7D32);
+
+  // Booking Badge Colors - Upcoming
+  static const Color bookingBadgeUpcomingBg = Color(0xFFFFF3E0);
+  static const Color bookingBadgeUpcomingFg = Color(0xFFE65100);
+
+  // Booking Badge Colors - Cancelled
+  static const Color bookingBadgeCancelledBg = Color(0xFFFFEBEE);
+  static const Color bookingBadgeCancelledFg = Color(0xFFC62828);
+
+  // Booking Action Colors
+  static const Color bookingActionBorder = Color(0xFFDEDEDE);
+  static const Color bookingDangerBorder = Color(0xFFEF5350);
+  static const double bookingButtonRadius = 8.0;
+
   /// Get light theme
   static ThemeData lightTheme() {
     return ThemeData(

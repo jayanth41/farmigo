@@ -17,7 +17,6 @@ class AuthController extends ChangeNotifier {
   String? _errorMessage;
   bool _isAuthenticated = false;
   String? _verificationId;
-  int? _resendToken;
 
   User? get currentUser => _currentUser;
   UserProfile? get userProfile => _userProfile;
@@ -290,7 +289,6 @@ class AuthController extends ChangeNotifier {
         },
         codeSent: (String verificationId, int? resendToken) {
           _verificationId = verificationId;
-          _resendToken = resendToken;
           debugPrint('✅ SMS code sent to $phoneNumber');
           _isLoading = false;
           notifyListeners();
