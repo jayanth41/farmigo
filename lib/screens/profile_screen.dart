@@ -1,75 +1,131 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
 import '../theme/app_colors.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen>
+    with SingleTickerProviderStateMixin {
+  bool showEdit = false;
+
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  final TextEditingController nameController =
+      TextEditingController(text: "Jayanth");
+  final TextEditingController emailController =
+      TextEditingController(text: "jayanth@gmail.com");
+  final TextEditingController cityController =
+      TextEditingController(text: "Hyderabad");
+
+  @override
+  void initState() {
+    super.initState();
+    _controller =
+        AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
+    _animation = CurvedAnimation(parent: _controller, curve: Curves.easeInOut);
+  }
+
+  void _toggleEdit() {
+    setState(() {
+      showEdit = !showEdit;
+      showEdit ? _controller.forward() : _controller.reverse();
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    nameController.dispose();
+    emailController.dispose();
+    cityController.dispose();
+    super.dispose();
+  }
+
+  // ---------------- UI ----------------
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Profile'),
+        title: const Text("Profile"),
         centerTitle: true,
-        elevation: 0,
-        backgroundColor: const Color.fromARGB(0, 78, 183, 113),
+        backgroundColor: Colors.white,
         foregroundColor: AppColors.primary,
+        elevation: 0,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildProfileHeader(),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
             _buildStatsCounter(),
-            const SizedBox(height: 24),
-            _buildSectionTitle('ACCOUNT'),
-            _buildAccountSection(context),
-            const SizedBox(height: 24),
-            _buildSectionTitle('PAYMENT & REWARDS'),
-            _buildPaymentAndRewardsSection(),
-            const SizedBox(height: 24),
-            _buildSectionTitle('SUPPORT'),
-            _buildSupportSection(),
-            const SizedBox(height: 24),
-            _buildSectionTitle('SETTINGS'),
-            _buildSettingsSection(),
-            const SizedBox(height: 32),
-            _buildLogoutButton(context),
+            const SizedBox(height: 20),
+
+            // EDIT PROFILE BUTTON
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _toggleEdit,
+                icon: Icon(showEdit ? Icons.close : Icons.edit),
+                label: Text(showEdit ? "Close Edit" : "Edit Profile"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // EDIT PROFILE DROPDOWN
+            SizeTransition(
+              sizeFactor: _animation,
+              axisAlignment: -1,
+              child: _buildEditProfileForm(),
+            ),
+
+            const SizedBox(height: 20),
+
+            _buildDeleteAccountButton(),
+            const SizedBox(height: 12),
+            _buildLogoutButton(),
           ],
         ),
       ),
     );
   }
 
+  // ---------------- WIDGETS ----------------
+
   Widget _buildProfileHeader() {
     return Row(
       children: [
         const CircleAvatar(
-          radius: 40,
+          radius: 42,
           backgroundColor: AppColors.primary,
           child: Icon(Icons.person, size: 40, color: Colors.white),
         ),
         const SizedBox(width: 16),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: const [
-            Text(
-              'Jayanth',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 4),
-            Text(
-              'jayanth@gmail.com',
-              style: TextStyle(fontSize: 16, color: Colors.grey),
-            ),
-            SizedBox(height: 4),
-            Text(
-              'Hyderabad',
-              style: TextStyle(fontSize: 16, color: Colors.grey),
-            ),
+          children: [
+            Text(nameController.text,
+                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 4),
+            Text(emailController.text,
+                style: const TextStyle(fontSize: 14, color: Colors.grey)),
+            const SizedBox(height: 4),
+            Text(cityController.text,
+                style: const TextStyle(fontSize: 14, color: Colors.grey)),
           ],
         ),
       ],
@@ -80,9 +136,9 @@ class ProfileScreen extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceAround,
       children: [
-        _buildStatItem('Bookings', '12'),
-        _buildStatItem('Favorites', '5'),
-        _buildStatItem('Rewards', '1500'),
+        _buildStatItem("Bookings", "12"),
+        _buildStatItem("Favorites", "5"),
+        _buildStatItem("Rewards", "1500"),
       ],
     );
   }
@@ -90,122 +146,111 @@ class ProfileScreen extends StatelessWidget {
   Widget _buildStatItem(String label, String value) {
     return Column(
       children: [
-        Text(
-          value,
-          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-        ),
+        Text(value,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
         const SizedBox(height: 4),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 16, color: Colors.grey),
-        ),
+        Text(label,
+            style: const TextStyle(fontSize: 14, color: Colors.grey)),
       ],
     );
   }
 
-  Widget _buildSectionTitle(String title) {
+  // ---------------- EDIT FORM ----------------
+
+  Widget _buildEditProfileForm() {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.bgSoft,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        children: [
+          _buildTextField("Name", nameController),
+          _buildTextField("Email", emailController),
+          _buildTextField("City", cityController),
+
+          const SizedBox(height: 12),
+
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                setState(() {});
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Profile Updated")),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+              ),
+              child: const Text("Save Changes"),
+            ),
+          )
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTextField(String label, TextEditingController controller) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0),
-      child: Text(
-        title,
-        style: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.bold,
-          color: Colors.grey,
+      padding: const EdgeInsets.only(bottom: 10),
+      child: TextField(
+        controller: controller,
+        decoration: InputDecoration(
+          labelText: label,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         ),
       ),
     );
   }
 
-  Widget _buildAccountSection(BuildContext context) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Column(
-        children: [
-          _buildListTile(
-            icon: Icons.person_outline,
-            title: 'Personal Information',
-            onTap: () {},
+  // ---------------- DELETE ACCOUNT ----------------
+
+  Widget _buildDeleteAccountButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        icon: const Icon(Icons.delete, color: Colors.red),
+        label: const Text("Delete Account",
+            style: TextStyle(color: Colors.red)),
+        onPressed: _showDeleteWarning,
+        style: OutlinedButton.styleFrom(
+          side: const BorderSide(color: Colors.red),
+        ),
+      ),
+    );
+  }
+
+  void _showDeleteWarning() {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Delete Account"),
+        content: const Text(
+            "Are you sure you want to permanently delete your account? This action cannot be undone."),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
           ),
-          _buildDivider(),
-          _buildListTile(
-            icon: Icons.privacy_tip_outlined,
-            title: 'Privacy & Security',
-            onTap: () {},
-          ),
-          _buildDivider(),
-          _buildListTile(
-            icon: Icons.notifications_outlined,
-            title: 'Notifications',
-            onTap: () {},
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Account deleted (demo)")),
+              );
+            },
+            child: const Text("Delete", style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildPaymentAndRewardsSection() {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Column(
-        children: [
-          _buildListTile(
-            icon: Icons.payment_outlined,
-            title: 'Payment Methods',
-            onTap: () {},
-          ),
-          _buildDivider(),
-          _buildListTile(
-            icon: Icons.card_giftcard_outlined,
-            title: 'Rewards & Offers',
-            onTap: () {},
-          ),
-        ],
-      ),
-    );
-  }
+  // ---------------- LOGOUT ----------------
 
-  Widget _buildSupportSection() {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Column(
-        children: [
-          _buildListTile(
-            icon: Icons.help_outline,
-            title: 'Help Center',
-            onTap: () {},
-          ),
-          _buildDivider(),
-          _buildListTile(
-            icon: Icons.policy_outlined,
-            title: 'Terms & Policies',
-            onTap: () {},
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSettingsSection() {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Column(
-        children: [
-          _buildListTile(
-            icon: Icons.settings_outlined,
-            title: 'App Settings',
-            onTap: () {},
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLogoutButton(BuildContext context) {
+  Widget _buildLogoutButton() {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
@@ -215,37 +260,13 @@ class ProfileScreen extends StatelessWidget {
         },
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.red[700],
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         ),
-        child: const Text(
-          'LOGOUT',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
+        child: const Text("LOGOUT",
+            style: TextStyle(fontWeight: FontWeight.bold)),
       ),
-    );
-  }
-
-  Widget _buildListTile({
-    required IconData icon,
-    required String title,
-    VoidCallback? onTap,
-  }) {
-    return ListTile(
-      leading: Icon(icon, color: AppColors.primary),
-      title: Text(title),
-      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-      onTap: onTap,
-    );
-  }
-
-  Widget _buildDivider() {
-    return const Divider(
-      height: 1,
-      indent: 16,
-      endIndent: 16,
     );
   }
 }

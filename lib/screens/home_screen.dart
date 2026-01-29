@@ -18,7 +18,9 @@ import '../widgets/properties_grid.dart';
 import 'owner_dashboard.dart';
 import 'filters_screen.dart';
 import 'package:provider/provider.dart';
+import '../filters/filters_provider.dart';
 import '../controllers/app_location_controller.dart';
+import '../models/category.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -35,9 +37,10 @@ class _HomeScreenState extends State<HomeScreen> {
   Map<String, dynamic>? _profile;
   bool _isProfileLoading = true;
   bool _didPromptForProfile = false;
+  FiltersProvider? _filtersProvider;
 
   // Location & Category selectors
- String _selectedState = 'Telangana';
+ final String _selectedState = 'Telangana';
   String _selectedCategory = 'All';
 
   // Advanced filter state (shared with filters screen)
@@ -87,6 +90,17 @@ class _HomeScreenState extends State<HomeScreen> {
     
     // Load Supabase-backed user profile (if authenticated)
     loadProfile();
+
+    // Subscribe to global filters provider updates after first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      try {
+        final provider = Provider.of<FiltersProvider>(context, listen: false);
+        _filtersProvider = provider;
+        provider.addListener(_onGlobalFiltersChanged);
+      } catch (_) {
+        // Provider might not be available in some contexts; ignore.
+      }
+    });
   }
 
   Future<void> loadProfile() async {
@@ -163,7 +177,61 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     _searchController.dispose();
+    try {
+      _filtersProvider?.removeListener(_onGlobalFiltersChanged);
+    } catch (_) {}
     super.dispose();
+  }
+
+  Category _currentCategory() {
+                        final s = _selectedCategory.toLowerCase();
+                          if (s.contains('farm')) return Category.farmhouse;
+                          if (s.contains('villa')) return Category.villa;
+                          if (s.contains('hotel')) return Category.hotel;
+                          if (s.contains('flight') || s.contains('flights')) return Category.flights;
+                          if (s.contains('car')) return Category.car;
+                          if (s.contains('hour')) return Category.hourly;
+                          return Category.all;
+  }
+
+  void _onGlobalFiltersChanged() {
+    final provider = _filtersProvider;
+    if (provider == null) return;
+    final cat = _currentCategory();
+    final raw = provider.getRaw(cat);
+    if (raw == null) return;
+
+    setState(() {
+      // Merge known keys into local filter state if present
+      if (raw.containsKey('priceRange') && raw['priceRange'] is RangeValues) {
+        _priceRange = raw['priceRange'] as RangeValues;
+      }
+      if (raw.containsKey('maxDistance') && raw['maxDistance'] is double) {
+        _maxDistance = raw['maxDistance'] as double;
+      }
+      if (raw.containsKey('luxuryOnly') && raw['luxuryOnly'] is bool) {
+        _luxuryOnly = raw['luxuryOnly'] as bool;
+      }
+      if (raw.containsKey('minRating') && raw['minRating'] is double) {
+        _minRating = raw['minRating'] as double;
+      }
+      if (raw.containsKey('amenities') && raw['amenities'] is Map) {
+        try {
+          _amenities.addAll(Map<String, bool>.from(raw['amenities']));
+        } catch (_) {}
+      }
+      if (raw.containsKey('propertyTypes') && raw['propertyTypes'] is Map) {
+        try {
+          _propertyTypes.addAll(Map<String, bool>.from(raw['propertyTypes']));
+        } catch (_) {}
+      }
+      if (raw.containsKey('sortOption') && raw['sortOption'] is String) {
+        _sortOption = raw['sortOption'] as String;
+      }
+    });
+
+    // Re-apply filters to update UI
+    _applyFilters();
   }
 
   void _onSearchChanged() => _applyFilters();
@@ -378,10 +446,22 @@ class _HomeScreenState extends State<HomeScreen> {
                     IconButton(
                       icon: const Icon(Icons.tune, color: AppColors.primary),
                       onPressed: () {
+                        final cat = () {
+                          final s = _selectedCategory.toLowerCase();
+                          if (s.contains('farm')) return Category.farmhouse;
+                          if (s.contains('villa')) return Category.villa;
+                          if (s.contains('hotel')) return Category.hotel;
+                          if (s.contains('flight') || s.contains('flights')) return Category.flights;
+                          if (s.contains('car')) return Category.car;
+                          if (s.contains('hour')) return Category.hourly;
+                          return Category.all;
+                        }();
+
                         Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (_) => FiltersScreen(
+                              category: cat,
                               onFiltersApplied: (filters) {
                                 setState(() {
                                   _priceRange = filters['priceRange'] ?? _priceRange;
@@ -391,6 +471,11 @@ class _HomeScreenState extends State<HomeScreen> {
                                   _amenities.addAll(filters['amenities'] ?? {});
                                   _propertyTypes.addAll(filters['propertyTypes'] ?? {});
                                   _sortOption = filters['sortOption'] ?? _sortOption;
+
+                                  // map back some category-specific values if present
+                                  if (cat == Category.farmhouse || cat == Category.villa) {
+                                    // optional: read guests/location
+                                  }
                                 });
                                 _applyFilters();
                               },

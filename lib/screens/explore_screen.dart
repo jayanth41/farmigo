@@ -1,7 +1,16 @@
 import 'package:flutter/material.dart';
+import '../models/category.dart';
+import 'filters_screen.dart';
 
-class ExploreScreen extends StatelessWidget {
-  const ExploreScreen({Key? key}) : super(key: key);
+class ExploreScreen extends StatefulWidget {
+  const ExploreScreen({super.key});
+
+  @override
+  State<ExploreScreen> createState() => _ExploreScreenState();
+}
+
+class _ExploreScreenState extends State<ExploreScreen> {
+  Category _selectedCategory = Category.all;
 
   @override
   Widget build(BuildContext context) {
@@ -10,6 +19,26 @@ class ExploreScreen extends StatelessWidget {
         title: const Text('Explore'),
         elevation: 0,
         centerTitle: false,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.tune),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => FiltersScreen(
+                    category: _selectedCategory,
+                    onFiltersApplied: (filters) {
+                      // Explore list doesn't own global filters yet.
+                      // You can wire this to search results later.
+                    },
+                    initialFilters: {},
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -63,36 +92,12 @@ class ExploreScreen extends StatelessWidget {
                   mainAxisSpacing: 12,
                   crossAxisSpacing: 12,
                   children: [
-                    _categoryCard(
-                      context,
-                      icon: Icons.home_outlined,
-                      label: 'Farmhouses',
-                    ),
-                    _categoryCard(
-                      context,
-                      icon: Icons.villa,
-                      label: 'Villas',
-                    ),
-                    _categoryCard(
-                      context,
-                      icon: Icons.hotel,
-                      label: 'Hotels',
-                    ),
-                    _categoryCard(
-                      context,
-                      icon: Icons.flight,
-                      label: 'Flights',
-                    ),
-                    _categoryCard(
-                      context,
-                      icon: Icons.directions_car,
-                      label: 'Car Rentals',
-                    ),
-                    _categoryCard(
-                      context,
-                      icon: Icons.schedule,
-                      label: 'Hourly',
-                    ),
+                    _categoryCard(context, icon: Icons.home_outlined, label: 'Farmhouses', category: Category.farmhouse),
+                    _categoryCard(context, icon: Icons.villa, label: 'Villas', category: Category.villa),
+                    _categoryCard(context, icon: Icons.hotel, label: 'Hotels', category: Category.hotel),
+                    _categoryCard(context, icon: Icons.flight, label: 'Flights', category: Category.flights),
+                    _categoryCard(context, icon: Icons.directions_car, label: 'Car Rentals', category: Category.car),
+                    _categoryCard(context, icon: Icons.schedule, label: 'Hourly', category: Category.hourly),
                   ],
                 ),
               ),
@@ -168,30 +173,36 @@ class ExploreScreen extends StatelessWidget {
     BuildContext context, {
     required IconData icon,
     required String label,
+    required Category category,
   }) {
+    final selected = _selectedCategory == category;
     return GestureDetector(
       onTap: () {
+        setState(() {
+          _selectedCategory = category;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Navigating to $label')),
+          SnackBar(content: Text('Selected $label')),
         );
       },
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.grey[100],
+          color: selected ? Theme.of(context).primaryColor.withOpacity(0.08) : Colors.grey[100],
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey[300]!),
+          border: Border.all(color: selected ? Theme.of(context).primaryColor : Colors.grey[300]!),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 32, color: Theme.of(context).primaryColor),
+            Icon(icon, size: 32, color: selected ? Theme.of(context).primaryColor : Theme.of(context).primaryColor),
             const SizedBox(height: 8),
             Text(
               label,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
+                color: selected ? Theme.of(context).primaryColor : null,
               ),
             ),
           ],
