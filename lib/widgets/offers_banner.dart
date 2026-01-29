@@ -104,7 +104,7 @@ class _OfferCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
+            color: Colors.black.withAlpha(20),
             blurRadius: 10,
             offset: const Offset(0, 6),
           ),
@@ -118,7 +118,7 @@ class _OfferCard extends StatelessWidget {
             width: 42,
             height: 42,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.25),
+              color: Colors.white.withAlpha(64),
               shape: BoxShape.circle,
             ),
             child: Icon(icon, color: Colors.white, size: 22),

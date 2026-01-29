@@ -32,15 +32,15 @@ class OfferCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         gradient: LinearGradient(
           colors: [
-            offer.color.withOpacity(0.95),
-            offer.color.withOpacity(0.75),
+            offer.color.withAlpha(242),
+            offer.color.withAlpha(191),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           ),
         boxShadow: [
           BoxShadow(
-            color: offer.color.withOpacity(0.35),
+            color: offer.color.withAlpha(89),
             blurRadius: 14,
             offset: const Offset(0, 8),
           ),
@@ -54,7 +54,7 @@ class OfferCard extends StatelessWidget {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.25),
+              color: Colors.white.withAlpha(64),
               shape: BoxShape.circle,
             ),
             child: Icon(

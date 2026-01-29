@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../screens/filters_screen.dart';
+import '../models/category.dart';
 import '../screens/about_us_screen.dart';
 import '../screens/help_support_screen.dart';
 import '../screens/terms_policy_screen.dart';
@@ -182,7 +183,7 @@ class AppDrawer extends StatelessWidget {
             () => _navigateTo(context, AppRoutes.favorites)),
           _item(Icons.calendar_month_outlined, "My Bookings",
             () => _navigateTo(context, AppRoutes.bookings)),
-          _item(Icons.tune_outlined, "Filters", () {
+            _item(Icons.tune_outlined, "Filters", () {
             // Close drawer first
             Navigator.pop(context);
             // Open FiltersScreen directly because it requires constructor args
@@ -213,6 +214,7 @@ class AppDrawer extends StatelessWidget {
                   // No-op: the drawer doesn't own filter state. If needed,
                   // pass a callback from Home to Drawer in future.
                 },
+                category: Category.all,
               ),
             ));
           }),

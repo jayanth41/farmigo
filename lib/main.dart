@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:provider/provider.dart';
 
 import 'firebase_options.dart';
+import 'filters/filters_provider.dart';
 import 'navigation/app_routes.dart';
 import 'theme/app_theme.dart';
 import 'screens/splash_screen.dart';
@@ -73,6 +74,9 @@ class MyApp extends StatelessWidget {
         ),
         ChangeNotifierProvider(
           create: (_) => AppLocationController()..initialize(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => FiltersProvider(),
         ),
       ],
       child: Consumer<SettingsController>(
