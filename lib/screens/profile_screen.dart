@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../services/session_service.dart';
 import '../theme/app_colors.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -80,8 +81,7 @@ class _ProfileScreenState extends State<ProfileScreen>
         title: const Text("Profile"),
         centerTitle: true,
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-
-        foregroundColor: AppColors.primary,
+        foregroundColor: Theme.of(context).colorScheme.onSurface,
         elevation: 0,
       ),
       body: SingleChildScrollView(
@@ -100,7 +100,8 @@ class _ProfileScreenState extends State<ProfileScreen>
                 icon: Icon(showEdit ? Icons.close : Icons.edit),
                 label: Text(showEdit ? "Close Edit" : "Edit Profile"),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),
@@ -133,29 +134,28 @@ class _ProfileScreenState extends State<ProfileScreen>
       children: [
         GestureDetector(
           onTap: _pickImage,
-          child: CircleAvatar(
-            radius: 42,
-            backgroundColor: AppColors.primary,
-            backgroundImage:
-                _profileImage != null ? FileImage(_profileImage!) : null,
-            child: _profileImage == null
-                ? const Icon(Icons.person, size: 40, color: Colors.white)
-                : null,
-          ),
+      child: CircleAvatar(
+      radius: 42,
+      backgroundColor: Theme.of(context).colorScheme.primary,
+      backgroundImage:
+        _profileImage != null ? FileImage(_profileImage!) : null,
+      child: _profileImage == null
+        ? Icon(Icons.person, size: 40, color: Theme.of(context).colorScheme.onPrimary)
+        : null,
+      ),
         ),
         const SizedBox(width: 16),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(nameController.text,
-                style:
-                    const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+      Text(nameController.text,
+        style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontSize: 22, fontWeight: FontWeight.bold)),
             const SizedBox(height: 4),
-            Text(emailController.text,
-                style: const TextStyle(fontSize: 14, color: Colors.grey)),
+      Text(emailController.text,
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 14, color: Theme.of(context).textTheme.bodySmall?.color)),
             const SizedBox(height: 4),
-            Text(cityController.text,
-                style: const TextStyle(fontSize: 14, color: Colors.grey)),
+      Text(cityController.text,
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 14, color: Theme.of(context).textTheme.bodySmall?.color)),
           ],
         ),
       ],
@@ -177,11 +177,10 @@ class _ProfileScreenState extends State<ProfileScreen>
     return Column(
       children: [
         Text(value,
-            style:
-                const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 20, fontWeight: FontWeight.bold)),
         const SizedBox(height: 4),
         Text(label,
-            style: const TextStyle(fontSize: 14, color: Colors.grey)),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 14)),
       ],
     );
   }
@@ -192,7 +191,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.bgSoft,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -218,7 +217,8 @@ class _ProfileScreenState extends State<ProfileScreen>
             child: ElevatedButton(
               onPressed: _saveProfile,
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                foregroundColor: Theme.of(context).colorScheme.onPrimary,
               ),
               child: const Text("Save Changes"),
             ),
@@ -266,12 +266,11 @@ class _ProfileScreenState extends State<ProfileScreen>
     return SizedBox(
       width: double.infinity,
       child: OutlinedButton.icon(
-        icon: const Icon(Icons.delete, color: Colors.red),
-        label:
-            const Text("Delete Account", style: TextStyle(color: Colors.red)),
+        icon: Icon(Icons.delete, color: Theme.of(context).colorScheme.error),
+        label: Text("Delete Account", style: TextStyle(color: Theme.of(context).colorScheme.error)),
         onPressed: _showDeleteWarning,
         style: OutlinedButton.styleFrom(
-          side: const BorderSide(color: Colors.red),
+          side: BorderSide(color: Theme.of(context).colorScheme.error),
         ),
       ),
     );
@@ -306,6 +305,9 @@ class _ProfileScreenState extends State<ProfileScreen>
     await supabase.from('profiles').delete().eq('id', user.id);
     await supabase.auth.signOut();
 
+    try {
+      await SessionService.clear();
+    } catch (_) {}
     Navigator.pushNamedAndRemoveUntil(context, '/login', (_) => false);
   }
 
@@ -317,10 +319,14 @@ class _ProfileScreenState extends State<ProfileScreen>
       child: ElevatedButton(
         onPressed: () async {
           await supabase.auth.signOut();
+          try {
+            await SessionService.clear();
+          } catch (_) {}
           Navigator.pushNamedAndRemoveUntil(context, '/login', (_) => false);
         },
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.red[700],
+          backgroundColor: Theme.of(context).colorScheme.error,
+          foregroundColor: Theme.of(context).colorScheme.onError,
           padding: const EdgeInsets.symmetric(vertical: 14),
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),

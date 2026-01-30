@@ -1,5 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
+import 'firebase_helper.dart';
+import 'network_utils.dart';
 
 /// User profile model
 class UserProfile {
@@ -53,7 +57,9 @@ class UserProfile {
 /// Firestore service for managing user profiles
 class FirestoreUserService {
   static final FirestoreUserService _instance = FirestoreUserService._internal();
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseFirestore? _firestore = FirebaseHelper.isLikelyAvailable() ? FirebaseFirestore.instance : null;
+  // Simple in-memory cache to avoid repeated reads on rebuilds
+  final Map<String, UserProfile> _cache = {};
 
   factory FirestoreUserService() {
     return _instance;
@@ -65,11 +71,31 @@ class FirestoreUserService {
 
   /// Create or update user profile in Firestore
   Future<bool> saveUserProfile(UserProfile profile) async {
+    // enforce that a signed-in user exists (compatible with simple Firestore rules)
+    final current = FirebaseAuth.instance.currentUser;
+    if (current == null) {
+      debugPrint('⚠️ saveUserProfile: no authenticated user');
+      return false;
+    }
+
+    if (_firestore == null) {
+      debugPrint('⚠️ Firestore unavailable, saveUserProfile skipped');
+      return false;
+    }
+
+    if (!await NetworkUtils.hasNetwork()) {
+      debugPrint('⚠️ No network, saveUserProfile skipped');
+      return false;
+    }
+
     try {
-      await _firestore
+      final db = _firestore!;
+      await db
           .collection(_usersCollection)
           .doc(profile.uid)
           .set(profile.toJson(), SetOptions(merge: true));
+      // update cache
+      _cache[profile.uid] = profile;
       debugPrint('✅ User profile saved: ${profile.email}');
       return true;
     } catch (e) {
@@ -80,15 +106,33 @@ class FirestoreUserService {
 
   /// Fetch user profile from Firestore
   Future<UserProfile?> getUserProfile(String uid) async {
+    // enforce auth for reads to satisfy rules that require request.auth != null
+    final current = FirebaseAuth.instance.currentUser;
+    if (current == null) {
+      debugPrint('⚠️ getUserProfile: no authenticated user');
+      return null;
+    }
+
+    // return cached value when available
+    if (_cache.containsKey(uid)) return _cache[uid];
+
+    if (_firestore == null) {
+      debugPrint('⚠️ Firestore unavailable, getUserProfile returning null');
+      return null;
+    }
+
     try {
-      final doc = await _firestore
-          .collection(_usersCollection)
-          .doc(uid)
-          .get();
+      final db = _firestore!;
+      final doc = await db
+        .collection(_usersCollection)
+        .doc(uid)
+        .get();
 
       if (doc.exists) {
+        final profile = UserProfile.fromJson(doc.data() as Map<String, dynamic>);
+        _cache[uid] = profile;
         debugPrint('✅ User profile fetched: ${doc.data()?['email']}');
-        return UserProfile.fromJson(doc.data() as Map<String, dynamic>);
+        return profile;
       }
       return null;
     } catch (e) {
@@ -99,12 +143,26 @@ class FirestoreUserService {
 
   /// Update specific fields in user profile
   Future<bool> updateUserProfile(String uid, Map<String, dynamic> updates) async {
+    final current = FirebaseAuth.instance.currentUser;
+    if (current == null) {
+      debugPrint('⚠️ updateUserProfile: no authenticated user');
+      return false;
+    }
+
+    if (_firestore == null) {
+      debugPrint('⚠️ Firestore unavailable, updateUserProfile skipped');
+      return false;
+    }
+
     try {
       updates['updatedAt'] = DateTime.now();
-      await _firestore
-          .collection(_usersCollection)
-          .doc(uid)
-          .update(updates);
+      final db = _firestore!;
+      await db
+        .collection(_usersCollection)
+        .doc(uid)
+        .update(updates);
+      // invalidate cache for uid
+      _cache.remove(uid);
       debugPrint('✅ User profile updated: $uid');
       return true;
     } catch (e) {
@@ -130,8 +188,21 @@ class FirestoreUserService {
 
   /// Delete user profile (when account is deleted)
   Future<bool> deleteUserProfile(String uid) async {
+    final current = FirebaseAuth.instance.currentUser;
+    if (current == null) {
+      debugPrint('⚠️ deleteUserProfile: no authenticated user');
+      return false;
+    }
+
+    if (_firestore == null) {
+      debugPrint('⚠️ Firestore unavailable, deleteUserProfile skipped');
+      return false;
+    }
+
     try {
-      await _firestore.collection(_usersCollection).doc(uid).delete();
+      final db = _firestore!;
+      await db.collection(_usersCollection).doc(uid).delete();
+      _cache.remove(uid);
       debugPrint('✅ User profile deleted: $uid');
       return true;
     } catch (e) {
@@ -142,12 +213,30 @@ class FirestoreUserService {
 
   /// Check if user profile exists
   Future<bool> userProfileExists(String uid) async {
+    if (_cache.containsKey(uid)) return true;
+
+    final current = FirebaseAuth.instance.currentUser;
+    if (current == null) {
+      debugPrint('⚠️ userProfileExists: no authenticated user');
+      return false;
+    }
+
+    if (_firestore == null) {
+      debugPrint('⚠️ Firestore unavailable, userProfileExists returning false');
+      return false;
+    }
+
     try {
-      final doc = await _firestore
-          .collection(_usersCollection)
-          .doc(uid)
-          .get();
-      return doc.exists;
+      final db = _firestore!;
+      final doc = await db
+        .collection(_usersCollection)
+        .doc(uid)
+        .get();
+      final exists = doc.exists;
+      if (exists) {
+        _cache[uid] = UserProfile.fromJson(doc.data() as Map<String, dynamic>);
+      }
+      return exists;
     } catch (e) {
       debugPrint('❌ Error checking user profile: $e');
       return false;

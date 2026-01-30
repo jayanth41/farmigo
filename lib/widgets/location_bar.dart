@@ -13,14 +13,14 @@ class LocationBar extends StatelessWidget {
         children: [
           // LEFT: Your Location text
           Row(
-            children: const [
+            children: [
               Icon(Icons.near_me_outlined, size: 18, color: AppColors.iconGrey),
-              SizedBox(width: 6),
+              const SizedBox(width: 6),
               Text(
                 "Your Location",
                 style: TextStyle(
                   fontSize: 13,
-                  color: AppColors.textMuted,
+                  color: AppColors.textMuted(context),
                 ),
               ),
             ],
@@ -30,7 +30,7 @@ class LocationBar extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
-              border: Border.all(color: AppColors.border),
+              border: Border.all(color: AppColors.border(context)),
               borderRadius: BorderRadius.circular(14),
               color: Theme.of(context).colorScheme.surface,
             ),

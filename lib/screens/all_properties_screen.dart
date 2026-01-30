@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../widgets/properties_grid.dart';
-import '../theme/app_colors.dart';
 import '../widgets/app_drawer.dart';
 
 class AllPropertiesScreen extends StatelessWidget {

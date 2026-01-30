@@ -35,12 +35,15 @@ class ImageWithFallback extends StatelessWidget {
         return Container(
           height: height,
           width: width,
-          color: const Color.fromRGBO(240, 240, 240, 1.0),
-          child: const Center(
+          color: Theme.of(context).cardColor,
+          child: Center(
             child: SizedBox(
               width: 36,
               height: 36,
-              child: CircularProgressIndicator(strokeWidth: 2.5),
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                color: Theme.of(context).colorScheme.primary,
+              ),
             ),
           ),
         );
@@ -52,12 +55,14 @@ class ImageWithFallback extends StatelessWidget {
         return Container(
           height: height,
           width: width,
-          color: Colors.grey[300],
+          color: Theme.of(context).cardColor,
           alignment: Alignment.center,
-          child: const Icon(
-            Icons.image_not_supported,
-            size: 60,
-            color: Colors.grey,
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Image.asset(
+              'assets/images/fallback.png',
+              fit: BoxFit.contain,
+            ),
           ),
         );
       },

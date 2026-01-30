@@ -27,6 +27,7 @@ import 'controllers/app_location_controller.dart';
 import 'controllers/auth_controller.dart';
 import 'controllers/settings_controller.dart';
 import 'settings/theme_provider.dart';
+import 'services/firebase_helper.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -38,9 +39,17 @@ void main() async {
   );
 
   if (!kIsWeb) {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
+    try {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+      // mark firebase available for guarded services
+      FirebaseHelper.setAvailable(true);
+    } catch (e, st) {
+      debugPrint('⚠️ Firebase.initializeApp failed: $e');
+      debugPrint('$st');
+      FirebaseHelper.setAvailable(false);
+    }
   }
 
   Get.put(FavoritesController());

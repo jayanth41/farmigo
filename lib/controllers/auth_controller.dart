@@ -1,13 +1,18 @@
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+
 import '../services/firestore_user_service.dart';
+import '../services/session_service.dart';
+import '../services/firebase_helper.dart';
+import '../services/network_utils.dart';
 
 /// Provider-based authentication controller that manages auth state,
 /// login, signup, logout using Firebase Authentication with multiple auth methods.
 /// Supports: Email/Password, Google Sign-In, Phone OTP
 class AuthController extends ChangeNotifier {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  // FirebaseAuth may be unavailable in emulator/offline scenarios. Make it nullable
+  final FirebaseAuth? _auth = FirebaseHelper.isLikelyAvailable() ? FirebaseAuth.instance : null;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
   final FirestoreUserService _firestoreService = FirestoreUserService();
 
@@ -35,13 +40,27 @@ class AuthController extends ChangeNotifier {
 
   /// Initialize auth state listener and load user profile
   void _initAuthListener() {
-    _auth.authStateChanges().listen((User? user) async {
+    if (_auth == null) {
+      // Firebase not available; treat as unauthenticated but keep controller alive
+      _currentUser = null;
+      _isAuthenticated = false;
+      notifyListeners();
+      debugPrint('⚠️ AuthController: Firebase not available, running in offline/guest mode');
+      return;
+    }
+
+    _auth!.authStateChanges().listen((User? user) async {
       _currentUser = user;
       _isAuthenticated = user != null;
 
       // Load user profile from Firestore if authenticated
       if (user != null) {
-        _userProfile = await _firestoreService.getUserProfile(user.uid);
+        try {
+          _userProfile = await _firestoreService.getUserProfile(user.uid);
+        } catch (e) {
+          debugPrint('⚠️ Failed to load user profile: $e');
+          _userProfile = null;
+        }
       } else {
         _userProfile = null;
       }
@@ -55,7 +74,13 @@ class AuthController extends ChangeNotifier {
 
   /// Check if user is currently authenticated
   Future<bool> checkAuthStatus() async {
-    _currentUser = _auth.currentUser;
+    if (_auth == null) {
+      _currentUser = null;
+      _isAuthenticated = false;
+      notifyListeners();
+      return _isAuthenticated;
+    }
+    _currentUser = _auth!.currentUser;
     _isAuthenticated = _currentUser != null;
     notifyListeners();
     return _isAuthenticated;
@@ -97,8 +122,23 @@ class AuthController extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
 
+    if (_auth == null) {
+      _errorMessage = 'Firebase unavailable';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+
     try {
-      final userCredential = await _auth.createUserWithEmailAndPassword(
+      // Check network first
+      if (!await NetworkUtils.hasNetwork()) {
+        _errorMessage = 'No network available';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
+      final userCredential = await _auth!.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
@@ -121,6 +161,9 @@ class AuthController extends ChangeNotifier {
 
       debugPrint('✅ Signup success: ${_currentUser?.email}');
       _isLoading = false;
+      try {
+        await SessionService.setGuest(false);
+      } catch (_) {}
       notifyListeners();
       return true;
     } on FirebaseAuthException catch (e) {
@@ -153,8 +196,22 @@ class AuthController extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
 
+    if (_auth == null) {
+      _errorMessage = 'Firebase unavailable';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+
     try {
-      final userCredential = await _auth.signInWithEmailAndPassword(
+      if (!await NetworkUtils.hasNetwork()) {
+        _errorMessage = 'No network available';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
+      final userCredential = await _auth!.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
@@ -164,11 +221,36 @@ class AuthController extends ChangeNotifier {
 
       // Load user profile from Firestore
       if (_currentUser != null) {
-        _userProfile = await _firestoreService.getUserProfile(_currentUser!.uid);
+        try {
+          _userProfile = await _firestoreService.getUserProfile(_currentUser!.uid);
+        } catch (e) {
+          debugPrint('⚠️ Failed to load user profile after sign-in: $e');
+          _userProfile = null;
+        }
+        // If profile doesn't exist, create a minimal user document (first login)
+        if (_userProfile == null) {
+          try {
+            final profile = UserProfile(
+              uid: _currentUser!.uid,
+              email: _currentUser!.email ?? email,
+              name: _currentUser!.displayName,
+              phone: _currentUser!.phoneNumber,
+              loginType: 'email',
+              createdAt: DateTime.now(),
+            );
+            final saved = await _firestoreService.saveUserProfile(profile);
+            if (saved) _userProfile = profile;
+          } catch (e) {
+            debugPrint('⚠️ Failed to create user profile after sign-in: $e');
+          }
+        }
       }
 
       debugPrint('✅ Login success: ${_currentUser?.email}');
       _isLoading = false;
+      try {
+        await SessionService.setGuest(false);
+      } catch (_) {}
       notifyListeners();
       return true;
     } on FirebaseAuthException catch (e) {
@@ -192,7 +274,21 @@ class AuthController extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
 
+    if (_auth == null) {
+      _errorMessage = 'Firebase unavailable';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+
     try {
+      if (!await NetworkUtils.hasNetwork()) {
+        _errorMessage = 'No network available';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
 
       if (googleUser == null) {
@@ -202,8 +298,7 @@ class AuthController extends ChangeNotifier {
         return false;
       }
 
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
 
       // Use both idToken and accessToken for v6 compatibility
       final String? idToken = googleAuth.idToken;
@@ -222,16 +317,14 @@ class AuthController extends ChangeNotifier {
         accessToken: accessToken,
       );
 
-      final UserCredential userCredential =
-          await _auth.signInWithCredential(credential);
+      final UserCredential userCredential = await _auth!.signInWithCredential(credential);
 
       _currentUser = userCredential.user;
       _isAuthenticated = _currentUser != null;
 
       // Create or update user profile in Firestore
       if (_currentUser != null) {
-        final profileExists =
-            await _firestoreService.userProfileExists(_currentUser!.uid);
+    final profileExists = await _firestoreService.userProfileExists(_currentUser!.uid);
 
         if (profileExists) {
           _userProfile = await _firestoreService.getUserProfile(_currentUser!.uid);
@@ -250,6 +343,9 @@ class AuthController extends ChangeNotifier {
 
       debugPrint('✅ Google Sign-In success: ${_currentUser?.email}');
       _isLoading = false;
+      try {
+        await SessionService.setGuest(false);
+      } catch (_) {}
       notifyListeners();
       return true;
     } on FirebaseAuthException catch (e) {
@@ -273,13 +369,27 @@ class AuthController extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
 
+    if (_auth == null) {
+      _errorMessage = 'Firebase unavailable';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+
     try {
-      await _auth.verifyPhoneNumber(
+      if (!await NetworkUtils.hasNetwork()) {
+        _errorMessage = 'No network available';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
+      await _auth!.verifyPhoneNumber(
         phoneNumber: phoneNumber,
         timeout: const Duration(seconds: 60),
         verificationCompleted: (PhoneAuthCredential credential) async {
           // Auto sign-in if verification is instant
-          await _auth.signInWithCredential(credential);
+          await _auth!.signInWithCredential(credential);
         },
         verificationFailed: (FirebaseAuthException e) {
           _errorMessage = _getFirebaseErrorMessage(e.code);
@@ -326,22 +436,34 @@ class AuthController extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
 
+    if (_auth == null) {
+      _errorMessage = 'Firebase unavailable';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+
     try {
+      if (!await NetworkUtils.hasNetwork()) {
+        _errorMessage = 'No network available';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
       final PhoneAuthCredential credential = PhoneAuthProvider.credential(
         verificationId: _verificationId!,
         smsCode: otpCode,
       );
 
-      final UserCredential userCredential =
-          await _auth.signInWithCredential(credential);
+      final UserCredential userCredential = await _auth!.signInWithCredential(credential);
 
       _currentUser = userCredential.user;
       _isAuthenticated = _currentUser != null;
 
       // Create or update user profile in Firestore
       if (_currentUser != null) {
-        final profileExists =
-            await _firestoreService.userProfileExists(_currentUser!.uid);
+        final profileExists = await _firestoreService.userProfileExists(_currentUser!.uid);
 
         if (profileExists) {
           _userProfile = await _firestoreService.getUserProfile(_currentUser!.uid);
@@ -361,6 +483,9 @@ class AuthController extends ChangeNotifier {
       _verificationId = null;
       debugPrint('✅ Phone Sign-In success: ${_currentUser?.phoneNumber}');
       _isLoading = false;
+      try {
+        await SessionService.setGuest(false);
+      } catch (_) {}
       notifyListeners();
       return true;
     } on FirebaseAuthException catch (e) {
@@ -381,10 +506,13 @@ class AuthController extends ChangeNotifier {
   /// Sign out
   Future<void> signOut() async {
     try {
-      await _auth.signOut();
-      await _googleSignIn.signOut(); // Also sign out from Google
+      if (_auth != null) await _auth!.signOut();
+  await _googleSignIn.signOut(); // Also sign out from Google
+      try {
+        await SessionService.clear();
+      } catch (_) {}
       _currentUser = null;
-      _userProfile = null;
+  _userProfile = null;
       _isAuthenticated = false;
       _errorMessage = null;
       _verificationId = null;
@@ -405,12 +533,14 @@ class AuthController extends ChangeNotifier {
       return false;
     }
 
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
+    if (_auth == null) {
+      _errorMessage = 'Firebase unavailable';
+      notifyListeners();
+      return false;
+    }
 
     try {
-      await _auth.sendPasswordResetEmail(email: email);
+      await _auth!.sendPasswordResetEmail(email: email);
       _isLoading = false;
       notifyListeners();
       debugPrint('✅ Password reset email sent');
@@ -421,7 +551,7 @@ class AuthController extends ChangeNotifier {
       notifyListeners();
       return false;
     } catch (e) {
-      _errorMessage = 'Failed to send reset email: $e';
+  _errorMessage = 'Failed to send reset email: $e';
       _isLoading = false;
       notifyListeners();
       return false;

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 // theme colors are used from Theme.of(context).colorScheme
 import '../controllers/auth_controller.dart';
+import '../services/session_service.dart';
+import '../navigation/app_routes.dart';
 import 'otp_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -173,6 +174,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       onPressed: _isLoading ? null : _sendOTP,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: cs.primary,
+                        foregroundColor: cs.onPrimary,
                         padding:
                             const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
@@ -202,7 +204,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 24),
                   Consumer<AuthController>(
                     builder: (context, authCtrl, _) {
-                      return SizedBox(
+                        return SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
                           onPressed: authCtrl.isLoading
@@ -212,6 +214,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                     emailController.text.trim(),
                                     passwordController.text.trim(),
                                   ),
+                          style: ElevatedButton.styleFrom(foregroundColor: cs.onPrimary, backgroundColor: cs.primary),
                           child: authCtrl.isLoading
                               ? CircularProgressIndicator(color: cs.onPrimary)
                               : const Text('Login'),
@@ -220,6 +223,19 @@ class _LoginScreenState extends State<LoginScreen> {
                     },
                   ),
                 ],
+                const SizedBox(height: 12),
+                Center(
+                  child: TextButton(
+                    onPressed: () async {
+                      // Start a guest session and navigate to Home, removing
+                      // previous routes so back cannot return to login.
+                      await SessionService.setGuest(true);
+                      if (!mounted) return;
+                      Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false);
+                    },
+                    child: const Text('Continue as guest'),
+                  ),
+                ),
               ],
             ),
           ),
