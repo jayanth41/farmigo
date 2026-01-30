@@ -20,6 +20,7 @@ import 'filters_screen.dart';
 import 'package:provider/provider.dart';
 import '../filters/filters_provider.dart';
 import '../controllers/app_location_controller.dart';
+import 'package:geolocator/geolocator.dart';
 import '../models/category.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -38,6 +39,10 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isProfileLoading = true;
   bool _didPromptForProfile = false;
   FiltersProvider? _filtersProvider;
+
+  // Async location fetch state to avoid calling location APIs in build()
+  Future<String?>? _locationFuture;
+  bool _isFetchingLocation = false;
 
   // Location & Category selectors
  final String _selectedState = 'Telangana';
@@ -236,6 +241,99 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _onSearchChanged() => _applyFilters();
 
+  // Fetch location asynchronously once (cached) and avoid calling Geolocator in build()
+  Future<String?> _fetchLocationOnce() async {
+    if (_locationFuture != null) return _locationFuture!;
+    _locationFuture = () async {
+      try {
+        // Use the GetX LocationController to request/check permissions safely
+        await locationController.checkLocationStatus();
+        if (!locationController.isLocationEnabled.value) {
+          await locationController.requestLocationPermission();
+        }
+
+        if (!locationController.isLocationEnabled.value) {
+          return 'Location disabled';
+        }
+
+        final pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.best).timeout(const Duration(seconds: 10));
+        return '${pos.latitude.toStringAsFixed(5)}, ${pos.longitude.toStringAsFixed(5)}';
+      } catch (_) {
+        return null;
+      }
+    }();
+
+    return _locationFuture!;
+  }
+
+  // Show bottom sheet that runs _fetchLocationOnce and allows manual edit/save
+  void _showLocationSheet(BuildContext ctx) {
+    showModalBottomSheet(
+      context: ctx,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+      ),
+      builder: (bc) {
+        final TextEditingController ctl = TextEditingController();
+        return Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(bc).viewInsets.bottom),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: FutureBuilder<String?>(
+              future: _fetchLocationOnce(),
+              builder: (context, snap) {
+                final loading = snap.connectionState == ConnectionState.waiting;
+                final detected = snap.data;
+                if (detected != null && detected.isNotEmpty) ctl.text = detected;
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Edit location', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 12),
+                    if (loading) const Text('Fetching location...')
+                    else if (detected == 'Location disabled') const Text('Location disabled')
+                    else if (detected == null) const Text('Could not detect location')
+                    else const SizedBox.shrink(),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: ctl,
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        hintText: 'Enter location name or coordinates',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(onPressed: () => Navigator.of(bc).pop(), child: const Text('Cancel')),
+                        const SizedBox(width: 8),
+                        ElevatedButton(
+                          onPressed: () {
+                            // Persist manual override to AppLocationController if available
+                            try {
+                              final locCtrl = Provider.of<AppLocationController>(ctx, listen: false);
+                              locCtrl.setLocationName(ctl.text.trim());
+                            } catch (_) {}
+                            Navigator.of(bc).pop();
+                            ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Location saved')));
+                          },
+                          child: const Text('Save'),
+                        )
+                      ],
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   void _applyFilters() {
     final query = _searchController.text.toLowerCase();
     final selectedState = _selectedState.toLowerCase();
@@ -360,58 +458,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Shows a bottom sheet to edit the current location string.
-  void _showEditLocationSheet(BuildContext ctx) {
-    final locController = Provider.of<AppLocationController>(ctx, listen: false);
-    final TextEditingController _locEditController = TextEditingController(text: locController.locationName);
-
-    showModalBottomSheet(
-      context: ctx,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
-      ),
-      builder: (bc) {
-        return Padding(
-          padding: EdgeInsets.only(bottom: MediaQuery.of(bc).viewInsets.bottom),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Edit location', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: _locEditController,
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
-                    hintText: 'Enter location name',
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton(onPressed: () => Navigator.of(bc).pop(), child: const Text('Cancel')),
-                    const SizedBox(width: 8),
-                    ElevatedButton(
-                      onPressed: () {
-                        // Minimal behavior: close sheet and show confirmation.
-                        Navigator.of(bc).pop();
-                        ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Location saved')));
-                      },
-                      child: const Text('Save'),
-                    )
-                  ],
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
+  
 
   Widget _buildBody() {
     switch (_selectedIndex) {
@@ -496,17 +543,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         color: AppColors.primary,
                       ),
                     ),
-                    // Small clickable current location text placed directly under the title
-                    GestureDetector(
-                      onTap: () => _showEditLocationSheet(context),
-                      child: Padding(
-                        padding: const EdgeInsets.only(left: 8.0, top: 26.0),
-                        child: Text(
-                          '📍 Current location',
-                          style: TextStyle(fontSize: 12, color: Colors.grey[700]),
-                        ),
-                      ),
-                    ),
+                    // Title area - kept compact. Location label placed below this row.
                     const Spacer(),
                     IconButton(
                       icon: const Icon(Icons.tune, color: AppColors.primary),
@@ -561,90 +598,19 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                const SizedBox(height: 12),
-
-                // LOCATION BAR
-                Row(
-                  children: [
-                    // State selector
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () {
-                          // open state selector bottom sheet
-                          locationController.openStateSelector(context);
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).cardColor,
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Color.fromRGBO(0, 0, 0, 0.05),
-                                blurRadius: 6,
-                              )
-                            ],
-                          ),
-                          child: Obx(() => Row(
-                                children: [
-                                  Icon(Icons.location_on, size: 18, color: Theme.of(context).colorScheme.primary),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    locationController.selectedState.value,
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 16,
-                                      color: Theme.of(context).textTheme.bodyLarge?.color,
-                                    ),
-                                  ),
-                                  const Spacer(),
-                                  const Icon(Icons.keyboard_arrow_down),
-                                ],
-                              )),
-                        ),
+                // Small clickable current location placed under title, left aligned
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: GestureDetector(
+                      onTap: () => _showLocationSheet(context),
+                      child: Text(
+                        '📍 Current location',
+                        style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodySmall?.color),
                       ),
                     ),
-
-                    const SizedBox(width: 5),
-
-                    // Enable location button
-                    Obx(() => ElevatedButton.icon(
-                          onPressed: () {
-                            locationController.requestLocationPermission();
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Theme.of(context).colorScheme.primary,
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          icon: const Icon(Icons.near_me_outlined, size: 18),
-                          label: Text(
-                            locationController.isLocationEnabled.value ? "Enabled" : "Enable",
-                            style: const TextStyle(fontSize: 13),
-                          ),
-                        )),
-                    ],
                   ),
-
-                const SizedBox(height: 12),
-
-                // Live location name (from provider-based AppLocationController with reverse geocoding)
-                Consumer<AppLocationController>(
-                  builder: (context, loc, child) {
-                    if (!loc.isPermissionGranted) {
-                      return const SizedBox.shrink();
-                    }
-                    final txtColor = Theme.of(context).textTheme.bodySmall?.color ?? Colors.grey;
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6),
-                      child: Text(
-                        'Current location: ${loc.locationName}',
-                        style: TextStyle(fontSize: 12, color: txtColor),
-                      ),
-                    );
-                  },
                 ),
 
                 // SEARCH BAR (theme-aware)

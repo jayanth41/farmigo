@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../widgets/app_drawer.dart';
+import '../widgets/image_with_fallback.dart';
 import '../models/farmhouse_model.dart';
 import '../controllers/favorites_controller.dart';
 import '../services/booking_service.dart';
@@ -256,19 +257,9 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                           ? widget.images![index]
                           : widget.imageUrl;
 
-                      return Image.network(
-                        imageUrl,
+                      return ImageWithFallback(
+                        imageUrl: imageUrl,
                         fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            color: Colors.grey[300],
-                            child: const Icon(
-                              Icons.image_not_supported,
-                              size: 60,
-                              color: Colors.grey,
-                            ),
-                          );
-                        },
                       );
                     },
                   ),
@@ -841,19 +832,9 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                             children: [
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(12),
-                                child: Image.network(
-                                  guestPhotos[index],
+                                child: ImageWithFallback(
+                                  imageUrl: guestPhotos[index],
                                   fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return Container(
-                                      color: Colors.grey[300],
-                                      child: const Icon(
-                                        Icons.image_not_supported,
-                                        size: 60,
-                                        color: Colors.grey,
-                                      ),
-                                    );
-                                  },
                                 ),
                               ),
                               Container(
@@ -938,24 +919,11 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                                         topLeft: Radius.circular(12),
                                         bottomLeft: Radius.circular(12),
                                       ),
-                                      child: Image.network(
-                                        farmhouse['image'],
+                                      child: ImageWithFallback(
+                                        imageUrl: farmhouse['image'],
                                         width: 100,
                                         height: 100,
                                         fit: BoxFit.cover,
-                                        errorBuilder: (context, error,
-                                            stackTrace) {
-                                          return Container(
-                                            width: 100,
-                                            height: 100,
-                                            color: Colors.grey[300],
-                                            child: const Icon(
-                                              Icons.image_not_supported,
-                                              size: 60,
-                                              color: Colors.grey,
-                                            ),
-                                          );
-                                        },
                                       ),
                                     ),
                                     const SizedBox(width: 12),
