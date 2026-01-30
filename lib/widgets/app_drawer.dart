@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../screens/filters_screen.dart';
-import '../models/category.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../services/session_service.dart';
 import '../screens/about_us_screen.dart';
 import '../screens/help_support_screen.dart';
 import '../screens/terms_policy_screen.dart';
@@ -45,11 +45,21 @@ class AppDrawer extends StatelessWidget {
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(ctx);
-              Navigator.pushReplacementNamed(context, '/login');
+              // Clear guest flag and Supabase session, then navigate to login and
+              // remove all previous routes so back cannot return to the app.
+              try {
+                await SessionService.clear();
+              } catch (_) {}
+              try {
+                await Supabase.instance.client.auth.signOut();
+              } catch (_) {}
+
+              if (!context.mounted) return;
+              Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
             },
-            child: const Text('Logout', style: TextStyle(color: Colors.red)),
+            child: Text('Logout', style: TextStyle(color: Theme.of(context).colorScheme.error)),
           ),
         ],
       ),
@@ -246,7 +256,22 @@ class AppDrawer extends StatelessWidget {
     final onSurface = Theme.of(context).colorScheme.onSurface;
 
     return ListTile(
-      onTap: onTap,
+      onTap: () {
+        Navigator.pop(context);
+        // If a parent provided a delegate and this label maps to a route in
+        // AppRoutes, prefer delegating so parent can decide (eg. tab switch,
+        // permission checks). For other labels (help/about) fall back to the
+        // item's provided handler which does a MaterialPageRoute push.
+        if (onItemSelected != null && AppRoutes.labelToRoute.containsKey(label)) {
+          onItemSelected!(label);
+          return;
+        }
+
+        // fallback to the provided tap handler when no delegate is present
+        try {
+          onTap();
+        } catch (_) {}
+      },
       leading: Icon(icon, color: onSurface),
       title: Text(
         label,

@@ -196,11 +196,11 @@ class _PromoBoxState extends State<PromoBox> {
           Expanded(
             child: TextFormField(
               controller: _locationController,
-              style: const TextStyle(color: AppColors.textMuted, fontSize: 15),
-              decoration: const InputDecoration(
+              style: TextStyle(color: AppColors.textMuted(context), fontSize: 15),
+              decoration: InputDecoration(
                 border: InputBorder.none,
                 hintText: 'Search destination, farmhouse',
-                hintStyle: TextStyle(color: AppColors.textMuted, fontSize: 15),
+                hintStyle: TextStyle(color: AppColors.textMuted(context), fontSize: 15),
               ),
             ),
           ),
@@ -219,9 +219,9 @@ class _PromoBoxState extends State<PromoBox> {
         decoration: BoxDecoration(border: Border.all(color: _borderSoft), borderRadius: BorderRadius.circular(14)),
         child: Row(
           children: [
-            Icon(icon, color: AppColors.textMuted),
+            Icon(icon, color: AppColors.textMuted(context)),
             const SizedBox(width: 10),
-            Expanded(child: Text(dateText, style: const TextStyle(color: AppColors.textMuted, fontSize: 15))),
+            Expanded(child: Text(dateText, style: TextStyle(color: AppColors.textMuted(context), fontSize: 15))),
           ],
         ),
       ),
@@ -235,7 +235,7 @@ class _PromoBoxState extends State<PromoBox> {
         height: 52,
         padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(border: Border.all(color: _borderSoft), borderRadius: BorderRadius.circular(14)),
-        child: Row(children: [Icon(Icons.people_outline, color: AppColors.textMuted), const SizedBox(width: 10), Expanded(child: Text(_guestsLabel(), style: const TextStyle(color: AppColors.textMuted, fontSize: 15)))]),
+  child: Row(children: [Icon(Icons.people_outline, color: AppColors.textMuted(context)), const SizedBox(width: 10), Expanded(child: Text(_guestsLabel(), style: TextStyle(color: AppColors.textMuted(context), fontSize: 15)))]),
       ),
     );
   }

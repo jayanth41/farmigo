@@ -148,7 +148,7 @@ class _SearchCardState extends State<SearchCard> {
     return Container(
       height: 54,
       padding: const EdgeInsets.symmetric(horizontal: 14),
-      decoration: BoxDecoration(border: Border.all(color: active ? AppColors.primary : AppColors.border), borderRadius: BorderRadius.circular(16)),
+      decoration: BoxDecoration(border: Border.all(color: active ? AppColors.primary : AppColors.border(context)), borderRadius: BorderRadius.circular(16)),
       child: Row(children: [
         Icon(Icons.location_on_outlined, color: AppColors.iconGrey, size: 22),
         const SizedBox(width: 10),
@@ -156,8 +156,8 @@ class _SearchCardState extends State<SearchCard> {
             child: TextFormField(
           controller: _locationController,
           focusNode: _locationFocus,
-          style: TextStyle(color: AppColors.textMuted, fontSize: active ? 16 : 15),
-          decoration: const InputDecoration(border: InputBorder.none, hintText: 'Search destination, farmhouse', hintStyle: TextStyle(color: AppColors.textMuted, fontSize: 15)),
+          style: TextStyle(color: AppColors.textMuted(context), fontSize: active ? 16 : 15),
+          decoration: InputDecoration(border: InputBorder.none, hintText: 'Search destination, farmhouse', hintStyle: TextStyle(color: AppColors.textMuted(context), fontSize: 15)),
         ))
       ]),
     );
@@ -172,8 +172,8 @@ class _SearchCardState extends State<SearchCard> {
       child: Container(
         height: 54,
         padding: const EdgeInsets.symmetric(horizontal: 14),
-        decoration: BoxDecoration(border: Border.all(color: active ? AppColors.primary : AppColors.border), borderRadius: BorderRadius.circular(16)),
-        child: Row(children: [Icon(Icons.calendar_today_outlined, color: AppColors.iconGrey, size: 22), const SizedBox(width: 10), Expanded(child: Text(dateText, style: TextStyle(color: AppColors.textMuted, fontSize: active ? 16 : 15)))]),
+        decoration: BoxDecoration(border: Border.all(color: active ? AppColors.primary : AppColors.border(context)), borderRadius: BorderRadius.circular(16)),
+        child: Row(children: [Icon(Icons.calendar_today_outlined, color: AppColors.iconGrey, size: 22), const SizedBox(width: 10), Expanded(child: Text(dateText, style: TextStyle(color: AppColors.textMuted(context), fontSize: active ? 16 : 15)))]),
       ),
     );
   }
@@ -185,8 +185,8 @@ class _SearchCardState extends State<SearchCard> {
       child: Container(
         height: 54,
         padding: const EdgeInsets.symmetric(horizontal: 14),
-        decoration: BoxDecoration(border: Border.all(color: active ? AppColors.primary : AppColors.border), borderRadius: BorderRadius.circular(16)),
-        child: Row(children: [Icon(Icons.people_outline, color: AppColors.iconGrey, size: 22), const SizedBox(width: 10), Expanded(child: Text(_guestsLabel(), style: TextStyle(color: AppColors.textMuted, fontSize: active ? 16 : 15)))]),
+        decoration: BoxDecoration(border: Border.all(color: active ? AppColors.primary : AppColors.border(context)), borderRadius: BorderRadius.circular(16)),
+        child: Row(children: [Icon(Icons.people_outline, color: AppColors.iconGrey, size: 22), const SizedBox(width: 10), Expanded(child: Text(_guestsLabel(), style: TextStyle(color: AppColors.textMuted(context), fontSize: active ? 16 : 15)))]),
       ),
     );
   }

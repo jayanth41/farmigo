@@ -46,7 +46,6 @@ class _FiltersScreenState extends State<FiltersScreen> {
   // Hotel
   late double _starRating;
   late String _roomType;
-  late bool _freeBreakfast;
   late int _hotelGuestsCount;
   DateTimeRange? _hotelDateRange;
 
@@ -74,7 +73,6 @@ class _FiltersScreenState extends State<FiltersScreen> {
   // Hourly
   late RangeValues _pricePerHour;
   late String _timeSlot;
-  late bool _acOnly;
   late int _capacity;
   late int _hourlyDurationHours;
 
@@ -131,8 +129,7 @@ class _FiltersScreenState extends State<FiltersScreen> {
 
     // Hotel
     _starRating = widget.initialFilters['starRating'] ?? 0.0;
-    _roomType = widget.initialFilters['roomType'] ?? 'Single';
-    _freeBreakfast = widget.initialFilters['freeBreakfast'] ?? false;
+  _roomType = widget.initialFilters['roomType'] ?? 'Single';
     _hotelGuestsCount = widget.initialFilters['hotelGuestsCount'] ?? 1;
     _hotelDateRange = widget.initialFilters['hotelDateRange'];
 
@@ -158,9 +155,8 @@ class _FiltersScreenState extends State<FiltersScreen> {
     _seatingCapacity = widget.initialFilters['seatingCapacity'] ?? 4;
 
     // Hourly
-    _pricePerHour = widget.initialFilters['pricePerHour'] ?? const RangeValues(0, 1000);
-    _timeSlot = widget.initialFilters['timeSlot'] ?? 'Morning';
-    _acOnly = widget.initialFilters['acOnly'] ?? false;
+  _pricePerHour = widget.initialFilters['pricePerHour'] ?? const RangeValues(0, 1000);
+  _timeSlot = widget.initialFilters['timeSlot'] ?? 'Morning';
     _capacity = widget.initialFilters['capacity'] ?? 2;
     _hourlyDurationHours = widget.initialFilters['hourlyDurationHours'] ?? 2;
   }
@@ -311,7 +307,6 @@ class _FiltersScreenState extends State<FiltersScreen> {
       // hotel
       _starRating = 0.0;
       _roomType = 'Single';
-      _freeBreakfast = false;
       _hotelGuestsCount = 1;
       _hotelDateRange = null;
 
@@ -338,7 +333,6 @@ class _FiltersScreenState extends State<FiltersScreen> {
       // hourly
       _pricePerHour = const RangeValues(0, 1000);
       _timeSlot = 'Morning';
-      _acOnly = false;
       _capacity = 2;
       _hourlyDurationHours = 2;
     });

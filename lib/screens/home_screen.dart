@@ -42,7 +42,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Async location fetch state to avoid calling location APIs in build()
   Future<String?>? _locationFuture;
-  bool _isFetchingLocation = false;
+  
 
   // Location & Category selectors
  final String _selectedState = 'Telangana';
@@ -469,6 +469,12 @@ class _HomeScreenState extends State<HomeScreen> {
       case 2:
         return const BookingsScreen();
       case 3:
+        // If no profile is available (likely a guest session), show a
+        // limited guest profile view that encourages login. This prevents
+        // guests from accessing edit/profile functionality.
+        if (_profile == null) {
+          return const _GuestProfileView();
+        }
         return const ProfileScreen();
       default:
         return _homePage();
@@ -513,21 +519,21 @@ class _HomeScreenState extends State<HomeScreen> {
                       width: 36,
                       height: 36,
                       decoration: BoxDecoration(
-                        color: AppColors.primary,
+                        color: Theme.of(context).colorScheme.primary,
                         borderRadius: BorderRadius.circular(8),
                         boxShadow: [
                           BoxShadow(
-                            color: AppColors.primary.withOpacity(0.12),
+                            color: Theme.of(context).colorScheme.primary.withOpacity(0.12),
                             blurRadius: 4,
                             offset: const Offset(0, 2),
                           ),
                         ],
                       ),
-                      child: const Center(
+                      child: Center(
                         child: Text(
                           'F',
                           style: TextStyle(
-                            color: Colors.white,
+                            color: Theme.of(context).colorScheme.onPrimary,
                             fontWeight: FontWeight.w800,
                             fontSize: 18,
                           ),
@@ -535,18 +541,18 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    const Text(
+                    Text(
                       "Farmigo",
-                      style: TextStyle(
+                      style: Theme.of(context).textTheme.displaySmall?.copyWith(
                         fontSize: 26,
                         fontWeight: FontWeight.w900,
-                        color: AppColors.primary,
+                        color: Theme.of(context).colorScheme.primary,
                       ),
                     ),
                     // Title area - kept compact. Location label placed below this row.
                     const Spacer(),
                     IconButton(
-                      icon: const Icon(Icons.tune, color: AppColors.primary),
+                      icon: Icon(Icons.tune, color: Theme.of(context).colorScheme.primary),
                       onPressed: () {
                         final cat = () {
                           final s = _selectedCategory.toLowerCase();
@@ -768,6 +774,36 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _GuestProfileView extends StatelessWidget {
+  const _GuestProfileView({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.person_outline, size: 72, color: Theme.of(context).colorScheme.onBackground.withOpacity(0.6)),
+            const SizedBox(height: 12),
+            Text('You are browsing as a guest', style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 8),
+            Text('Some features like editing your profile require an account. Please login to access them.', textAlign: TextAlign.center, style: Theme.of(context).textTheme.bodyMedium),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pushNamed('/login');
+              },
+              child: const Text('Login'),
+            ),
+          ],
+        ),
       ),
     );
   }
