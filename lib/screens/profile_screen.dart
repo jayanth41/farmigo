@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../theme/app_colors.dart';
 
@@ -16,19 +18,26 @@ class _ProfileScreenState extends State<ProfileScreen>
   late AnimationController _controller;
   late Animation<double> _animation;
 
+  final SupabaseClient supabase = Supabase.instance.client;
+
+  File? _profileImage;
+
   final TextEditingController nameController =
       TextEditingController(text: "Jayanth");
   final TextEditingController emailController =
       TextEditingController(text: "jayanth@gmail.com");
   final TextEditingController cityController =
       TextEditingController(text: "Hyderabad");
+  final TextEditingController phoneController =
+      TextEditingController(text: "9876543210");
 
   @override
   void initState() {
     super.initState();
-    _controller =
-        AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
-    _animation = CurvedAnimation(parent: _controller, curve: Curves.easeInOut);
+    _controller = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 300));
+    _animation =
+        CurvedAnimation(parent: _controller, curve: Curves.easeInOut);
   }
 
   void _toggleEdit() {
@@ -44,7 +53,22 @@ class _ProfileScreenState extends State<ProfileScreen>
     nameController.dispose();
     emailController.dispose();
     cityController.dispose();
+    phoneController.dispose();
     super.dispose();
+  }
+
+  // ---------------- IMAGE PICK ----------------
+
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final XFile? picked =
+        await picker.pickImage(source: ImageSource.gallery);
+
+    if (picked != null) {
+      setState(() {
+        _profileImage = File(picked.path);
+      });
+    }
   }
 
   // ---------------- UI ----------------
@@ -55,7 +79,8 @@ class _ProfileScreenState extends State<ProfileScreen>
       appBar: AppBar(
         title: const Text("Profile"),
         centerTitle: true,
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+
         foregroundColor: AppColors.primary,
         elevation: 0,
       ),
@@ -68,7 +93,6 @@ class _ProfileScreenState extends State<ProfileScreen>
             _buildStatsCounter(),
             const SizedBox(height: 20),
 
-            // EDIT PROFILE BUTTON
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
@@ -86,7 +110,6 @@ class _ProfileScreenState extends State<ProfileScreen>
 
             const SizedBox(height: 12),
 
-            // EDIT PROFILE DROPDOWN
             SizeTransition(
               sizeFactor: _animation,
               axisAlignment: -1,
@@ -94,7 +117,6 @@ class _ProfileScreenState extends State<ProfileScreen>
             ),
 
             const SizedBox(height: 20),
-
             _buildDeleteAccountButton(),
             const SizedBox(height: 12),
             _buildLogoutButton(),
@@ -104,22 +126,30 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  // ---------------- WIDGETS ----------------
+  // ---------------- HEADER ----------------
 
   Widget _buildProfileHeader() {
     return Row(
       children: [
-        const CircleAvatar(
-          radius: 42,
-          backgroundColor: AppColors.primary,
-          child: Icon(Icons.person, size: 40, color: Colors.white),
+        GestureDetector(
+          onTap: _pickImage,
+          child: CircleAvatar(
+            radius: 42,
+            backgroundColor: AppColors.primary,
+            backgroundImage:
+                _profileImage != null ? FileImage(_profileImage!) : null,
+            child: _profileImage == null
+                ? const Icon(Icons.person, size: 40, color: Colors.white)
+                : null,
+          ),
         ),
         const SizedBox(width: 16),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(nameController.text,
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                style:
+                    const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
             const SizedBox(height: 4),
             Text(emailController.text,
                 style: const TextStyle(fontSize: 14, color: Colors.grey)),
@@ -147,7 +177,8 @@ class _ProfileScreenState extends State<ProfileScreen>
     return Column(
       children: [
         Text(value,
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            style:
+                const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
         const SizedBox(height: 4),
         Text(label,
             style: const TextStyle(fontSize: 14, color: Colors.grey)),
@@ -167,20 +198,25 @@ class _ProfileScreenState extends State<ProfileScreen>
       child: Column(
         children: [
           _buildTextField("Name", nameController),
-          _buildTextField("Email", emailController),
+          _buildTextField("Phone", phoneController),
           _buildTextField("City", cityController),
+
+          TextField(
+            controller: emailController,
+            enabled: false,
+            decoration: InputDecoration(
+              labelText: "Email",
+              border:
+                  OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
 
           const SizedBox(height: 12),
 
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: () {
-                setState(() {});
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Profile Updated")),
-                );
-              },
+              onPressed: _saveProfile,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
               ),
@@ -205,6 +241,25 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
+  // ---------------- SAVE PROFILE ----------------
+
+  Future<void> _saveProfile() async {
+    final user = supabase.auth.currentUser;
+    if (user == null) return;
+
+    await supabase.from('profiles').update({
+      'name': nameController.text,
+      'city': cityController.text,
+      'phone': phoneController.text,
+    }).eq('id', user.id);
+
+    setState(() {});
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Profile Updated")),
+    );
+  }
+
   // ---------------- DELETE ACCOUNT ----------------
 
   Widget _buildDeleteAccountButton() {
@@ -212,8 +267,8 @@ class _ProfileScreenState extends State<ProfileScreen>
       width: double.infinity,
       child: OutlinedButton.icon(
         icon: const Icon(Icons.delete, color: Colors.red),
-        label: const Text("Delete Account",
-            style: TextStyle(color: Colors.red)),
+        label:
+            const Text("Delete Account", style: TextStyle(color: Colors.red)),
         onPressed: _showDeleteWarning,
         style: OutlinedButton.styleFrom(
           side: const BorderSide(color: Colors.red),
@@ -228,24 +283,30 @@ class _ProfileScreenState extends State<ProfileScreen>
       builder: (_) => AlertDialog(
         title: const Text("Delete Account"),
         content: const Text(
-            "Are you sure you want to permanently delete your account? This action cannot be undone."),
+            "Are you sure you want to permanently delete your account?"),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text("Cancel"),
           ),
           TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Account deleted (demo)")),
-              );
-            },
-            child: const Text("Delete", style: TextStyle(color: Colors.red)),
+            onPressed: _deleteAccount,
+            child:
+                const Text("Delete", style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _deleteAccount() async {
+    final user = supabase.auth.currentUser;
+    if (user == null) return;
+
+    await supabase.from('profiles').delete().eq('id', user.id);
+    await supabase.auth.signOut();
+
+    Navigator.pushNamedAndRemoveUntil(context, '/login', (_) => false);
   }
 
   // ---------------- LOGOUT ----------------
@@ -255,8 +316,8 @@ class _ProfileScreenState extends State<ProfileScreen>
       width: double.infinity,
       child: ElevatedButton(
         onPressed: () async {
-          await Supabase.instance.client.auth.signOut();
-          Navigator.pushReplacementNamed(context, '/login');
+          await supabase.auth.signOut();
+          Navigator.pushNamedAndRemoveUntil(context, '/login', (_) => false);
         },
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.red[700],
@@ -264,8 +325,8 @@ class _ProfileScreenState extends State<ProfileScreen>
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         ),
-        child: const Text("LOGOUT",
-            style: TextStyle(fontWeight: FontWeight.bold)),
+        child:
+            const Text("LOGOUT", style: TextStyle(fontWeight: FontWeight.bold)),
       ),
     );
   }

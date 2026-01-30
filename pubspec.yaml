@@ -30,9 +30,14 @@ dependencies:
   permission_handler: ^12.0.1
   geocoding: ^4.0.0
 
+  #image picker
+  image_picker: ^1.0.7
+
   # Backend
   supabase_flutter: ^2.12.0
   google_sign_in: ^6.2.1
+  qr_flutter: ^4.0.0
+  http: ^1.6.0
 
 dev_dependencies:
   flutter_test:

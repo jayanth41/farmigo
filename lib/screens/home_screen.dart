@@ -345,7 +345,8 @@ class _HomeScreenState extends State<HomeScreen> {
           currentIndex: _selectedIndex,
           onTap: (index) => setState(() => _selectedIndex = index),
           type: BottomNavigationBarType.fixed,
-          backgroundColor: Colors.white,
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+
           selectedItemColor: AppColors.primary,
           unselectedItemColor: Colors.grey[600],
           items: const [
@@ -356,6 +357,59 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  // Shows a bottom sheet to edit the current location string.
+  void _showEditLocationSheet(BuildContext ctx) {
+    final locController = Provider.of<AppLocationController>(ctx, listen: false);
+    final TextEditingController _locEditController = TextEditingController(text: locController.locationName);
+
+    showModalBottomSheet(
+      context: ctx,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+      ),
+      builder: (bc) {
+        return Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(bc).viewInsets.bottom),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Edit location', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _locEditController,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    hintText: 'Enter location name',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(onPressed: () => Navigator.of(bc).pop(), child: const Text('Cancel')),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: () {
+                        // Minimal behavior: close sheet and show confirmation.
+                        Navigator.of(bc).pop();
+                        ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Location saved')));
+                      },
+                      child: const Text('Save'),
+                    )
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -442,6 +496,17 @@ class _HomeScreenState extends State<HomeScreen> {
                         color: AppColors.primary,
                       ),
                     ),
+                    // Small clickable current location text placed directly under the title
+                    GestureDetector(
+                      onTap: () => _showEditLocationSheet(context),
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 8.0, top: 26.0),
+                        child: Text(
+                          '📍 Current location',
+                          style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                        ),
+                      ),
+                    ),
                     const Spacer(),
                     IconButton(
                       icon: const Icon(Icons.tune, color: AppColors.primary),
@@ -511,7 +576,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: Theme.of(context).cardColor,
                             borderRadius: BorderRadius.circular(12),
                             boxShadow: const [
                               BoxShadow(
@@ -522,13 +587,14 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                           child: Obx(() => Row(
                                 children: [
-                                  const Icon(Icons.location_on, size: 18, color: AppColors.primary),
+                                  Icon(Icons.location_on, size: 18, color: Theme.of(context).colorScheme.primary),
                                   const SizedBox(width: 4),
                                   Text(
                                     locationController.selectedState.value,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontWeight: FontWeight.w600,
                                       fontSize: 16,
+                                      color: Theme.of(context).textTheme.bodyLarge?.color,
                                     ),
                                   ),
                                   const Spacer(),
@@ -547,7 +613,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             locationController.requestLocationPermission();
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
+                            backgroundColor: Theme.of(context).colorScheme.primary,
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -570,38 +636,45 @@ class _HomeScreenState extends State<HomeScreen> {
                     if (!loc.isPermissionGranted) {
                       return const SizedBox.shrink();
                     }
+                    final txtColor = Theme.of(context).textTheme.bodySmall?.color ?? Colors.grey;
                     return Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6),
                       child: Text(
                         'Current location: ${loc.locationName}',
-                        style: const TextStyle(fontSize: 12, color: Colors.grey),
+                        style: TextStyle(fontSize: 12, color: txtColor),
                       ),
                     );
                   },
                 ),
 
-                // SEARCH BAR
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(14),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color.fromRGBO(0, 0, 0, 0.05),
-                        blurRadius: 6,
-                      )
-                    ],
-                  ),
-                  child: TextField(
-                    controller: _searchController,
-                    decoration: const InputDecoration(
-                      hintText: "Search farmhouses, villas...",
-                      border: InputBorder.none,
-                      icon: Icon(Icons.search),
+                // SEARCH BAR (theme-aware)
+                Builder(builder: (ctx) {
+                  final cs = Theme.of(ctx).colorScheme;
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    decoration: BoxDecoration(
+                      color: Theme.of(ctx).cardColor,
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color.fromRGBO(0, 0, 0, 0.05),
+                          blurRadius: 6,
+                        )
+                      ],
                     ),
-                  ),
-                ),
+                    child: TextField(
+                      controller: _searchController,
+                      cursorColor: cs.primary,
+                      style: TextStyle(color: cs.onSurface),
+                      decoration: InputDecoration(
+                        hintText: "Search farmhouses, villas...",
+                        hintStyle: TextStyle(color: cs.onSurface.withOpacity(0.6)),
+                        border: InputBorder.none,
+                        icon: Icon(Icons.search, color: cs.onSurface.withOpacity(0.8)),
+                      ),
+                    ),
+                  );
+                }),
               ],
             ),
           ),

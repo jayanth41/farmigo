@@ -12,7 +12,8 @@ class AllPropertiesScreen extends StatelessWidget {
     return Scaffold(
       drawer: const AppDrawer(),
       appBar: AppBar(
-        backgroundColor: AppColors.white,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black),
         title: const Text('All farmhouses', style: TextStyle(color: Colors.black)),

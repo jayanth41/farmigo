@@ -25,6 +25,9 @@ class CategoryTabs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bgColor = Theme.of(context).scaffoldBackgroundColor;
+    final textColor = Theme.of(context).colorScheme.onSurface;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: SingleChildScrollView(
@@ -37,28 +40,32 @@ class CategoryTabs extends StatelessWidget {
               child: GestureDetector(
                 onTap: () => onCategoryChange(c),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
-                    color: selected ? AppColors.primary : Colors.white,
+                    color: selected ? AppColors.primary : bgColor,
                     borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: AppColors.border),
+                    border: Border.all(
+                      color: Theme.of(context).dividerColor,
+                    ),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // leading icon per category
                       Padding(
                         padding: const EdgeInsets.only(right: 8.0),
                         child: Icon(
                           _iconForCategory(c),
-                          color: selected ? Colors.white : AppColors.primary,
+                          color: selected
+                              ? Colors.white
+                              : AppColors.primary,
                           size: 18,
                         ),
                       ),
                       Text(
                         c,
                         style: TextStyle(
-                          color: selected ? Colors.white : AppColors.textMain,
+                          color: selected ? Colors.white : textColor,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -85,10 +92,7 @@ class CategoryTabs extends StatelessWidget {
   }
 }
 
-// Note: A more feature-rich CategoryGrid is implemented below. Older simple
-// wrappers were removed to avoid duplicate class definitions.
-
-/// Square category grid used on Home screen with selection state - UPDATED
+/// Square category grid used on Home screen with selection state
 class CategoryGrid extends StatefulWidget {
   final void Function(String category)? onTap;
   final String selectedCategory;
@@ -122,11 +126,14 @@ class _CategoryGridState extends State<CategoryGrid> {
 
   @override
   Widget build(BuildContext context) {
+    final bgColor = Theme.of(context).scaffoldBackgroundColor;
+    final textColor = Theme.of(context).colorScheme.onSurface;
+
     final List<Map<String, dynamic>> items = [
       {'label': 'Farmhouses', 'icon': Icons.agriculture},
       {'label': 'Villas', 'icon': Icons.villa},
       {'label': 'Hotels', 'icon': Icons.hotel},
-      {'label': 'flights', 'icon': Icons.flight},
+      {'label': 'Flights', 'icon': Icons.flight},
       {'label': 'Car Rentals', 'icon': Icons.directions_car},
       {'label': 'Hourly Rentals', 'icon': Icons.access_time},
     ];
@@ -159,21 +166,21 @@ class _CategoryGridState extends State<CategoryGrid> {
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               decoration: BoxDecoration(
-                color: isSelected ? AppColors.primary : Colors.white,
+                color: isSelected ? AppColors.primary : bgColor,
                 borderRadius: BorderRadius.circular(18),
                 border: Border.all(
                   color: isSelected
                       ? AppColors.primary
-                      : Colors.grey.shade300,
+                      : Theme.of(context).dividerColor,
                   width: 1,
                 ),
-                boxShadow:[
-                        BoxShadow(
-                          color: const Color.fromRGBO(45, 80, 22, 0.3),
-                          blurRadius: 6,
-                          offset: const Offset(0, 3),
-                        ),
-                      ]
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 6,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -181,16 +188,18 @@ class _CategoryGridState extends State<CategoryGrid> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: isSelected ? Colors.white : AppColors.primary,
+                      color:
+                          isSelected ? Colors.white : AppColors.primary,
                       shape: BoxShape.circle,
                     ),
-                      child: Icon(
-                        icon,
-                        size: 26,
-                        color: isSelected ? AppColors.primary : AppColors.white,
-                      ),
+                    child: Icon(
+                      icon,
+                      size: 26,
+                      color: isSelected
+                          ? AppColors.primary
+                          : Colors.white,
                     ),
-                
+                  ),
                   const SizedBox(height: 8),
                   Text(
                     label,
@@ -198,7 +207,7 @@ class _CategoryGridState extends State<CategoryGrid> {
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 13,
-                      color: isSelected ? Colors.white : AppColors.textMain,
+                      color: isSelected ? Colors.white : textColor,
                     ),
                   ),
                 ],

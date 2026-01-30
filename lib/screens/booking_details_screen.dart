@@ -30,7 +30,8 @@ class BookingDetailsScreen extends StatelessWidget {
     return Scaffold(
       drawer: const AppDrawer(),
       appBar: AppBar(
-        backgroundColor: AppColors.white,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+
         iconTheme: const IconThemeData(color: Colors.black),
         elevation: 0,
         title: Text(name, style: const TextStyle(color: Colors.black)),
@@ -68,7 +69,7 @@ class BookingDetailsScreen extends StatelessWidget {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          Text('₹${price.toInt()}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textMain)),
+                          Text('₹${price.toInt()}', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
                           const Text('per night', style: TextStyle(color: Colors.grey, fontSize: 12)),
                         ],
                       ),

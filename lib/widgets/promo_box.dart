@@ -104,7 +104,7 @@ class _PromoBoxState extends State<PromoBox> {
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
@@ -172,10 +172,10 @@ class _PromoBoxState extends State<PromoBox> {
       padding: const EdgeInsets.only(bottom: 6),
       child: Text(
         text,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 14,
           fontWeight: FontWeight.w600,
-          color: AppColors.textMain,
+          color: Theme.of(context).colorScheme.onSurface,
         ),
       ),
     );
