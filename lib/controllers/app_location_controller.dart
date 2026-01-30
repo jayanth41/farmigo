@@ -155,6 +155,12 @@ class AppLocationController extends ChangeNotifier {
     }
   }
 
+  /// Allow setting a custom location name (manual override) and notify listeners.
+  void setLocationName(String name) {
+    _locationName = name;
+    notifyListeners();
+  }
+
   @override
   void dispose() {
     _positionSub?.cancel();
