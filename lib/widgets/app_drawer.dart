@@ -5,7 +5,6 @@ import '../models/category.dart';
 import '../screens/about_us_screen.dart';
 import '../screens/help_support_screen.dart';
 import '../screens/terms_policy_screen.dart';
-import '../theme/app_colors.dart';
 import '../navigation/app_routes.dart';
 
 class AppDrawer extends StatelessWidget {
@@ -26,15 +25,10 @@ class AppDrawer extends StatelessWidget {
 
   void _navigateTo(BuildContext context, String route) {
     Navigator.pop(context);
-    try {
-      // Special-case home to clear stack and avoid going back to splash
-      if (route == AppRoutes.home) {
-        Get.offAllNamed(route);
-        return;
-      }
+    if (route == AppRoutes.home) {
+      Get.offAllNamed(route);
+    } else {
       Get.toNamed(route);
-    } catch (_) {
-      Navigator.of(context).pushReplacementNamed(route);
     }
   }
 
@@ -64,8 +58,13 @@ class AppDrawer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surface = Theme.of(context).colorScheme.surface;
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+    final muted = onSurface.withOpacity(0.6);
+
     return Drawer(
       width: MediaQuery.of(context).size.width * 0.82,
+      backgroundColor: surface,
       child: SafeArea(
         child: Column(
           children: [
@@ -101,7 +100,6 @@ class AppDrawer extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 12),
-
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
@@ -112,7 +110,7 @@ class AppDrawer extends StatelessWidget {
                       children: [
                         CircleAvatar(
                           radius: 28,
-                          backgroundColor: Colors.white,
+                          backgroundColor: surface,
                           child: Text(
                             (profile?['name'] ?? 'U')
                                     .toString()
@@ -171,97 +169,57 @@ class AppDrawer extends StatelessWidget {
               ),
             ),
 
-            // ===== BODY (SCROLLABLE) =====
+            // ===== BODY =====
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  _sectionTitle("Navigation"),
-          _item(Icons.home_outlined, "Home",
-            () => _navigateTo(context, AppRoutes.home)),
-          _item(Icons.favorite_border, "Favorites",
-            () => _navigateTo(context, AppRoutes.favorites)),
-          _item(Icons.calendar_month_outlined, "My Bookings",
-            () => _navigateTo(context, AppRoutes.bookings)),
-            _item(Icons.tune_outlined, "Filters", () {
-            // Close drawer first
-            Navigator.pop(context);
-            // Open FiltersScreen directly because it requires constructor args
-            Navigator.of(context).push(MaterialPageRoute(
-              builder: (ctx) => FiltersScreen(
-                initialFilters: {
-                  'priceRange': const RangeValues(0.0, 10000.0),
-                  'maxDistance': 100.0,
-                  'luxuryOnly': false,
-                  'minRating': 0.0,
-                  'amenities': {
-                    'Pool': false,
-                    'WiFi': false,
-                    'Kitchen': false,
-                    'Breakfast': false,
-                  },
-                  'propertyTypes': {
-                    'Farmhouse': false,
-                    'Villa': false,
-                    'Hotel': false,
-                    'Apartment': false,
-                    'Cottage': false,
-                    'Homestay': false,
-                  },
-                  'sortOption': 'Relevance',
-                },
-                onFiltersApplied: (filters) {
-                  // No-op: the drawer doesn't own filter state. If needed,
-                  // pass a callback from Home to Drawer in future.
-                },
-                category: Category.all,
-              ),
-            ));
-          }),
-          _item(Icons.person_outline, "Profile",
-            () => _navigateTo(context, AppRoutes.profile)),
-
-                  if (isOwner) ...[
-                    const SizedBox(height: 16),
-                    _sectionTitle("Owner Tools"),
-          _item(Icons.dashboard_outlined, "Owner Dashboard",
-            () => _navigateTo(context, '/owner-dashboard')),
-          _item(Icons.add_outlined, "Add Property",
-            () => _navigateTo(context, '/addProperty')),
-                  ],
+                  _sectionTitle("Navigation", muted),
+                  _item(context, Icons.home_outlined, "Home",
+                      () => _navigateTo(context, AppRoutes.home)),
+                  _item(context, Icons.favorite_border, "Favorites",
+                      () => _navigateTo(context, AppRoutes.favorites)),
+                  _item(context, Icons.calendar_month_outlined, "My Bookings",
+                      () => _navigateTo(context, AppRoutes.bookings)),
+                  _item(context, Icons.person_outline, "Profile",
+                      () => _navigateTo(context, AppRoutes.profile)),
 
                   const SizedBox(height: 16),
-                  _sectionTitle("More"),
-          _item(Icons.settings_outlined, "Settings",
-            () => _navigateTo(context, AppRoutes.settings)),
-          _item(Icons.card_giftcard, "Offers & Coupons",
-            () => _navigateTo(context, AppRoutes.offers)),
-          _item(Icons.help_outline, "Help & Support", () {
-            Navigator.pop(context);
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const HelpSupportScreen()),
-            );
-          }),
-          _item(Icons.info_outline, "About Us", () {
-            Navigator.pop(context);
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const AboutUsScreen()),
-            );
-          }),
-          _item(Icons.privacy_tip_outlined, "Terms & Privacy Policy", () {
-            Navigator.pop(context);
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const TermsPolicyScreen()),
-            );
-          }),
+                  _sectionTitle("More", muted),
+                  _item(context, Icons.settings_outlined, "Settings",
+                      () => _navigateTo(context, AppRoutes.settings)),
+                  _item(context, Icons.card_giftcard, "Offers & Coupons",
+                      () => _navigateTo(context, AppRoutes.offers)),
+                  _item(context, Icons.help_outline, "Help & Support", () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const HelpSupportScreen()),
+                    );
+                  }),
+                  _item(context, Icons.info_outline, "About Us", () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const AboutUsScreen()),
+                    );
+                  }),
+                  _item(context, Icons.privacy_tip_outlined,
+                      "Terms & Privacy Policy", () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const TermsPolicyScreen()),
+                    );
+                  }),
                 ],
               ),
             ),
 
-            // ===== LOGOUT FIXED BOTTOM =====
+            // ===== LOGOUT =====
             Padding(
               padding: const EdgeInsets.all(16),
               child: OutlinedButton.icon(
@@ -283,37 +241,30 @@ class AppDrawer extends StatelessWidget {
     );
   }
 
-  Widget _item(IconData icon, String label, VoidCallback onTap) {
+  Widget _item(BuildContext context, IconData icon, String label,
+      VoidCallback onTap) {
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+
     return ListTile(
       onTap: onTap,
-      leading: SizedBox(
-        width: 38,
-        height: 38,
-        child: Center(
-          child: Icon(
-            icon,
-            color: AppColors.iconGrey,
-            size: 22,
-          ),
-        ),
-      ),
+      leading: Icon(icon, color: onSurface),
       title: Text(
         label,
-        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+        style: TextStyle(color: onSurface),
       ),
       contentPadding: EdgeInsets.zero,
     );
   }
 
-  Widget _sectionTitle(String text) {
+  Widget _sectionTitle(String text, Color color) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Text(
         text.toUpperCase(),
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w600,
-          color: AppColors.textMuted,
+          color: color,
           letterSpacing: 0.8,
         ),
       ),

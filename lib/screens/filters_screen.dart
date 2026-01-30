@@ -740,11 +740,13 @@ Container(
               const SizedBox(height: 12),
               const Text('Amenities', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
               const SizedBox(height: 8),
-              Wrap(spacing: 8, runSpacing: 8, children: List.generate(amenitiesKeys.length, (i) { final key = amenitiesKeys[i]; return FilterChip(label: Text(key), selected: _amenities[key] ?? false, onSelected: (v) => setState(() => _amenities[key] = v), backgroundColor: Colors.white, selectedColor: AppColors.primary.withAlpha(50)); })),
+              Wrap(spacing: 8, runSpacing: 8, children: List.generate(amenitiesKeys.length, (i) { final key = amenitiesKeys[i]; return FilterChip(label: Text(key), selected: _amenities[key] ?? false, onSelected: (v) => setState(() => _amenities[key] = v), backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+ selectedColor: AppColors.primary.withAlpha(50)); })),
               const SizedBox(height: 12),
               const Text('Property Type', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
               const SizedBox(height: 8),
-              Wrap(spacing: 8, runSpacing: 8, children: _propertyTypes.keys.map((k) { return FilterChip(label: Text(k), selected: _propertyTypes[k] ?? false, onSelected: (v) => setState(() => _propertyTypes[k] = v), backgroundColor: Colors.white, selectedColor: AppColors.primary.withAlpha(50)); }).toList()),
+              Wrap(spacing: 8, runSpacing: 8, children: _propertyTypes.keys.map((k) { return FilterChip(label: Text(k), selected: _propertyTypes[k] ?? false, onSelected: (v) => setState(() => _propertyTypes[k] = v), backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+selectedColor: AppColors.primary.withAlpha(50)); }).toList()),
             ],
           );
       }

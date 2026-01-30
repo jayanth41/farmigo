@@ -14,13 +14,13 @@ class OffersBanner extends StatelessWidget {
           // HEADER ROW
           Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Text(
                   "Exclusive Offers",
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textMain,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
               ),

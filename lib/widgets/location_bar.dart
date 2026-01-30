@@ -32,10 +32,10 @@ class LocationBar extends StatelessWidget {
             decoration: BoxDecoration(
               border: Border.all(color: AppColors.border),
               borderRadius: BorderRadius.circular(14),
-              color: AppColors.white,
+              color: Theme.of(context).colorScheme.surface,
             ),
             child: Row(
-              children: const [
+              children:  [
                 Icon(Icons.location_on, size: 16, color: AppColors.primary),
                 SizedBox(width: 4),
                 Text(
@@ -43,7 +43,7 @@ class LocationBar extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
-                    color: AppColors.textMain,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
                 SizedBox(width: 4),

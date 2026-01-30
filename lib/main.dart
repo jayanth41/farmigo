@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'services/supabase_config.dart';
 import 'package:provider/provider.dart';
 
 import 'firebase_options.dart';
@@ -22,41 +23,41 @@ import 'screens/offers_screen.dart';
 import 'screens/settings_screen.dart';
 import 'controllers/favorites_controller.dart';
 import 'controllers/bookings_controller.dart';
-import 'controllers/settings_controller.dart';
 import 'controllers/app_location_controller.dart';
 import 'controllers/auth_controller.dart';
+import 'controllers/settings_controller.dart';
+import 'settings/theme_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Supabase
-  try {
-    await Supabase.initialize(
-      url: 'https://kvnwikjxjimztjqsycti.supabase.co',
+  // Use central constants so other code can make REST calls if needed
+  await Supabase.initialize(
+    url: SUPABASE_URL,
+    anonKey: SUPABASE_ANON_KEY,
+  );
 
-      //anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt2bndpa2p4amltenRqc3ljdGkiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTcxNzU4NzM4MywiZXhwIjoyMDMzMTYzMzgzfQ.1f-u3kSrcI4H3xB23J22G4on2a3M2R62K5c0ZaR-i-c',
-      //anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt2bndpa2p4amltenRqcXN5Y3RpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg4ODgxMDcsImV4cCI6MjA4NDQ2NDEwN30.e-mZfYqzztQNbBQ4n0R3aKFFYhdGI6rZgKvgyJNx2Fw',
-
-      anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt2bndpa2p4amltenRqcXN5Y3RpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg4ODgxMDcsImV4cCI6MjA4NDQ2NDEwN30.e-mZfYqzztQNbBQ4n0R3aKFFYhdGI6rZgKvgyJNx2Fw',
-
-    );
-    debugPrint('✅ Supabase initialized');
-  } catch (e) {
-    debugPrint('❌ Supabase init error: $e');
-  }
-
-  // Initialize Firebase
   if (!kIsWeb) {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
   }
 
-  // Register GetX controllers
   Get.put(FavoritesController());
   Get.put(BookingsController());
 
-  runApp(const MyApp());
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => SettingsController()..initialize()),
+        ChangeNotifierProvider(create: (_) => AuthController()),
+        ChangeNotifierProvider(create: (_) => FiltersProvider()),
+        ChangeNotifierProvider(create: (_) => AppLocationController()..initialize()),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -64,56 +65,40 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiProvider(
-      providers: [
-        ChangeNotifierProvider<AuthController>(
-          create: (_) => AuthController(),
-        ),
-        ChangeNotifierProvider<SettingsController>(
-          create: (_) => SettingsController()..initialize(),
-        ),
-        ChangeNotifierProvider(
-          create: (_) => AppLocationController()..initialize(),
-        ),
-        ChangeNotifierProvider(
-          create: (_) => FiltersProvider(),
-        ),
-      ],
-      child: Consumer<SettingsController>(
-        builder: (context, settings, _) {
-          return GetMaterialApp(
-            debugShowCheckedModeBanner: false,
-            title: 'Farmigo',
-            // Comprehensive theme configuration
-            theme: AppTheme.lightTheme(),
-            darkTheme: AppTheme.darkTheme(),
-            // Use ThemeMode from SettingsController for dynamic switching
-            themeMode: settings.themeMode,
-            home: Consumer<AuthController>(
-              builder: (context, auth, _) {
-                // Auth guard: logged-in users go to Home, others to Login
-                if (auth.isAuthenticated) {
-                  return const HomeScreen();
-                }
-                return const LoginScreen();
-              },
-            ),
-            getPages: [
-              GetPage(name: AppRoutes.home, page: () => const HomeScreen()),
-              GetPage(name: AppRoutes.favorites, page: () => const FavoritesScreen()),
-              GetPage(name: AppRoutes.farmhouses, page: () => const FarmhousesScreen()),
-              GetPage(name: AppRoutes.offers, page: () => const OffersScreen()),
-              GetPage(name: AppRoutes.settings, page: () => const SettingsScreen()),
-              GetPage(name: AppRoutes.carRentals, page: () => const CarRentalsScreen()),
-              GetPage(name: AppRoutes.bookings, page: () => const BookingsScreen()),
-              GetPage(name: AppRoutes.profile, page: () => const ProfileScreen()),
-              GetPage(name: '/login', page: () => const LoginScreen()),
-              GetPage(name: '/signup', page: () => const SignupPage()),
-              GetPage(name: '/splash', page: () => const SplashScreen()),
-            ],
-          );
+    final themeProvider = Provider.of<ThemeProvider>(context);
+
+    return GetMaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'Farmigo',
+
+      theme: AppTheme.lightTheme(),
+      darkTheme: AppTheme.darkTheme(),
+      themeMode: themeProvider.themeMode,
+
+      // 🔥 AUTH GUARD
+      home: Consumer<AuthController>(
+        builder: (context, auth, _) {
+          if (auth.isAuthenticated) {
+            return const HomeScreen();
+          } else {
+            return const LoginScreen();
+          }
         },
       ),
+
+      getPages: [
+        GetPage(name: '/login', page: () => const LoginScreen()),
+        GetPage(name: '/signup', page: () => const SignupPage()),
+        GetPage(name: '/splash', page: () => const SplashScreen()),
+        GetPage(name: AppRoutes.home, page: () => const HomeScreen()),
+        GetPage(name: AppRoutes.favorites, page: () => const FavoritesScreen()),
+        GetPage(name: AppRoutes.bookings, page: () => const BookingsScreen()),
+        GetPage(name: AppRoutes.profile, page: () => const ProfileScreen()),
+        GetPage(name: AppRoutes.settings, page: () => const SettingsScreen()),
+        GetPage(name: AppRoutes.offers, page: () => const OffersScreen()),
+        GetPage(name: AppRoutes.farmhouses, page: () => const FarmhousesScreen()),
+        GetPage(name: AppRoutes.carRentals, page: () => const CarRentalsScreen()),
+      ],
     );
   }
 }

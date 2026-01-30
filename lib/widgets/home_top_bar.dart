@@ -19,7 +19,7 @@ class HomeTopBar extends StatelessWidget {
                   // Open the scaffold drawer when the menu is tapped
                   Scaffold.of(context).openDrawer();
                 },
-                child: Icon(Icons.menu, color: AppColors.textMain),
+                child: Icon(Icons.menu, color: Theme.of(context).colorScheme.onSurface),
               ),
               const SizedBox(width: 12),
               // breadcrumb (compact) - icon only; text removed for a cleaner header

@@ -93,13 +93,13 @@ class _SearchCardState extends State<SearchCard> {
 
   @override
   Widget build(BuildContext context) {
-    final labelStyle = const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textMain);
+    final labelStyle =  TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface);
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(18),
   decoration: BoxDecoration(
-    color: AppColors.white,
+    color: Theme.of(context).colorScheme.surface,
     borderRadius: BorderRadius.circular(26),
   boxShadow: [BoxShadow(color: const Color.fromRGBO(0, 0, 0, 0.08), blurRadius: 22, offset: const Offset(0, 12))],
   ),

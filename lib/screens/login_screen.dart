@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
-import '../theme/app_colors.dart';
+// theme colors are used from Theme.of(context).colorScheme
 import '../controllers/auth_controller.dart';
 import 'otp_screen.dart';
 
@@ -18,7 +17,6 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 
-  final FirebaseAuth _auth = FirebaseAuth.instance;
   bool _useEmailLogin = false;
   bool _isLoading = false;
 
@@ -33,55 +31,44 @@ class _LoginScreenState extends State<LoginScreen> {
 
     setState(() => _isLoading = true);
 
-    try {
-      await _auth.verifyPhoneNumber(
-        phoneNumber: '+91$phone',
-        timeout: const Duration(seconds: 60),
-        verificationCompleted: (credential) async {
-          await _auth.signInWithCredential(credential);
-          if (mounted) {
-            Navigator.pushReplacementNamed(context, '/home');
-          }
-        },
-        verificationFailed: (e) {
-          setState(() => _isLoading = false);
-          _showSnackBar(e.message ?? 'Verification failed');
-        },
-        codeSent: (verificationId, _) {
-          setState(() => _isLoading = false);
+    final authCtrl = context.read<AuthController>();
 
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => OTPScreen(
-                verificationId: verificationId,
-                phoneNumber: '+91$phone',
-              ),
-            ),
-          );
-        },
-        codeAutoRetrievalTimeout: (_) {},
+    final success =
+        await authCtrl.startPhoneNumberVerification('+91$phone');
+
+    if (!mounted) return;
+
+    setState(() => _isLoading = false);
+
+    if (success) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => OTPScreen(
+            phoneNumber: '+91$phone',
+          ),
+        ),
       );
-    } catch (e) {
-      setState(() => _isLoading = false);
-      _showSnackBar('Error: ${e.toString()}');
+    } else {
+      _showSnackBar(authCtrl.errorMessage ?? 'Failed to send OTP');
     }
   }
 
-  // EMAIL/PASSWORD LOGIN using AuthController
-  Future<void> _signInWithEmailViaAuth(BuildContext context, String email, String password) async {
+  // EMAIL LOGIN
+  Future<void> _signInWithEmailViaAuth(
+      BuildContext context, String email, String password) async {
     final authCtrl = context.read<AuthController>();
     final success = await authCtrl.signIn(email: email, password: password);
-    
+
     if (!mounted) return;
+
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('✅ Login successful'), backgroundColor: Colors.green),
+        const SnackBar(content: Text('✅ Login successful')),
       );
-      // AuthController's auth state listener will trigger home navigation via auth guard
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('❌ ${authCtrl.errorMessage}'), backgroundColor: Colors.red),
+        SnackBar(content: Text('❌ ${authCtrl.errorMessage}')),
       );
     }
   }
@@ -103,36 +90,31 @@ class _LoginScreenState extends State<LoginScreen> {
   // ---------------- UI ----------------
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final txt = Theme.of(context).textTheme;
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: SingleChildScrollView(
+            padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SizedBox(height: 40),
 
-                // APP LOGO / TITLE
-                const Text(
+                Text(
                   'Welcome 👋',
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: txt.titleLarge?.copyWith(fontSize: 32, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   'Login to continue',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey[600],
-                  ),
+                  style: txt.bodyMedium?.copyWith(color: cs.onBackground.withOpacity(0.7)),
                 ),
                 const SizedBox(height: 40),
 
-                // TOGGLE BUTTON
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
@@ -140,55 +122,41 @@ class _LoginScreenState extends State<LoginScreen> {
                         setState(() => _useEmailLogin = !_useEmailLogin),
                     child: Text(
                       _useEmailLogin ? 'Use phone login' : 'Use email login',
-                      style: const TextStyle(color: AppColors.primary),
+                      style: TextStyle(color: cs.primary),
                     ),
                   ),
                 ),
 
                 const SizedBox(height: 20),
 
-                // PHONE LOGIN
                 if (!_useEmailLogin) ...[
-                  const Text(
-                    'Mobile Number',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                  const Text('Mobile Number'),
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      // COUNTRY CODE
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 16,
-                        ),
+                            horizontal: 14, vertical: 16),
                         decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey.shade300),
+                          border: Border.all(color: Theme.of(context).dividerColor),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const Text(
-                          '+91',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                        child: Text('+91', style: TextStyle(color: cs.onBackground)),
                       ),
                       const SizedBox(width: 12),
-                      // PHONE FIELD
                       Expanded(
                         child: TextField(
                           controller: _phoneController,
                           keyboardType: TextInputType.phone,
                           maxLength: 10,
+                          cursorColor: cs.primary,
+                          style: TextStyle(color: cs.onSurface),
                           decoration: InputDecoration(
                             counterText: '',
                             hintText: 'Enter mobile number',
+                            hintStyle: TextStyle(color: cs.onSurface.withOpacity(0.6)),
                             filled: true,
-                            fillColor: Colors.grey[100],
+                            fillColor: Theme.of(context).cardColor,
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                               borderSide: BorderSide.none,
@@ -199,65 +167,37 @@ class _LoginScreenState extends State<LoginScreen> {
                     ],
                   ),
                   const SizedBox(height: 40),
-                  // CONTINUE BUTTON
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: _isLoading ? null : _sendOTP,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        backgroundColor: cs.primary,
+                        padding:
+                            const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14),
                         ),
                       ),
                       child: _isLoading
-                          ? const SizedBox(
-                              height: 22,
-                              width: 22,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Text(
-                              'Continue',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
+                          ? CircularProgressIndicator(color: cs.onPrimary)
+                          : const Text('Continue'),
                     ),
                   ),
                 ] else ...[
-                  // EMAIL LOGIN
                   TextField(
                     controller: emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: InputDecoration(
-                      labelText: 'Email',
-                      filled: true,
-                      fillColor: Colors.grey[100],
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
+                    cursorColor: cs.primary,
+                    style: TextStyle(color: cs.onSurface),
+                    decoration: InputDecoration(labelText: 'Email', labelStyle: TextStyle(color: cs.onSurface)),
                   ),
                   const SizedBox(height: 16),
                   TextField(
                     controller: passwordController,
                     obscureText: true,
-                    decoration: InputDecoration(
-                      labelText: 'Password',
-                      filled: true,
-                      fillColor: Colors.grey[100],
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
+                    cursorColor: cs.primary,
+                    style: TextStyle(color: cs.onSurface),
+                    decoration: InputDecoration(labelText: 'Password', labelStyle: TextStyle(color: cs.onSurface)),
                   ),
                   const SizedBox(height: 24),
                   Consumer<AuthController>(
@@ -272,100 +212,14 @@ class _LoginScreenState extends State<LoginScreen> {
                                     emailController.text.trim(),
                                     passwordController.text.trim(),
                                   ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                          ),
                           child: authCtrl.isLoading
-                              ? const SizedBox(
-                                  height: 22,
-                                  width: 22,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : const Text(
-                                  'Login',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  Center(
-                    child: TextButton(
-                      onPressed: () => Get.toNamed('/signup'),
-                      child: const Text('Don\'t have an account? Sign up'),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  
-                  // GOOGLE SIGN-IN BUTTON
-                  Consumer<AuthController>(
-                    builder: (context, authCtrl, _) {
-                      return SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          onPressed: authCtrl.isLoading
-                              ? null
-                              : () async {
-                                  final success = await authCtrl.signInWithGoogle();
-                                  if (!mounted) return;
-                                  if (success) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('✅ Google Sign-In successful'),
-                                        backgroundColor: Colors.green,
-                                      ),
-                                    );
-                                  } else {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('❌ ${authCtrl.errorMessage}'),
-                                        backgroundColor: Colors.red,
-                                      ),
-                                    );
-                                  }
-                                },
-                          icon: const Icon(Icons.g_mobiledata),
-                          label: const Text('Sign in with Google'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: Colors.black,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            side: const BorderSide(color: Colors.grey),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                          ),
+                              ? CircularProgressIndicator(color: cs.onPrimary)
+                              : const Text('Login'),
                         ),
                       );
                     },
                   ),
                 ],
-
-                const SizedBox(height: 20),
-
-                // TERMS
-                Center(
-                  child: Text(
-                    'By continuing, you agree to our\nTerms & Privacy Policy',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                ),
               ],
             ),
           ),
