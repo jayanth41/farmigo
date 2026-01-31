@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
 
 class OffersScreen extends StatelessWidget {
   const OffersScreen({super.key});
@@ -10,6 +11,16 @@ class OffersScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        backgroundColor: AppColors.primary,
+        iconTheme: const IconThemeData(color: Colors.white),
+        title: const Text('Offers & Coupons', style: TextStyle(color: Colors.white)),
+        elevation: 0,
+      ),
       body: SafeArea(
         child: ListView(
           children: [
@@ -78,7 +89,7 @@ class OffersScreen extends StatelessWidget {
               margin: const EdgeInsets.all(16),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceVariant.withOpacity(0.6),
+                color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.6),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Column(

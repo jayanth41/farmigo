@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:provider/provider.dart';
+import '../controllers/auth_controller.dart';
 import '../services/session_service.dart';
+import '../widgets/snackbar_helper.dart';
 import '../screens/about_us_screen.dart';
 import '../screens/terms_policy_screen.dart';
 import '../navigation/app_routes.dart';
@@ -57,7 +59,6 @@ class AppDrawer extends StatelessWidget {
   }
 
   void _logout(BuildContext context) {
-    Navigator.pop(context);
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -65,32 +66,48 @@ class AppDrawer extends StatelessWidget {
         content: const Text('Are you sure you want to logout?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx),
+            onPressed: () => Navigator.of(ctx).pop(),
             child: const Text('Cancel'),
           ),
           TextButton(
             onPressed: () async {
-              Navigator.pop(ctx);
-              // Clear guest flag and Supabase session, then navigate to login and
-              // remove all previous routes so back cannot return to the app.
+              // Close the confirmation dialog first
+              Navigator.of(ctx).pop();
+
+              // Call AuthController.signOut() (backward-compatible alias) via Provider
               try {
-                await SessionService.clear();
-              } catch (_) {}
+                final auth = context.read<AuthController>();
+                await auth.signOut();
+              } catch (e) {
+                // Best-effort: clear session if signOut fails
+                try {
+                  await SessionService.clear();
+                } catch (_) {}
+              }
+
+              // Close the drawer (if open)
               try {
-                await Supabase.instance.client.auth.signOut();
+                Navigator.of(context).pop(); // close drawer
               } catch (_) {}
 
-              if (!context.mounted) return;
-              final navigator = Navigator.of(context);
-              Future.microtask(() {
+              // Show a short confirmation snackbar and navigate to login clearing the stack
+              try {
+                showAppSnack(context, 'Logged out successfully', isSuccess: true);
+              } catch (_) {}
+
+              try {
+                Get.offAllNamed('/login');
+              } catch (e) {
+                debugPrint('Logout navigation error: $e');
                 try {
-                  navigator.pushNamedAndRemoveUntil('/login', (route) => false);
-                } catch (e) {
-                  debugPrint('Logout navigation error: $e');
-                }
-              });
+                  Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+                } catch (_) {}
+              }
             },
-            child: Text('Logout', style: TextStyle(color: Theme.of(context).colorScheme.error)),
+            child: Text(
+              'Logout',
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
           ),
         ],
       ),

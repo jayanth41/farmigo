@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 // theme colors are used from Theme.of(context).colorScheme
 import '../controllers/auth_controller.dart';
+import '../widgets/snackbar_helper.dart';
 import '../services/session_service.dart';
 import '../navigation/app_routes.dart';
 import 'otp_screen.dart';
@@ -19,7 +21,6 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController passwordController = TextEditingController();
 
   bool _useEmailLogin = false;
-  bool _isLoading = false;
 
   // ---------------- SEND OTP ----------------
   Future<void> _sendOTP() async {
@@ -30,54 +31,61 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    setState(() => _isLoading = true);
+    // Phone OTP flow not implemented in Supabase-only controller in this
+    // refactor. Prompt user to use email login.
+    _showSnackBar('Phone login is not available. Please use email login.');
+    return;
 
-    final authCtrl = context.read<AuthController>();
-
-    final success =
-        await authCtrl.startPhoneNumberVerification('+91$phone');
-
-    if (!mounted) return;
-
-    setState(() => _isLoading = false);
-
-    if (success) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => OTPScreen(
-            phoneNumber: '+91$phone',
-          ),
-        ),
-      );
-    } else {
-      _showSnackBar(authCtrl.errorMessage ?? 'Failed to send OTP');
-    }
+    // If you later implement phone OTP via Supabase, call that method here and
+    // navigate to OTPScreen on success. For now we simply return above.
   }
 
-  // EMAIL LOGIN
+  // EMAIL LOGIN using Supabase
   Future<void> _signInWithEmailViaAuth(
       BuildContext context, String email, String password) async {
-    final authCtrl = context.read<AuthController>();
-    final success = await authCtrl.signIn(email: email, password: password);
+    final auth = context.read<AuthController>();
 
+    // Client-side validation
+    if (email.trim().isEmpty) {
+      _showSnackBar('Enter email');
+      return;
+    }
+    if (!email.contains('@')) {
+      _showSnackBar('Enter valid email');
+      return;
+    }
+    if (password.isEmpty) {
+      _showSnackBar('Enter password');
+      return;
+    }
+
+    // Call controller
+    final success = await auth.signIn(email: email.trim(), password: password);
     if (!mounted) return;
 
-    if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('✅ Login successful')),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('❌ ${authCtrl.errorMessage}')),
-      );
+        if (success) {
+          showAppSnack(context, 'Login successful', isSuccess: true);
+          // Clear password from controller for safety
+          passwordController.clear();
+          // Navigate to Home and clear stack
+          if (!mounted) return;
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            AppRoutes.home,
+            (route) => false,
+          );
+        } else {
+      final msg = auth.errorMessage ?? 'Login failed';
+      showAppSnack(context, msg, isError: true);
+      // If likely invalid credentials, clear password field
+      if (msg.toLowerCase().contains('invalid') || msg.toLowerCase().contains('password')) {
+        passwordController.clear();
+      }
     }
   }
 
   void _showSnackBar(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg)),
-    );
+    showAppSnack(context, msg, isError: true);
   }
 
   @override
@@ -91,8 +99,9 @@ class _LoginScreenState extends State<LoginScreen> {
   // ---------------- UI ----------------
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final txt = Theme.of(context).textTheme;
+  final cs = Theme.of(context).colorScheme;
+  final txt = Theme.of(context).textTheme;
+  final auth = Provider.of<AuthController>(context);
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
@@ -171,7 +180,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: _isLoading ? null : _sendOTP,
+                      onPressed: auth.isLoading ? null : _sendOTP,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: cs.primary,
                         foregroundColor: cs.onPrimary,
@@ -181,9 +190,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           borderRadius: BorderRadius.circular(14),
                         ),
                       ),
-                      child: _isLoading
-                          ? CircularProgressIndicator(color: cs.onPrimary)
-                          : const Text('Continue'),
+            child: auth.isLoading
+              ? CircularProgressIndicator(color: cs.onPrimary)
+              : const Text('Continue'),
                     ),
                   ),
                 ] else ...[
@@ -202,39 +211,47 @@ class _LoginScreenState extends State<LoginScreen> {
                     decoration: InputDecoration(labelText: 'Password', labelStyle: TextStyle(color: cs.onSurface)),
                   ),
                   const SizedBox(height: 24),
-                  Consumer<AuthController>(
-                    builder: (context, authCtrl, _) {
-                        return SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: authCtrl.isLoading
-                              ? null
-                              : () => _signInWithEmailViaAuth(
-                                    context,
-                                    emailController.text.trim(),
-                                    passwordController.text.trim(),
-                                  ),
-                          style: ElevatedButton.styleFrom(foregroundColor: cs.onPrimary, backgroundColor: cs.primary),
-                          child: authCtrl.isLoading
-                              ? CircularProgressIndicator(color: cs.onPrimary)
-                              : const Text('Login'),
-                        ),
-                      );
-                    },
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: auth.isLoading
+                          ? null
+                          : () => _signInWithEmailViaAuth(
+                                context,
+                                emailController.text,
+                                passwordController.text,
+                              ),
+                      style: ElevatedButton.styleFrom(foregroundColor: cs.onPrimary, backgroundColor: cs.primary),
+                      child: auth.isLoading
+                          ? CircularProgressIndicator(color: cs.onPrimary)
+                          : const Text('Login'),
+                    ),
                   ),
                 ],
                 const SizedBox(height: 12),
-                Center(
-                  child: TextButton(
-                    onPressed: () async {
-                      // Start a guest session and navigate to Home, removing
-                      // previous routes so back cannot return to login.
-                      await SessionService.setGuest(true);
-                      if (!mounted) return;
-                      Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false);
-                    },
-                    child: const Text('Continue as guest'),
-                  ),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    TextButton(
+                      onPressed: () {
+                        // Navigate to signup page
+                        Navigator.of(context).pushNamed('/signup');
+                        // If you use GetX routes: Get.toNamed('/signup');
+                      },
+                      child: const Text("Don't have an account? Sign up"),
+                    ),
+                    TextButton(
+                      onPressed: () async {
+                        // Start a guest session and navigate to Home, removing
+                        // previous routes so back cannot return to login.
+                        await SessionService.setGuest(true);
+                        if (!mounted) return;
+                        Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false);
+                      },
+                      child: const Text('Continue as guest'),
+                    ),
+                  ],
                 ),
               ],
             ),

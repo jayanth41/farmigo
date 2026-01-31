@@ -4,6 +4,8 @@ import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import '../controllers/auth_controller.dart';
 import '../services/user_service.dart';
+import '../widgets/snackbar_helper.dart';
+import '../navigation/app_routes.dart';
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
@@ -30,55 +32,69 @@ class _SignupPageState extends State<SignupPage> {
   }
 
   Future<void> signUpUser(String email, String password, String confirmPassword, String name, String phone) async {
-    if (email.isEmpty || password.isEmpty || confirmPassword.isEmpty || name.isEmpty || phone.isEmpty) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please fill all fields')),
-        );
-      }
+    final auth = Provider.of<AuthController>(context, listen: false);
+
+    final trimmedEmail = email.trim();
+    final trimmedPassword = password;
+    final trimmedConfirm = confirmPassword;
+    final trimmedName = name.trim();
+    final trimmedPhone = phone.trim();
+
+    // Client-side validation
+    if (trimmedEmail.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Enter email')));
+      return;
+    }
+    if (!trimmedEmail.contains('@')) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Enter valid email')));
+      return;
+    }
+    if (trimmedPassword.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Enter password')));
+      return;
+    }
+    if (trimmedPassword.length < 6) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Password must be minimum 6 characters')));
+      return;
+    }
+    if (trimmedPassword != trimmedConfirm) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Passwords do not match')));
       return;
     }
 
-    try {
-      final authCtrl = context.read<AuthController>();
-      final success = await authCtrl.signUp(email: email, password: password, confirmPassword: confirmPassword);
+    // Call controller
+  final success = await auth.signUp(email: trimmedEmail, password: trimmedPassword, name: trimmedName, phone: trimmedPhone);
 
-      if (success) {
-        if (kDebugMode) debugPrint('✅ Signup success: $email');
+    if (!mounted) return;
 
-        // Create user profile in users table
-        try {
-          await UserService().createUserIfNotExists(name: name, phone: phone);
-          if (kDebugMode) debugPrint("✅ Profile ensured in users table");
-        } catch (e) {
-          if (kDebugMode) debugPrint("⚠️ Warning creating profile: $e");
-        }
-
+    if (success) {
+      showAppSnack(context, 'Signup successful', isSuccess: true);
+      // Attempt automatic sign-in after signup
+      try {
+        final signedIn = await auth.signIn(email: trimmedEmail, password: trimmedPassword);
         if (!mounted) return;
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('✅ Signup successful'), backgroundColor: Colors.green),
-        );
-        // AuthController's auth state listener will trigger home navigation via auth guard
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('❌ ${authCtrl.errorMessage}')),
-          );
+        if (signedIn) {
+          showAppSnack(context, 'Logged in', isSuccess: true);
+          try {
+            Get.offAllNamed(AppRoutes.home);
+          } catch (_) {
+            Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.home, (r) => false);
+          }
+          return;
         }
-      }
-    } catch (e) {
-      if (kDebugMode) debugPrint('❌ Error during signup: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error during signup: $e')),
-        );
-      }
+      } catch (_) {}
+
+      // If automatic sign-in didn't happen (email verification flows), route to login
+      Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+    } else {
+      final msg = auth.errorMessage ?? 'Signup failed';
+      showAppSnack(context, msg, isError: true);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final auth = Provider.of<AuthController>(context);
     return Scaffold(
       backgroundColor: const Color(0xFFF2F5F3),
       body: SafeArea(
@@ -166,20 +182,16 @@ class _SignupPageState extends State<SignupPage> {
 
                     const SizedBox(height: 24),
 
-                    Consumer<AuthController>(
-                      builder: (context, authCtrl, _) {
-                        return _primaryButton(
-                          text: "Sign Up →",
-                          loading: authCtrl.isLoading,
-                          onTap: () => signUpUser(
-                            emailController.text.trim(),
-                            passwordController.text.trim(),
-                            confirmPasswordController.text.trim(),
-                            nameController.text.trim(),
-                            phoneController.text.trim(),
-                          ),
-                        );
-                      },
+                    _primaryButton(
+                      text: "Sign Up →",
+                      loading: auth.isLoading,
+                      onTap: () => signUpUser(
+                        emailController.text.trim(),
+                        passwordController.text.trim(),
+                        confirmPasswordController.text.trim(),
+                        nameController.text.trim(),
+                        phoneController.text.trim(),
+                      ),
                     ),
 
                     const SizedBox(height: 16),

@@ -1,590 +1,217 @@
-import 'package:flutter/foundation.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' as supa;
 
-import '../services/firestore_user_service.dart';
-import '../services/session_service.dart';
-import '../services/firebase_helper.dart';
-import '../services/network_utils.dart';
-
-/// Provider-based authentication controller that manages auth state,
-/// login, signup, logout using Firebase Authentication with multiple auth methods.
-/// Supports: Email/Password, Google Sign-In, Phone OTP
+/// Supabase-only AuthController.
+/// Exposes simple methods for email/password auth and minimal state for UI.
 class AuthController extends ChangeNotifier {
-  // FirebaseAuth may be unavailable in emulator/offline scenarios. Make it nullable
-  final FirebaseAuth? _auth = FirebaseHelper.isLikelyAvailable() ? FirebaseAuth.instance : null;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
-  final FirestoreUserService _firestoreService = FirestoreUserService();
-
-  User? _currentUser;
-  UserProfile? _userProfile;
   bool _isLoading = false;
   String? _errorMessage;
   bool _isAuthenticated = false;
-  String? _verificationId;
 
-  User? get currentUser => _currentUser;
-  UserProfile? get userProfile => _userProfile;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   bool get isAuthenticated => _isAuthenticated;
-  String? get userEmail => _currentUser?.email;
-  String? get userName => _userProfile?.name;
-  String? get userPhone => _userProfile?.phone;
-  String? get userPhotoUrl => _userProfile?.photoUrl;
 
-  /// Initialize the authentication controller
   AuthController() {
-    _initAuthListener();
+    _init();
   }
 
-  /// Initialize auth state listener and load user profile
-  void _initAuthListener() {
-    if (_auth == null) {
-      // Firebase not available; treat as unauthenticated but keep controller alive
-      _currentUser = null;
-      _isAuthenticated = false;
+  void _init() {
+    try {
+      final client = supa.Supabase.instance.client;
+      final user = client.auth.currentUser;
+      _isAuthenticated = user != null;
       notifyListeners();
-      debugPrint('⚠️ AuthController: Firebase not available, running in offline/guest mode');
-      return;
+
+      // Listen for auth state changes
+      client.auth.onAuthStateChange.listen((event) {
+        try {
+          final session = event.session;
+          final user = session?.user;
+          _isAuthenticated = user != null;
+          notifyListeners();
+        } catch (e) {
+          // ignore listener errors but log
+          debugPrint('Auth listener error: $e');
+        }
+      });
+    } catch (e) {
+      debugPrint('AuthController init error: $e');
+    }
+  }
+
+  void clearError() {
+    _errorMessage = null;
+    notifyListeners();
+  }
+
+  Future<bool> login(String email, String password) async {
+    _errorMessage = null;
+    if (email.trim().isEmpty) {
+      _errorMessage = 'Enter email';
+      notifyListeners();
+      return false;
+    }
+    if (!email.contains('@')) {
+      _errorMessage = 'Enter valid email';
+      notifyListeners();
+      return false;
+    }
+    if (password.isEmpty) {
+      _errorMessage = 'Enter password';
+      notifyListeners();
+      return false;
     }
 
-    _auth!.authStateChanges().listen((User? user) async {
-      _currentUser = user;
-      _isAuthenticated = user != null;
+    _isLoading = true;
+    notifyListeners();
+    try {
+      final res = await supa.Supabase.instance.client.auth.signInWithPassword(
+        email: email.trim(),
+        password: password,
+      );
 
-      // Load user profile from Firestore if authenticated
-      if (user != null) {
+      final user = res.user;
+      if (user == null) {
+        // Try to extract friendly message from the response
+        String msg = 'Invalid email or password';
         try {
-          _userProfile = await _firestoreService.getUserProfile(user.uid);
-        } catch (e) {
-          debugPrint('⚠️ Failed to load user profile: $e');
-          _userProfile = null;
-        }
-      } else {
-        _userProfile = null;
+          final dyn = res as dynamic;
+          if (dyn.error != null && dyn.error.message != null) msg = dyn.error.message.toString();
+        } catch (_) {}
+        // Map common substrings to friendlier messages
+        _errorMessage = _mapAuthErrorMessage(msg);
+        return false;
       }
 
+      _isAuthenticated = true;
+      _errorMessage = null;
+      return true;
+    } catch (e) {
+      final parsed = _mapAuthErrorMessage(e.toString());
+      _errorMessage = parsed;
+      return false;
+    } finally {
+      _isLoading = false;
       notifyListeners();
-      debugPrint(_isAuthenticated
-          ? '✅ Auth: User logged in: ${user?.email}'
-          : '❌ Auth: User logged out');
-    });
-  }
-
-  /// Check if user is currently authenticated
-  Future<bool> checkAuthStatus() async {
-    if (_auth == null) {
-      _currentUser = null;
-      _isAuthenticated = false;
-      notifyListeners();
-      return _isAuthenticated;
     }
-    _currentUser = _auth!.currentUser;
-    _isAuthenticated = _currentUser != null;
-    notifyListeners();
-    return _isAuthenticated;
   }
 
-  /// Sign up with email and password
-  Future<bool> signUp({
-    required String email,
-    required String password,
-    required String confirmPassword,
-    String? name,
-    String? phone,
-  }) async {
-    if (email.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
-      _errorMessage = 'Please fill all fields';
+  Future<bool> signup(String email, String password) async {
+    _errorMessage = null;
+    if (email.trim().isEmpty) {
+      _errorMessage = 'Enter email';
       notifyListeners();
       return false;
     }
-
     if (!email.contains('@')) {
-      _errorMessage = 'Enter a valid email';
+      _errorMessage = 'Enter valid email';
       notifyListeners();
       return false;
     }
-
     if (password.length < 6) {
       _errorMessage = 'Password must be at least 6 characters';
       notifyListeners();
       return false;
     }
 
-    if (password != confirmPassword) {
-      _errorMessage = 'Passwords do not match';
-      notifyListeners();
-      return false;
-    }
-
     _isLoading = true;
-    _errorMessage = null;
     notifyListeners();
-
-    if (_auth == null) {
-      _errorMessage = 'Firebase unavailable';
-      _isLoading = false;
-      notifyListeners();
-      return false;
-    }
-
     try {
-      // Check network first
-      if (!await NetworkUtils.hasNetwork()) {
-        _errorMessage = 'No network available';
-        _isLoading = false;
-        notifyListeners();
-        return false;
-      }
-
-      final userCredential = await _auth!.createUserWithEmailAndPassword(
-        email: email,
+      final res = await supa.Supabase.instance.client.auth.signUp(
+        email: email.trim(),
         password: password,
       );
 
-      _currentUser = userCredential.user;
-      _isAuthenticated = _currentUser != null;
+      // Check if signUp returned an error
+      try {
+        final dyn = res as dynamic;
+        if (dyn.error != null) {
+          _errorMessage = _mapAuthErrorMessage(dyn.error.message.toString());
+          return false;
+        }
+      } catch (_) {}
 
-      // Create user profile in Firestore
-      if (_currentUser != null) {
-        _userProfile = UserProfile(
-          uid: _currentUser!.uid,
-          email: email,
-          name: name,
-          phone: phone,
-          loginType: 'email',
-          createdAt: DateTime.now(),
+      // If Supabase auto-signed in the user, mark as authenticated.
+      final user = res.user;
+      if (user != null) {
+        _isAuthenticated = true;
+        _errorMessage = null;
+        return true;
+      }
+
+      // If signup succeeded but didn't auto sign-in, attempt to sign-in now.
+      try {
+        final signInRes = await supa.Supabase.instance.client.auth.signInWithPassword(
+          email: email.trim(),
+          password: password,
         );
-        await _firestoreService.saveUserProfile(_userProfile!);
-      }
-
-      debugPrint('✅ Signup success: ${_currentUser?.email}');
-      _isLoading = false;
-      try {
-        await SessionService.setGuest(false);
-      } catch (_) {}
-      notifyListeners();
-      return true;
-    } on FirebaseAuthException catch (e) {
-      _errorMessage = _getFirebaseErrorMessage(e.code);
-      debugPrint('❌ Signup error: ${e.code} - ${e.message}');
-      _isLoading = false;
-      notifyListeners();
-      return false;
-    } catch (e) {
-      _errorMessage = 'Signup failed: $e';
-      debugPrint('❌ Signup error: $e');
-      _isLoading = false;
-      notifyListeners();
-      return false;
-    }
-  }
-
-  /// Sign in with email and password
-  Future<bool> signIn({
-    required String email,
-    required String password,
-  }) async {
-    if (email.isEmpty || password.isEmpty) {
-      _errorMessage = 'Please enter email and password';
-      notifyListeners();
-      return false;
-    }
-
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
-
-    if (_auth == null) {
-      _errorMessage = 'Firebase unavailable';
-      _isLoading = false;
-      notifyListeners();
-      return false;
-    }
-
-    try {
-      if (!await NetworkUtils.hasNetwork()) {
-        _errorMessage = 'No network available';
-        _isLoading = false;
-        notifyListeners();
-        return false;
-      }
-
-      final userCredential = await _auth!.signInWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-
-      _currentUser = userCredential.user;
-      _isAuthenticated = _currentUser != null;
-
-      // Load user profile from Firestore
-      if (_currentUser != null) {
-        try {
-          _userProfile = await _firestoreService.getUserProfile(_currentUser!.uid);
-        } catch (e) {
-          debugPrint('⚠️ Failed to load user profile after sign-in: $e');
-          _userProfile = null;
+        if (signInRes.user != null) {
+          _isAuthenticated = true;
+          _errorMessage = null;
+          return true;
         }
-        // If profile doesn't exist, create a minimal user document (first login)
-        if (_userProfile == null) {
-          try {
-            final profile = UserProfile(
-              uid: _currentUser!.uid,
-              email: _currentUser!.email ?? email,
-              name: _currentUser!.displayName,
-              phone: _currentUser!.phoneNumber,
-              loginType: 'email',
-              createdAt: DateTime.now(),
-            );
-            final saved = await _firestoreService.saveUserProfile(profile);
-            if (saved) _userProfile = profile;
-          } catch (e) {
-            debugPrint('⚠️ Failed to create user profile after sign-in: $e');
-          }
-        }
+      } catch (e) {
+        // fallthrough to success but unauthenticated (email verify flows)
       }
 
-      debugPrint('✅ Login success: ${_currentUser?.email}');
-      _isLoading = false;
-      try {
-        await SessionService.setGuest(false);
-      } catch (_) {}
-      notifyListeners();
-      return true;
-    } on FirebaseAuthException catch (e) {
-      _errorMessage = _getFirebaseErrorMessage(e.code);
-      debugPrint('❌ Login error: ${e.code} - ${e.message}');
-      _isLoading = false;
-      notifyListeners();
-      return false;
-    } catch (e) {
-      _errorMessage = 'Login failed: $e';
-      debugPrint('❌ Login error: $e');
-      _isLoading = false;
-      notifyListeners();
-      return false;
-    }
-  }
-
-  /// Sign in with Google
-  Future<bool> signInWithGoogle() async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
-
-    if (_auth == null) {
-      _errorMessage = 'Firebase unavailable';
-      _isLoading = false;
-      notifyListeners();
-      return false;
-    }
-
-    try {
-      if (!await NetworkUtils.hasNetwork()) {
-        _errorMessage = 'No network available';
-        _isLoading = false;
-        notifyListeners();
-        return false;
-      }
-
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-
-      if (googleUser == null) {
-        _errorMessage = 'Google Sign-In cancelled';
-        _isLoading = false;
-        notifyListeners();
-        return false;
-      }
-
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-
-      // Use both idToken and accessToken for v6 compatibility
-      final String? idToken = googleAuth.idToken;
-      final String? accessToken = googleAuth.accessToken;
-
-      if (idToken == null) {
-        _errorMessage = 'Failed to get Google Sign-In credentials';
-        debugPrint('❌ No idToken from Google Sign-In');
-        _isLoading = false;
-        notifyListeners();
-        return false;
-      }
-
-      final AuthCredential credential = GoogleAuthProvider.credential(
-        idToken: idToken,
-        accessToken: accessToken,
-      );
-
-      final UserCredential userCredential = await _auth!.signInWithCredential(credential);
-
-      _currentUser = userCredential.user;
-      _isAuthenticated = _currentUser != null;
-
-      // Create or update user profile in Firestore
-      if (_currentUser != null) {
-    final profileExists = await _firestoreService.userProfileExists(_currentUser!.uid);
-
-        if (profileExists) {
-          _userProfile = await _firestoreService.getUserProfile(_currentUser!.uid);
-        } else {
-          _userProfile = UserProfile(
-            uid: _currentUser!.uid,
-            email: _currentUser!.email ?? '',
-            name: _currentUser!.displayName,
-            photoUrl: _currentUser!.photoURL,
-            loginType: 'google',
-            createdAt: DateTime.now(),
-          );
-          await _firestoreService.saveUserProfile(_userProfile!);
-        }
-      }
-
-      debugPrint('✅ Google Sign-In success: ${_currentUser?.email}');
-      _isLoading = false;
-      try {
-        await SessionService.setGuest(false);
-      } catch (_) {}
-      notifyListeners();
-      return true;
-    } on FirebaseAuthException catch (e) {
-      _errorMessage = _getFirebaseErrorMessage(e.code);
-      debugPrint('❌ Google Sign-In error: ${e.code} - ${e.message}');
-      _isLoading = false;
-      notifyListeners();
-      return false;
-    } catch (e) {
-      _errorMessage = 'Google Sign-In failed: $e';
-      debugPrint('❌ Google Sign-In error: $e');
-      _isLoading = false;
-      notifyListeners();
-      return false;
-    }
-  }
-
-  /// Start phone number verification
-  Future<bool> startPhoneNumberVerification(String phoneNumber) async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
-
-    if (_auth == null) {
-      _errorMessage = 'Firebase unavailable';
-      _isLoading = false;
-      notifyListeners();
-      return false;
-    }
-
-    try {
-      if (!await NetworkUtils.hasNetwork()) {
-        _errorMessage = 'No network available';
-        _isLoading = false;
-        notifyListeners();
-        return false;
-      }
-
-      await _auth!.verifyPhoneNumber(
-        phoneNumber: phoneNumber,
-        timeout: const Duration(seconds: 60),
-        verificationCompleted: (PhoneAuthCredential credential) async {
-          // Auto sign-in if verification is instant
-          await _auth!.signInWithCredential(credential);
-        },
-        verificationFailed: (FirebaseAuthException e) {
-          _errorMessage = _getFirebaseErrorMessage(e.code);
-          debugPrint('❌ Phone verification failed: ${e.code} - ${e.message}');
-          _isLoading = false;
-          notifyListeners();
-        },
-        codeSent: (String verificationId, int? resendToken) {
-          _verificationId = verificationId;
-          debugPrint('✅ SMS code sent to $phoneNumber');
-          _isLoading = false;
-          notifyListeners();
-        },
-        codeAutoRetrievalTimeout: (String verificationId) {
-          _verificationId = verificationId;
-          debugPrint('⏱️ Auto-retrieval timeout');
-          _isLoading = false;
-          notifyListeners();
-        },
-      );
-      return true;
-    } catch (e) {
-      _errorMessage = 'Phone verification failed: $e';
-      debugPrint('❌ Phone verification error: $e');
-      _isLoading = false;
-      notifyListeners();
-      return false;
-    }
-  }
-
-  /// Verify OTP code and sign in
-  Future<bool> verifyOTPAndSignIn({
-    required String otpCode,
-    String? name,
-    String? phoneNumber,
-  }) async {
-    if (_verificationId == null) {
-      _errorMessage = 'Verification ID not found. Start verification first.';
-      notifyListeners();
-      return false;
-    }
-
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
-
-    if (_auth == null) {
-      _errorMessage = 'Firebase unavailable';
-      _isLoading = false;
-      notifyListeners();
-      return false;
-    }
-
-    try {
-      if (!await NetworkUtils.hasNetwork()) {
-        _errorMessage = 'No network available';
-        _isLoading = false;
-        notifyListeners();
-        return false;
-      }
-
-      final PhoneAuthCredential credential = PhoneAuthProvider.credential(
-        verificationId: _verificationId!,
-        smsCode: otpCode,
-      );
-
-      final UserCredential userCredential = await _auth!.signInWithCredential(credential);
-
-      _currentUser = userCredential.user;
-      _isAuthenticated = _currentUser != null;
-
-      // Create or update user profile in Firestore
-      if (_currentUser != null) {
-        final profileExists = await _firestoreService.userProfileExists(_currentUser!.uid);
-
-        if (profileExists) {
-          _userProfile = await _firestoreService.getUserProfile(_currentUser!.uid);
-        } else {
-          _userProfile = UserProfile(
-            uid: _currentUser!.uid,
-            email: _currentUser!.email ?? '',
-            name: name,
-            phone: phoneNumber,
-            loginType: 'phone',
-            createdAt: DateTime.now(),
-          );
-          await _firestoreService.saveUserProfile(_userProfile!);
-        }
-      }
-
-      _verificationId = null;
-      debugPrint('✅ Phone Sign-In success: ${_currentUser?.phoneNumber}');
-      _isLoading = false;
-      try {
-        await SessionService.setGuest(false);
-      } catch (_) {}
-      notifyListeners();
-      return true;
-    } on FirebaseAuthException catch (e) {
-      _errorMessage = _getFirebaseErrorMessage(e.code);
-      debugPrint('❌ Phone Sign-In error: ${e.code} - ${e.message}');
-      _isLoading = false;
-      notifyListeners();
-      return false;
-    } catch (e) {
-      _errorMessage = 'Phone Sign-In failed: $e';
-      debugPrint('❌ Phone Sign-In error: $e');
-      _isLoading = false;
-      notifyListeners();
-      return false;
-    }
-  }
-
-  /// Sign out
-  Future<void> signOut() async {
-    try {
-      if (_auth != null) await _auth!.signOut();
-  await _googleSignIn.signOut(); // Also sign out from Google
-      try {
-        await SessionService.clear();
-      } catch (_) {}
-      _currentUser = null;
-  _userProfile = null;
+      // Signup succeeded but user must verify email; keep unauthenticated
       _isAuthenticated = false;
       _errorMessage = null;
-      _verificationId = null;
-      notifyListeners();
-      debugPrint('✅ Logout success');
-    } catch (e) {
-      _errorMessage = 'Logout failed: $e';
-      debugPrint('❌ Logout error: $e');
-      notifyListeners();
-    }
-  }
-
-  /// Send password reset email
-  Future<bool> sendPasswordResetEmail(String email) async {
-    if (email.isEmpty) {
-      _errorMessage = 'Please enter email';
-      notifyListeners();
-      return false;
-    }
-
-    if (_auth == null) {
-      _errorMessage = 'Firebase unavailable';
-      notifyListeners();
-      return false;
-    }
-
-    try {
-      await _auth!.sendPasswordResetEmail(email: email);
-      _isLoading = false;
-      notifyListeners();
-      debugPrint('✅ Password reset email sent');
       return true;
-    } on FirebaseAuthException catch (e) {
-      _errorMessage = _getFirebaseErrorMessage(e.code);
-      _isLoading = false;
-      notifyListeners();
-      return false;
     } catch (e) {
-  _errorMessage = 'Failed to send reset email: $e';
+      _errorMessage = _mapAuthErrorMessage(e.toString());
+      return false;
+    } finally {
       _isLoading = false;
       notifyListeners();
-      return false;
     }
   }
 
-  /// Clear error message
-  void clearError() {
-    _errorMessage = null;
+  Future<void> logout() async {
+    _isLoading = true;
     notifyListeners();
+    try {
+      await supa.Supabase.instance.client.auth.signOut();
+      _isAuthenticated = false;
+      _errorMessage = null;
+    } catch (e) {
+      _errorMessage = 'Logout failed: ${e.toString()}';
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
-  /// Convert Firebase error codes to user-friendly messages
-  String _getFirebaseErrorMessage(String code) {
-    switch (code) {
-      case 'email-already-in-use':
-        return 'This email is already registered';
-      case 'invalid-email':
-        return 'Invalid email address';
-      case 'weak-password':
-        return 'Password is too weak (min 6 characters)';
-      case 'user-disabled':
-        return 'User account has been disabled';
-      case 'user-not-found':
-        return 'No account found with this email';
-      case 'wrong-password':
-        return 'Incorrect password';
-      case 'operation-not-allowed':
-        return 'Operation not allowed';
-      case 'too-many-requests':
-        return 'Too many login attempts. Try again later';
-      default:
-        return 'Authentication failed: $code';
+  String _mapAuthErrorMessage(String raw) {
+    final low = raw.toLowerCase();
+    if (low.contains('network') || low.contains('socket')) return 'Network error — please check your connection';
+    if (low.contains('invalid') || low.contains('credentials') || low.contains('invalid login')) return 'Invalid email or password';
+    if (low.contains('password') && low.contains('incorrect')) return 'Password incorrect';
+    if (low.contains('already') || low.contains('duplicate') || low.contains('user exists') || low.contains('email')) {
+      // likely email already registered
+      if (low.contains('password')) return 'Weak password or invalid password';
+      return 'Email already exists';
     }
+    // default fallback
+    return raw;
+  }
+
+  // Backward-compatible aliases -------------------------------------------------
+  // Keep existing login()/signup()/logout() logic unchanged; expose the older
+  // method names so existing UI code continues to work.
+
+  Future<bool> signIn({required String email, required String password}) {
+    return login(email, password);
+  }
+
+  Future<bool> signUp({required String email, required String password, String? name, String? phone}) {
+    // name/phone are accepted for compatibility but currently ignored by
+    // the underlying signup(email,password) implementation.
+    return signup(email, password);
+  }
+
+  Future<void> signOut() {
+    return logout();
   }
 }
