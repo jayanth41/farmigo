@@ -112,7 +112,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 8),
                 Text(
                   'Login to continue',
-                  style: txt.bodyMedium?.copyWith(color: cs.onBackground.withOpacity(0.7)),
+                  style: txt.bodyMedium?.copyWith(color: cs.onSurface.withOpacity(0.7)),
                 ),
                 const SizedBox(height: 40),
 
@@ -142,7 +142,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           border: Border.all(color: Theme.of(context).dividerColor),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Text('+91', style: TextStyle(color: cs.onBackground)),
+                        child: Text('+91', style: TextStyle(color: cs.onSurface)),
                       ),
                       const SizedBox(width: 12),
                       Expanded(

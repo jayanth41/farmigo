@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../widgets/app_drawer.dart';
 import '../controllers/favorites_controller.dart';
-import '../theme/app_colors.dart';
+// theme colors used via Theme.of(context)
 import 'farmhouse_details_screen.dart';
 import '../widgets/image_with_fallback.dart';
 import '../navigation/app_routes.dart';
@@ -34,17 +34,17 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       drawer: const AppDrawer(),
       appBar: AppBar(
-        backgroundColor: AppColors.primary,
+        backgroundColor: Theme.of(context).colorScheme.primary,
         elevation: 0,
-        title: const Text(
+        title: Text(
           'My Favorites',
           style: TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.bold,
-            color: Colors.white,
+            color: Theme.of(context).colorScheme.onPrimary,
           ),
         ),
         centerTitle: false,
@@ -79,9 +79,9 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                                     ),
                                   );
                                 },
-                                child: const Text(
+                                child: Text(
                                   'Clear',
-                                  style: TextStyle(color: Colors.red),
+                                  style: TextStyle(color: Theme.of(context).colorScheme.error),
                                 ),
                               ),
                             ],
@@ -104,26 +104,24 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                   Icon(
                     Icons.favorite_border,
                     size: 80,
-                    color: Colors.grey[400],
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.35),
                   ),
                   const SizedBox(height: 16),
-                  Text(
-                    'No Favorites Yet',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey[600],
-                    ),
-                  ),
+                      Text(
+                        'No Favorites Yet',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
+                        ),
+                      ),
                   const SizedBox(height: 8),
-                  Text(
-                    'Add farmhouses to your favorites to see them here',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[500],
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
+                      Text(
+                        'Add farmhouses to your favorites to see them here',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.65),
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
                   const SizedBox(height: 24),
                   ElevatedButton.icon(
                     onPressed: () {
@@ -137,7 +135,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                     icon: const Icon(Icons.explore),
                     label: const Text('Explore Farmhouses'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF2D5016),
+                      backgroundColor: Theme.of(context).colorScheme.primary,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 24,
                         vertical: 12,
@@ -177,10 +175,9 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                   children: [
                     Text(
                       'Saved: ${filteredFavorites.length}',
-                      style: const TextStyle(
-                        fontSize: 14,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.w600,
-                        color: Colors.grey,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.75),
                       ),
                     ),
                   ],
@@ -193,7 +190,9 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                     ? Center(
                         child: Text(
                           'No favorites in this category',
-                          style: TextStyle(color: Colors.grey[600]),
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                          ),
                         ),
                       )
                     : ListView.builder(
@@ -232,9 +231,9 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
         label: Text(category),
         selected: isSelected,
         onSelected: (_) => setState(() => _selectedCategory = category),
-        selectedColor: const Color(0xFF2D5016),
+        selectedColor: Theme.of(context).colorScheme.primary,
         labelStyle: TextStyle(
-          color: isSelected ? Colors.white : Colors.black87,
+          color: isSelected ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.onSurface.withOpacity(0.9),
           fontWeight: FontWeight.w500,
         ),
       ),
@@ -259,7 +258,7 @@ class FavoriteCard extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Colors.grey[300]!,
+          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.06),
           width: 1,
         ),
         boxShadow: [
@@ -314,18 +313,18 @@ class FavoriteCard extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.surface,
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: const Color.fromRGBO(0, 0, 0, 0.2),
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.12),
                             blurRadius: 8,
                           ),
                         ],
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.favorite,
-                        color: Colors.red,
+                        color: Theme.of(context).colorScheme.error,
                         size: 20,
                       ),
                     ),
@@ -342,10 +341,10 @@ class FavoriteCard extends StatelessWidget {
                   // Name
                   Text(
                     farmhouse.name,
-                    style: const TextStyle(
-                      fontSize: 16,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: Colors.black,
+                      color: Theme.of(context).colorScheme.onSurface,
+                      fontSize: 16,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -354,18 +353,18 @@ class FavoriteCard extends StatelessWidget {
                   // Location
                   Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.location_on,
                         size: 14,
-                        color: Colors.red,
+                        color: Theme.of(context).colorScheme.primary,
                       ),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
                           farmhouse.location,
-                          style: const TextStyle(
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                             fontSize: 12,
-                            color: Colors.grey,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -380,17 +379,17 @@ class FavoriteCard extends StatelessWidget {
                     children: [
                       Text(
                         farmhouse.distance,
-                        style: const TextStyle(
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.65),
                           fontSize: 12,
-                          color: Colors.grey,
                         ),
                       ),
                       Text(
                         '₹${farmhouse.price.toStringAsFixed(0)}/night',
-                        style: const TextStyle(
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF2D5016),
+                          color: Theme.of(context).colorScheme.primary,
                         ),
                       ),
                     ],
@@ -416,12 +415,12 @@ class FavoriteCard extends StatelessWidget {
                         );
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF2D5016),
+                        backgroundColor: Theme.of(context).colorScheme.primary,
                         padding: const EdgeInsets.symmetric(vertical: 10),
                       ),
-                      child: const Text(
+                      child: Text(
                         'View Details',
-                        style: TextStyle(color: Colors.white),
+                        style: TextStyle(color: Theme.of(context).colorScheme.onPrimary),
                       ),
                     ),
                   ),

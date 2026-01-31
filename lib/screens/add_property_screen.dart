@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:provider/provider.dart';
 // theme-aware: use Theme.of(context) colors instead of AppColors
+import '../controllers/app_location_controller.dart';
 import 'owner_properties_screen.dart';
 
 class AddPropertyScreen extends StatefulWidget {
@@ -16,6 +18,30 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
   final _price = TextEditingController();
   final _description = TextEditingController();
   bool _loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Try to prefill the location from the app-wide location controller exactly once.
+    // Defensive: If the provider is not available, silently continue.
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      try {
+        final locCtrl = Provider.of<AppLocationController>(context, listen: false);
+        // If permission is not granted, inform the user (non-blocking).
+        if (!locCtrl.isPermissionGranted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Location permission not granted')));
+        }
+
+        // If we already have a friendly location name, use it to prefill the field.
+        if (locCtrl.locationName.isNotEmpty && locCtrl.locationName != 'Fetching location...' && locCtrl.locationName != 'Location unavailable') {
+          _location.text = locCtrl.locationName;
+        }
+      } catch (_) {
+        // Provider not present or other error — ignore to keep behavior unchanged.
+      }
+    });
+  }
 
   Future<void> _saveProperty() async {
     final title = _title.text.trim();
@@ -43,13 +69,28 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
         return;
       }
 
-      final res = await Supabase.instance.client.from('properties').insert({
+      final Map<String, dynamic> payload = {
         'owner_id': user.id,
         'title': title,
         'location': location,
         'price': priceValue,
         'description': description,
-      }).select();
+      };
+
+      // If the app location provider is available and has coordinates, save them too
+      // as separate fields (lat, lng) to remain backward compatible with existing
+      // schema that expects a string `location`.
+      try {
+        final locCtrl = Provider.of<AppLocationController>(context, listen: false);
+        if (locCtrl.latitude != null && locCtrl.longitude != null) {
+          payload['lat'] = locCtrl.latitude;
+          payload['lng'] = locCtrl.longitude;
+        }
+      } catch (_) {
+        // Provider not available — ignore.
+      }
+
+      final res = await Supabase.instance.client.from('properties').insert(payload).select();
 
       debugPrint('AddProperty result: $res');
 

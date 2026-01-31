@@ -4,6 +4,7 @@ import '../controllers/bookings_controller.dart';
 import '../widgets/app_drawer.dart';
 import '../widgets/no_data_widget.dart';
 import '../widgets/loading_widget.dart';
+import '../theme/app_colors.dart';
 
 class BookingsScreen extends StatefulWidget {
   const BookingsScreen({super.key});
@@ -36,7 +37,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: const Color(0xFF2D5016),
+        backgroundColor: AppColors.primary,
         title: const Text('My Bookings'),
         elevation: 0,
         actions: [
@@ -115,11 +116,11 @@ class _BookingsScreenState extends State<BookingsScreen> {
     final bool active = _filterStatus == value;
     return Padding(
       padding: const EdgeInsets.only(right: 8.0),
-      child: ElevatedButton(
+          child: ElevatedButton(
         onPressed: () => setState(() => _filterStatus = value),
         style: ElevatedButton.styleFrom(
           backgroundColor:
-              active ? const Color(0xFF2D5016) : Colors.grey[100],
+              active ? AppColors.primary : Colors.grey[100],
           foregroundColor: active ? Colors.white : Colors.grey[700],
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -241,10 +242,10 @@ class BookingItemCard extends StatelessWidget {
             // Price
             Text(
               '₹${booking['totalPrice']?.toString() ?? '0'} Total',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF2D5016),
+                color: AppColors.primary,
               ),
             ),
             const SizedBox(height: 12),
@@ -253,15 +254,15 @@ class BookingItemCard extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: OutlinedButton.icon(
+                    child: OutlinedButton.icon(
                     icon: const Icon(Icons.visibility, size: 16),
                     label: const Text('View Details'),
                     onPressed: () {
                       _showBookingDetails(context, booking);
                     },
                     style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Color(0xFF2D5016)),
-                      foregroundColor: const Color(0xFF2D5016),
+                      side: BorderSide(color: AppColors.primary),
+                      foregroundColor: AppColors.primary,
                     ),
                   ),
                 ),

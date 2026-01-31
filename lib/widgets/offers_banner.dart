@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
 
 class OffersBanner extends StatelessWidget {
   const OffersBanner({super.key});
@@ -42,31 +43,40 @@ class OffersBanner extends StatelessWidget {
 
           SizedBox(
             height: 130,
-            child: ListView(
+              child: ListView(
               scrollDirection: Axis.horizontal,
-              children: const [
+              children: [
                 _OfferCard(
-                  title: "Weekend Deals",
-                  subtitle: "Up to 40% off",
+                  title: 'Weekend Deals',
+                  subtitle: 'Up to 40% off',
                   icon: Icons.local_fire_department,
                   gradient: LinearGradient(
-                    colors: [Color(0xFF34D399), Color(0xFF10B981)],
+                    colors: [
+                      AppColors.primary,
+                      AppColors.primaryDark,
+                    ],
                   ),
                 ),
                 _OfferCard(
-                  title: "Early Bird",
-                  subtitle: "Save 15%",
+                  title: 'Early Bird',
+                  subtitle: 'Save 15%',
                   icon: Icons.percent,
                   gradient: LinearGradient(
-                    colors: [Color(0xFF60A5FA), Color(0xFF3B82F6)],
+                    colors: [
+                      AppColors.tealDark,
+                      AppColors.primary,
+                    ],
                   ),
                 ),
                 _OfferCard(
-                  title: "First Booking",
-                  subtitle: "20% off",
+                  title: 'First Booking',
+                  subtitle: '20% off',
                   icon: Icons.star_border,
                   gradient: LinearGradient(
-                    colors: [Color(0xFF4ADE80), Color(0xFF22C55E)],
+                    colors: [
+                      AppColors.greenDark,
+                      AppColors.primary,
+                    ],
                   ),
                 ),
                 SizedBox(width: 6),
