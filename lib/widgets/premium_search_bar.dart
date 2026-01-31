@@ -73,10 +73,10 @@ class _PremiumSearchBarState extends State<PremiumSearchBar>
     final bool hasText = widget.controller.text.isNotEmpty;
     final bool isDark = widget.variant == SearchBarVariant.darkCompact;
 
-    // Use flat decoration for both variants — remove shadow to match design
+    // Use theme-aware decoration for both variants — supports dark mode
     final bgDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(isDark ? 12 : 14),
-      color: isDark ? const Color(0xFF122E18) : Colors.white,
+      color: isDark ? Theme.of(context).colorScheme.surface : Theme.of(context).cardColor,
     );
 
     return Padding(
@@ -115,7 +115,7 @@ class _PremiumSearchBarState extends State<PremiumSearchBar>
                       decoration: InputDecoration(
                         hintText: widget.hintText,
                         hintStyle: TextStyle(
-                          color: isDark ? Colors.white70 : Colors.grey[700],
+                          color: isDark ? Theme.of(context).colorScheme.onSurface.withOpacity(0.7) : Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.65),
                         ),
                         border: InputBorder.none,
                         isDense: true,
@@ -123,7 +123,7 @@ class _PremiumSearchBarState extends State<PremiumSearchBar>
                       ),
                       style: theme.textTheme.bodyLarge?.copyWith(
                         fontSize: isDark ? 14 : 15,
-                        color: isDark ? Colors.white : null,
+                        color: theme.textTheme.bodyLarge?.color,
                       ),
                       textInputAction: TextInputAction.search,
                       onSubmitted: widget.onChanged,
@@ -137,7 +137,7 @@ class _PremiumSearchBarState extends State<PremiumSearchBar>
                         if (hasText)
                           IconButton(
                             tooltip: 'Clear',
-                            icon: Icon(Icons.close, color: isDark ? Colors.white70 : Colors.grey),
+                            icon: Icon(Icons.close, color: isDark ? Theme.of(context).colorScheme.onSurface.withOpacity(0.7) : Colors.grey),
                             onPressed: () {
                               widget.controller.clear();
                               widget.onChanged('');
@@ -146,7 +146,7 @@ class _PremiumSearchBarState extends State<PremiumSearchBar>
                           ),
                         IconButton(
                           tooltip: 'Voice',
-                          icon: Icon(Icons.mic, color: isDark ? Colors.white70 : Colors.grey),
+                          icon: Icon(Icons.mic, color: isDark ? Theme.of(context).colorScheme.onSurface.withOpacity(0.7) : Colors.grey),
                           onPressed: widget.onMicTap,
                         ),
                         const SizedBox(width: 6),

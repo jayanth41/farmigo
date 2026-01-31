@@ -1,27 +1,31 @@
 import 'package:flutter/material.dart';
+
 class OffersScreen extends StatelessWidget {
   const OffersScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF6FFF9),
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: ListView(
           children: [
             // HEADER
             Container(
               padding: const EdgeInsets.all(20),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Color(0xFFE91E63), Color(0xFFFF5252)],
+                  colors: [colorScheme.primary, colorScheme.primaryContainer],
                 ),
-                borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
+                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
               ),
               child: Row(
-                children: const [
-                  Icon(Icons.card_giftcard, color: Colors.white, size: 28),
-                  SizedBox(width: 10),
+                children: [
+                  Icon(Icons.card_giftcard, color: colorScheme.onPrimary, size: 28),
+                  const SizedBox(width: 10),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -29,9 +33,9 @@ class OffersScreen extends StatelessWidget {
                           style: TextStyle(
                               fontSize: 22,
                               fontWeight: FontWeight.bold,
-                              color: Colors.white)),
+                              color: colorScheme.onPrimary)),
                       Text("Save more on your bookings",
-                          style: TextStyle(color: Colors.white70)),
+                          style: TextStyle(color: colorScheme.onPrimary.withOpacity(0.9))),
                     ],
                   )
                 ],
@@ -46,7 +50,7 @@ class OffersScreen extends StatelessWidget {
               code: "FIRST25",
               expiry: "Expires in 15 days",
               discount: "25% OFF",
-              colors: [Color(0xFFB14FFF), Color(0xFFFF5FC1)],
+              colors: [const Color(0xFFB14FFF), const Color(0xFFFF5FC1)],
             ),
 
             OfferCard(
@@ -55,7 +59,7 @@ class OffersScreen extends StatelessWidget {
               code: "WEEKEND50",
               expiry: "Expires in 7 days",
               discount: "₹50 OFF",
-              colors: [Color(0xFF2196F3), Color(0xFF00BCD4)],
+              colors: [const Color(0xFF2196F3), const Color(0xFF00BCD4)],
             ),
 
             OfferCard(
@@ -64,7 +68,7 @@ class OffersScreen extends StatelessWidget {
               code: "LONGSTAY30",
               expiry: "Expires in 30 days",
               discount: "30% OFF",
-              colors: [Color(0xFF00C853), Color(0xFF64DD17)],
+              colors: [const Color(0xFF00C853), const Color(0xFF64DD17)],
             ),
 
             const SizedBox(height: 10),
@@ -74,7 +78,7 @@ class OffersScreen extends StatelessWidget {
               margin: const EdgeInsets.all(16),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.blue.shade50,
+                color: theme.colorScheme.surfaceVariant.withOpacity(0.6),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Column(
@@ -116,13 +120,16 @@ class OfferCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        color: Colors.white,
+        color: theme.cardColor,
         boxShadow: [
-          BoxShadow(color: Colors.black12, blurRadius: 6),
+          BoxShadow(color: theme.shadowColor.withOpacity(0.12), blurRadius: 6),
         ],
       ),
       child: Column(
@@ -141,23 +148,23 @@ class OfferCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(title,
-                          style: const TextStyle(
-                              color: Colors.white,
+                          style: TextStyle(
+                              color: colorScheme.onPrimary,
                               fontSize: 16,
                               fontWeight: FontWeight.bold)),
                       Text(subtitle,
-                          style: const TextStyle(color: Colors.white70)),
+                          style: TextStyle(color: colorScheme.onPrimary.withOpacity(0.9))),
                     ],
                   ),
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.white24,
+                    color: colorScheme.onPrimary.withOpacity(0.18),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(discount,
-                      style: const TextStyle(color: Colors.white)),
+                      style: TextStyle(color: colorScheme.onPrimary)),
                 )
               ],
             ),
@@ -172,9 +179,11 @@ class OfferCard extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                     decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey.shade300, style: BorderStyle.solid),
+                      border: Border.all(
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.08),
+                          style: BorderStyle.solid),
                       borderRadius: BorderRadius.circular(10),
-                      color: Colors.grey.shade100,
+                      color: theme.colorScheme.surface,
                     ),
                     child: Text(code,
                         style: const TextStyle(
@@ -198,7 +207,7 @@ class OfferCard extends StatelessWidget {
             child: Align(
               alignment: Alignment.centerRight,
               child: Text("⏰ $expiry",
-                  style: const TextStyle(color: Colors.orange)),
+                  style: TextStyle(color: colorScheme.secondary)),
             ),
           )
         ],

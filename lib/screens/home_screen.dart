@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/user_service.dart';
-import '../theme/app_colors.dart';
 import '../controllers/favorites_controller.dart';
 import '../controllers/location_controller.dart';
 import '../data/farmhouses_data.dart';
@@ -138,8 +138,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _onDrawerItemSelected(String label) async {
-    Navigator.of(context).pop();
-
+    // Drawer is already closed by the drawer widget; avoid popping again.
+    // Schedule navigation to avoid using context immediately after drawer close.
     if (label.toLowerCase() == 'logout') {
       try {
         await Supabase.instance.client.auth.signOut();
@@ -170,13 +170,39 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final route = AppRoutes.labelToRoute[label];
     if (route == null || route.isEmpty) return;
-    try {
-      Get.toNamed(route);
-    } catch (_) {
+
+    Future.microtask(() {
       try {
-        Navigator.of(context).pushNamed(route);
-      } catch (_) {}
-    }
+        if (!mounted) return;
+        if (route == AppRoutes.home) {
+          try {
+            Get.offAllNamed(AppRoutes.home);
+          } catch (e) {
+            debugPrint('Failed to navigate to Home via Get: $e');
+            try {
+              Navigator.of(context).pushNamedAndRemoveUntil(route, (r) => false);
+            } catch (e2) {
+              debugPrint('Fallback home navigation error: $e2');
+            }
+          }
+          return;
+        }
+
+        try {
+          Get.toNamed(route);
+        } catch (e) {
+          debugPrint('Get.toNamed failed: $e');
+          try {
+            if (!mounted) return;
+            Navigator.of(context).pushNamed(route);
+          } catch (e2) {
+            debugPrint('Navigator.pushNamed failed: $e2');
+          }
+        }
+      } catch (e) {
+        debugPrint('Drawer action scheduling error: $e');
+      }
+    });
   }
 
   @override
@@ -422,14 +448,41 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // If we're already inside a parent Scaffold (e.g. MainScaffold's
+    // IndexedStack), avoid creating a nested Scaffold to prevent UI issues
+    // such as black screens or duplicated drawers. Return only the body
+    // content in that case. Otherwise provide a full Scaffold with AppBar
+    // and drawer.
+    final hasAncestorScaffold = Scaffold.maybeOf(context) != null;
+
+    if (hasAncestorScaffold) {
+      // Return only the page body when embedded in another Scaffold.
+      return _buildBody();
+    }
+
+    // Top-level presentation: provide Scaffold with an AppBar. HomeScreen
+    // must not show a back button, so we disable automatic leading.
     return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        toolbarHeight: 0,
+        systemOverlayStyle: SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.light,
+          statusBarBrightness: Brightness.dark,
+        ),
+        title: const Text(''),
+        automaticallyImplyLeading: false,
+      ),
       drawer: AppDrawer(
-        profile: _profile, 
-        isProfileLoading: _isProfileLoading, 
+        profile: _profile,
+        isProfileLoading: _isProfileLoading,
         onItemSelected: _onDrawerItemSelected,
       ),
-      backgroundColor: AppColors.bgSoft,
-      body: _buildBody(),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+
+  body: _buildBody(),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           boxShadow: [
@@ -441,12 +494,16 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         child: BottomNavigationBar(
           currentIndex: _selectedIndex,
-          onTap: (index) => setState(() => _selectedIndex = index),
+          onTap: (index) {
+            if (!mounted) return;
+            if (_selectedIndex == index) return;
+            setState(() => _selectedIndex = index);
+          },
           type: BottomNavigationBarType.fixed,
           backgroundColor: Theme.of(context).scaffoldBackgroundColor,
 
-          selectedItemColor: AppColors.primary,
-          unselectedItemColor: Colors.grey[600],
+          selectedItemColor: Theme.of(context).colorScheme.primary,
+          unselectedItemColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
           items: const [
             BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
             BottomNavigationBarItem(icon: Icon(Icons.favorite), label: 'Favorites'),
@@ -465,51 +522,46 @@ class _HomeScreenState extends State<HomeScreen> {
       case 0:
         return _homePage();
       case 1:
-        return const FavoritesScreen();
+        return FavoritesScreen();
       case 2:
-        return const BookingsScreen();
+        return BookingsScreen();
       case 3:
         // If no profile is available (likely a guest session), show a
         // limited guest profile view that encourages login. This prevents
         // guests from accessing edit/profile functionality.
         if (_profile == null) {
-          return const _GuestProfileView();
+          return _GuestProfileView();
         }
-        return const ProfileScreen();
+        return ProfileScreen();
       default:
         return _homePage();
     }
   }
 
   Widget _homePage() {
-    return SafeArea(
-      child: Column(
-        children: [
-          // ---------- HEADER ----------
-          Container(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFFE8F8F0), Color(0xFFFFFFFF)],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-              borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
-              boxShadow: [
-                BoxShadow(
-                  color: Color.fromRGBO(0, 0, 0, 0.05),
-                  blurRadius: 10,
-                  offset: Offset(0, 4),
-                )
+    return Column(
+      children: [
+        // ---------- HEADER ----------
+        Container(
+          padding: EdgeInsets.fromLTRB(16, 12, 16, 16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Theme.of(context).colorScheme.primary,
+                Theme.of(context).colorScheme.primaryContainer,
               ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-            child: Column(
+            borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
+          ),
+          child: Column(
               children: [
                 Row(
                   children: [
                     Builder(
                       builder: (context) => IconButton(
-                        icon: const Icon(Icons.menu, color: AppColors.primary),
+                        icon: Icon(Icons.menu, color: Theme.of(context).colorScheme.onPrimary),
                         onPressed: () => Scaffold.of(context).openDrawer(),
                       ),
                     ),
@@ -519,11 +571,11 @@ class _HomeScreenState extends State<HomeScreen> {
                       width: 36,
                       height: 36,
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primary,
+                        color: Theme.of(context).colorScheme.primaryContainer,
                         borderRadius: BorderRadius.circular(8),
                         boxShadow: [
                           BoxShadow(
-                            color: Theme.of(context).colorScheme.primary.withOpacity(0.12),
+                            color: Theme.of(context).colorScheme.primary.withOpacity(0.25),
                             blurRadius: 4,
                             offset: const Offset(0, 2),
                           ),
@@ -533,7 +585,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: Text(
                           'F',
                           style: TextStyle(
-                            color: Theme.of(context).colorScheme.onPrimary,
+                            color: Theme.of(context).colorScheme.primary,
                             fontWeight: FontWeight.w800,
                             fontSize: 18,
                           ),
@@ -542,17 +594,17 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      "Farmigo",
+                      'Farmigo',
                       style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                        fontSize: 26,
+                        fontSize: 22,
                         fontWeight: FontWeight.w900,
-                        color: Theme.of(context).colorScheme.primary,
+                        color: Theme.of(context).colorScheme.onPrimary,
                       ),
                     ),
                     // Title area - kept compact. Location label placed below this row.
                     const Spacer(),
                     IconButton(
-                      icon: Icon(Icons.tune, color: Theme.of(context).colorScheme.primary),
+                      icon: Icon(Icons.tune, color: Theme.of(context).colorScheme.onPrimary),
                       onPressed: () {
                         final cat = () {
                           final s = _selectedCategory.toLowerCase();
@@ -602,11 +654,11 @@ class _HomeScreenState extends State<HomeScreen> {
                       },
                     ),
                   ],
-                ),
-                const SizedBox(height: 12),
+        ),
+          const SizedBox(height: 4),
                 // Small clickable current location placed under title, left aligned
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4),
                   child: Align(
                     alignment: Alignment.centerLeft,
                     child: GestureDetector(
@@ -619,30 +671,26 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
 
-                // SEARCH BAR (theme-aware)
+                // SEARCH BAR (single rounded field)
                 Builder(builder: (ctx) {
                   final cs = Theme.of(ctx).colorScheme;
-                  return Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
-                    decoration: BoxDecoration(
-                      color: Theme.of(ctx).cardColor,
-                      borderRadius: BorderRadius.circular(14),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color.fromRGBO(0, 0, 0, 0.05),
-                          blurRadius: 6,
-                        )
-                      ],
-                    ),
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 2),
                     child: TextField(
                       controller: _searchController,
                       cursorColor: cs.primary,
                       style: TextStyle(color: cs.onSurface),
                       decoration: InputDecoration(
-                        hintText: "Search farmhouses, villas...",
-                        hintStyle: TextStyle(color: cs.onSurface.withOpacity(0.6)),
-                        border: InputBorder.none,
-                        icon: Icon(Icons.search, color: cs.onSurface.withOpacity(0.8)),
+                        hintText: 'Search farmhouses, villas...',
+                        hintStyle: TextStyle(color: cs.onSurface.withOpacity(0.65)),
+                        filled: true,
+                        fillColor: cs.surface,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        prefixIcon: Icon(Icons.search, color: cs.primary),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide.none,
+                        ),
                       ),
                     ),
                   );
@@ -660,24 +708,20 @@ class _HomeScreenState extends State<HomeScreen> {
                 // GREETING
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: RichText(
-                    text: const TextSpan(
-                      style: TextStyle(color: Color.fromARGB(255, 63, 62, 62)),
-                      children: [
-                        TextSpan(
-                          text: "Hello 👋\n",
-                          style: TextStyle(fontSize: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Hello 👋', style: Theme.of(context).textTheme.bodyLarge),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Where would you like to go?',
+                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                          color: Theme.of(context).colorScheme.primary,
+
+                          fontWeight: FontWeight.w700,
                         ),
-                        TextSpan(
-                          text: "Where would you like to go?",
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -774,13 +818,12 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ],
-      ),
-    );
+      );
   }
 }
 
 class _GuestProfileView extends StatelessWidget {
-  const _GuestProfileView({Key? key}) : super(key: key);
+  _GuestProfileView();
 
   @override
   Widget build(BuildContext context) {
@@ -790,7 +833,7 @@ class _GuestProfileView extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.person_outline, size: 72, color: Theme.of(context).colorScheme.onBackground.withOpacity(0.6)),
+            Icon(Icons.person_outline, size: 72, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
             const SizedBox(height: 12),
             Text('You are browsing as a guest', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 8),
@@ -914,7 +957,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 );
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
+                backgroundColor: Theme.of(context).colorScheme.primary,
+
               ),
               child: const Text("Owner Dashboard"),
             ),

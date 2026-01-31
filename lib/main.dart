@@ -20,6 +20,7 @@ import 'screens/car_rentals_screen.dart';
 import 'screens/farmhouses_screen.dart';
 import 'screens/signup_screen.dart';
 import 'screens/offers_screen.dart';
+import 'screens/help_support_screen.dart';
 import 'screens/settings_screen.dart';
 import 'controllers/favorites_controller.dart';
 import 'controllers/bookings_controller.dart';
@@ -105,6 +106,7 @@ class MyApp extends StatelessWidget {
         GetPage(name: AppRoutes.profile, page: () => const ProfileScreen()),
         GetPage(name: AppRoutes.settings, page: () => const SettingsScreen()),
         GetPage(name: AppRoutes.offers, page: () => const OffersScreen()),
+  GetPage(name: AppRoutes.helpSupport, page: () => const HelpSupportScreen()),
         GetPage(name: AppRoutes.farmhouses, page: () => const FarmhousesScreen()),
         GetPage(name: AppRoutes.carRentals, page: () => const CarRentalsScreen()),
       ],

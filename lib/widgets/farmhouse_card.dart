@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../theme/app_colors.dart';
 import '../screens/farmhouse_details_screen.dart';
 import '../screens/booking_details_screen.dart';
 import '../controllers/favorites_controller.dart';
@@ -114,7 +113,7 @@ class _FarmhouseCardState extends State<FarmhouseCard> {
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(18),
           boxShadow: const [
             BoxShadow(
@@ -150,13 +149,14 @@ class _FarmhouseCardState extends State<FarmhouseCard> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 5),
                       decoration: BoxDecoration(
-                        color: AppColors.primary,
+                        color: Theme.of(context).colorScheme.primary,
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
                         "${widget.discount}% OFF",
-                        style: const TextStyle(
-                            color: Colors.white,
+                        style: TextStyle(
+                            // Use onPrimary for readable text on primary-colored badge
+                            color: Theme.of(context).colorScheme.onPrimary,
                             fontWeight: FontWeight.bold,
                             fontSize: 12),
                       ),
@@ -171,15 +171,13 @@ class _FarmhouseCardState extends State<FarmhouseCard> {
                     onTap: _toggleFavorite,
                     child: Container(
                       padding: const EdgeInsets.all(6),
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surface,
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
-                        isFavorite
-                            ? Icons.favorite
-                            : Icons.favorite_border,
-                        color: AppColors.primary,
+                        isFavorite ? Icons.favorite : Icons.favorite_border,
+                        color: Theme.of(context).colorScheme.primary,
                         size: 20,
                       ),
                     ),
@@ -226,10 +224,10 @@ class _FarmhouseCardState extends State<FarmhouseCard> {
                       const Spacer(),
                       Text(
                         "₹${widget.price.toInt()}",
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: AppColors.primary),
+                            color: Theme.of(context).colorScheme.primary),
                       ),
                       const SizedBox(width: 4),
                       const Text("/night",
