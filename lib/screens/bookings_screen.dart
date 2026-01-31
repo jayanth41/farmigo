@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controllers/bookings_controller.dart';
-import '../widgets/app_drawer.dart';
+// app_drawer removed from this secondary screen to keep back navigation consistent
 import '../widgets/no_data_widget.dart';
 import '../widgets/loading_widget.dart';
 import '../theme/app_colors.dart';
@@ -36,9 +36,15 @@ class _BookingsScreenState extends State<BookingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // Secondary screen: provide back button and consistent AppBar styling
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
         backgroundColor: AppColors.primary,
-        title: const Text('My Bookings'),
+        iconTheme: const IconThemeData(color: Colors.white),
+        title: const Text('My Bookings', style: TextStyle(color: Colors.white)),
         elevation: 0,
         actions: [
           IconButton(
@@ -48,7 +54,6 @@ class _BookingsScreenState extends State<BookingsScreen> {
           ),
         ],
       ),
-      drawer: const AppDrawer(),
       body: Obx(() {
         if (bookingsController.isLoading.value) {
           return const LoadingWidget();

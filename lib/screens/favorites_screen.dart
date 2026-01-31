@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../widgets/app_drawer.dart';
+import '../theme/app_colors.dart';
 import '../controllers/favorites_controller.dart';
 // theme colors used via Theme.of(context)
 import 'farmhouse_details_screen.dart';
@@ -35,16 +35,21 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      drawer: const AppDrawer(),
+      // Secondary screen: remove drawer and provide a back button in AppBar
       appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.primary,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        backgroundColor: AppColors.primary,
+        iconTheme: const IconThemeData(color: Colors.white),
         elevation: 0,
-        title: Text(
+        title: const Text(
           'My Favorites',
           style: TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.bold,
-            color: Theme.of(context).colorScheme.onPrimary,
+            color: Colors.white,
           ),
         ),
         centerTitle: false,

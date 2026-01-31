@@ -1,11 +1,10 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'firebase_helper.dart';
 import 'network_utils.dart';
 
 class ReviewService {
-  final FirebaseFirestore? _db = FirebaseHelper.isLikelyAvailable() ? FirebaseFirestore.instance : null;
+  final _supabase = Supabase.instance.client;
 
   Future<void> addReview({
     required String reviewText,
@@ -18,45 +17,30 @@ class ReviewService {
       'rating': rating,
       'propertyId': propertyId,
       'userId': userId,
-      'createdAt': FieldValue.serverTimestamp(),
+      'createdAt': DateTime.now().toUtc().toIso8601String(),
     };
 
-    if (_db == null) {
-      debugPrint('⚠️ ReviewService.addReview: Firestore unavailable, skipping');
-      return;
-    }
-
-    // optional network check for better diagnostics
     if (!await NetworkUtils.hasNetwork()) {
       debugPrint('⚠️ ReviewService.addReview: No network, skipping');
       return;
     }
 
     try {
-      final db = _db!;
-      await db.collection('reviews').add(doc);
+      await _supabase.from('reviews').insert(doc);
     } catch (e) {
       debugPrint('❌ ReviewService.addReview error: $e');
     }
   }
 
-  Stream<QuerySnapshot<Map<String, dynamic>>> getReviews(String propertyId) {
-    if (_db == null) {
-      debugPrint('⚠️ ReviewService.getReviews: Firestore unavailable, returning empty stream');
-      return Stream<QuerySnapshot<Map<String, dynamic>>>.empty();
-    }
-
+  /// Fetch reviews for a property as a single-shot list. If you need realtime
+  /// updates, consider wiring Supabase Realtime separately.
+  Future<List<Map<String, dynamic>>> getReviews(String propertyId) async {
     try {
-      final db = _db!;
-      return db
-          .collection('reviews')
-          .where('propertyId', isEqualTo: propertyId)
-          .orderBy('createdAt', descending: true)
-          .snapshots()
-          .handleError((e) => debugPrint('❌ ReviewService.getReviews stream error: $e'));
+  final res = await _supabase.from('reviews').select().eq('propertyId', propertyId).order('createdAt', ascending: false);
+  return List<Map<String, dynamic>>.from(res as List);
     } catch (e) {
       debugPrint('❌ ReviewService.getReviews error: $e');
-      return Stream<QuerySnapshot<Map<String, dynamic>>>.empty();
+      return [];
     }
   }
 }

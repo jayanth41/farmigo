@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../controllers/auth_controller.dart';
 import '../settings/theme_provider.dart';
+import '../theme/app_colors.dart';
 import 'change_password_screen.dart';
 import 'privacy_security_screen.dart';
 import 'mfa_setup_screen.dart';
@@ -38,11 +40,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: colorScheme.primary,
-        iconTheme: IconThemeData(color: colorScheme.onPrimary),
-        titleTextStyle: textTheme.titleLarge?.copyWith(color: colorScheme.onPrimary, fontWeight: FontWeight.w600),
-        title: Text("Settings"),
-        leading: BackButton(color: colorScheme.onPrimary),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        backgroundColor: AppColors.primary,
+        iconTheme: const IconThemeData(color: Colors.white),
+        titleTextStyle: textTheme.titleLarge?.copyWith(color: Colors.white, fontWeight: FontWeight.w600),
+        title: const Text("Settings"),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -75,7 +80,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               title: Text("Dark Mode", style: textTheme.bodyLarge),
               subtitle: Text("Use dark theme", style: textTheme.bodyMedium),
               value: themeProvider.isDarkMode,
-              activeColor: colorScheme.primary,
+              activeThumbColor: colorScheme.primary,
               onChanged: (v) {
                 themeProvider.toggleDarkMode(v);
               },
@@ -111,7 +116,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               title: Text('Two Factor Authentication', style: Theme.of(context).textTheme.bodyLarge),
               subtitle: Text(_mfaLoading ? 'Checking...' : (_twoFactorEnabled ? 'Enabled' : 'Disabled'), style: Theme.of(context).textTheme.bodyMedium),
               value: _twoFactorEnabled,
-              activeColor: Theme.of(context).colorScheme.primary,
+              activeThumbColor: Theme.of(context).colorScheme.primary,
               onChanged: (v) async {
                 if (v) {
                   // enable 2FA: enroll via REST helper and navigate to setup screen
@@ -297,7 +302,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         onChanged: onChanged,
         title: Text(title, style: Theme.of(context).textTheme.bodyLarge),
         subtitle: Text(subtitle, style: Theme.of(context).textTheme.bodyMedium),
-        activeColor: Theme.of(context).colorScheme.primary,
+        activeThumbColor: Theme.of(context).colorScheme.primary,
       ),
     );
   }
@@ -342,7 +347,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // ---------------- LOGOUT ----------------
 
   Future<void> _logout() async {
-    await supabase.auth.signOut();
+    // Use AuthController to centralize logout behavior and loading state
+    try {
+      final auth = Provider.of<AuthController>(context, listen: false);
+      await auth.signOut();
+    } catch (e) {
+      // fallback to direct signOut if controller fails
+      try {
+        await supabase.auth.signOut();
+      } catch (_) {}
+    }
+
+    // Navigate to login and clear stack
+    if (!mounted) return;
     Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
   }
 }
