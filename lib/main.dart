@@ -153,6 +153,13 @@ Future<void> _performLogoutAndNavigate(BuildContext context) async {
     // Use FirebaseAuth directly so authStateChanges stream updates the UI.
     await fb.FirebaseAuth.instance.signOut();
     // Optionally clear session data
+    // After sign-out, navigate to Login and remove all previous routes so
+    // back navigation won't return to authenticated screens.
+    try {
+      Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+    } catch (e) {
+      debugPrint('Navigation to login after signOut failed: $e');
+    }
   } catch (e, st) {
     // Log for debugging
     debugPrint('Logout failed: $e\n$st');

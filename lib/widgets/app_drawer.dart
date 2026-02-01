@@ -42,23 +42,32 @@ class AppDrawer extends StatelessWidget {
           TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cancel')),
               TextButton(
             onPressed: () async {
-              Navigator.of(ctx).pop();
-              try {
-                await fb.FirebaseAuth.instance.signOut();
-              } catch (e) {
-                // Sign-out failed; proceed to let auth state handle routing
-                debugPrint('Logout failed: $e');
-              }
+                // Close the confirmation dialog first
+                Navigator.of(ctx).pop();
 
-              try {
-                Navigator.of(context).pop(); // close drawer if open
-              } catch (_) {}
+                // Close the drawer if it's open (best-effort)
+                try {
+                  Navigator.of(context).pop();
+                } catch (_) {}
 
-              try {
-                showAppSnack(context, 'Logged out successfully', isSuccess: true);
-              } catch (_) {}
+                // Sign out from Firebase
+                try {
+                  await fb.FirebaseAuth.instance.signOut();
+                } catch (e) {
+                  debugPrint('Logout failed: $e');
+                }
 
-              // Let app-level auth listener handle navigation to login
+                // Navigate to Login and clear the navigation stack so the user
+                // can't navigate back into authenticated screens.
+                try {
+                  Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+                } catch (e) {
+                  debugPrint('Navigation to login after logout failed: $e');
+                }
+              
+                try {
+                  showAppSnack(context, 'Logged out successfully', isSuccess: true);
+                } catch (_) {}
             },
             child: Text('Logout', style: TextStyle(color: Theme.of(context).colorScheme.error)),
           ),
