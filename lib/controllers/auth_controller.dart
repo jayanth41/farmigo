@@ -3,20 +3,17 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import '../services/supabase_config.dart';
+// Email OTP flows via a third party are not supported here. This
+// controller uses Firebase Authentication for phone OTP and Google Sign-In.
 
-/// Dual-provider AuthController
-/// - Supabase: email OTP flows (send + verify)
-/// - Firebase: phone OTP flows (verifyPhoneNumber + credential)
+/// AuthController
+/// - Firebase: phone OTP flows (verifyPhoneNumber + credential) and Google Sign-In
 ///
 /// UI contract:
-/// - loginWithEmail(email) -> sends email OTP via Supabase
-/// - verifyEmailOtp(otp) -> verifies and signs in user, ensures Supabase `users` entry
+/// - loginWithEmail(email) -> NOT SUPPORTED (email OTP not implemented)
+/// - verifyEmailOtp(otp) -> NOT SUPPORTED
 /// - loginWithPhone(phone) -> starts Firebase phone verification (sends SMS)
-/// - verifyPhoneOtp(otp) -> completes phone sign-in, ensures Supabase `users` entry
+/// - verifyPhoneOtp(otp) -> completes phone sign-in and creates Firestore profile
 class AuthController extends ChangeNotifier {
   bool _isLoading = false;
   String? _errorMessage;
@@ -158,68 +155,26 @@ class AuthController extends ChangeNotifier {
   Future<bool> sendOTP(String phone) => sendPhoneOTP(phone);
   Future<bool> verifyOTP(String otp) => verifyPhoneOTP(otp);
 
-  // ---------------- Email OTP (Supabase) ---------------------------------
-  /// Sends an email OTP via Supabase (magic link / OTP depending on Supabase project)
+  // ---------------- Email OTP (not supported) -------------------------------
+  /// Email OTP via an external provider is not supported in this build.
+  /// Use phone OTP or Google Sign-In instead.
   Future<bool> sendEmailOTP(String email) async {
+    // Email OTP flows were intentionally removed from the app during the
+    // migration to Firebase-only auth. The UI paths no longer route emails
+    // into the OTP flow; therefore this method simply returns false without
+    // setting a user-visible error message to avoid surfacing 'not supported'
+    // messages from deep call sites.
     _errorMessage = null;
-    if (email.trim().isEmpty) {
-      _errorMessage = 'Enter email';
-      notifyListeners();
-      return false;
-    }
-
-    _setLoading(true);
-    try {
-  await supabase.Supabase.instance.client.auth.signInWithOtp(email: email.trim());
-      return true;
-    } catch (e) {
-      _errorMessage = e.toString();
-      notifyListeners();
-      return false;
-    } finally {
-      _setLoading(false);
-    }
+    notifyListeners();
+    return false;
   }
 
-  /// Verify email OTP via Supabase. The exact Supabase API may vary; this
-  /// attempts to call verifyOtp which accepts email and token.
+  /// Verify email OTP (not supported in this migration).
   Future<bool> verifyEmailOTP(String email, String otp) async {
+    // Email OTP verification no longer supported; return false quietly.
     _errorMessage = null;
-    if (otp.trim().isEmpty) {
-      _errorMessage = 'Enter OTP';
-      notifyListeners();
-      return false;
-    }
-    _setLoading(true);
-    try {
-      final url = Uri.parse('$SUPABASE_URL/auth/v1/verify');
-      final res = await http.post(url,
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': SUPABASE_ANON_KEY,
-          },
-          body: jsonEncode({
-            'type': 'signup',
-            'email': email.trim(),
-            'token': otp.trim(),
-          }));
-
-      if (res.statusCode == 200 || res.statusCode == 201) {
-        _isAuthenticated = true;
-        notifyListeners();
-        return true;
-      }
-
-      _errorMessage = 'Verification failed (${res.statusCode})';
-      notifyListeners();
-      return false;
-    } catch (e) {
-      _errorMessage = e.toString();
-      notifyListeners();
-      return false;
-    } finally {
-      _setLoading(false);
-    }
+    notifyListeners();
+    return false;
   }
 
   // Backwards-compatible (deprecated) aliases for email OTP

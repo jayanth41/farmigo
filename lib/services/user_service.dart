@@ -1,31 +1,32 @@
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
+/// UserService migrated to Firestore. This provides a minimal compatibility
+/// layer for existing callers that previously used an external user store.
 class UserService {
-  final SupabaseClient _client = Supabase.instance.client;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  /// Create a user row if it doesn't already exist
   Future<void> createUserIfNotExists({
     required String name,
     required String phone,
     String role = 'user',
   }) async {
-    final user = _client.auth.currentUser;
+    final user = _auth.currentUser;
     if (user == null) return;
 
     try {
-      final existing = await _client
-          .from('users')
-          .select()
-          .eq('id', user.id)
-          .maybeSingle();
-
-      if (existing == null) {
-        await _client.from('users').insert({
-          'id': user.id,
+      final docRef = _firestore.collection('users').doc(user.uid);
+      final doc = await docRef.get();
+      if (!doc.exists) {
+        await docRef.set({
+          'uid': user.uid,
           'name': name,
           'phone': phone,
           'role': role,
+          'email': user.email ?? '',
+          'createdAt': FieldValue.serverTimestamp(),
         });
       }
     } catch (e) {
@@ -33,39 +34,30 @@ class UserService {
     }
   }
 
-  /// Fetch logged-in user's profile
   Future<Map<String, dynamic>?> fetchUserProfile() async {
-    final user = _client.auth.currentUser;
+    final user = _auth.currentUser;
     if (user == null) return null;
 
     try {
-      final data = await _client
-          .from('users')
-          .select()
-          .eq('id', user.id)
-          .maybeSingle();
-
-      return data == null ? null : Map<String, dynamic>.from(data);
+      final doc = await _firestore.collection('users').doc(user.uid).get();
+      if (!doc.exists) return null;
+      return doc.data();
     } catch (e) {
       debugPrint('fetchUserProfile error: $e');
       return null;
     }
   }
 
-  /// Update user profile
   Future<bool> updateProfile({
     required String name,
     required String phone,
   }) async {
-    final user = _client.auth.currentUser;
+    final user = _auth.currentUser;
     if (user == null) return false;
 
     try {
-      await _client.from('users').update({
-        'name': name,
-        'phone': phone,
-      }).eq('id', user.id);
-
+      final docRef = _firestore.collection('users').doc(user.uid);
+      await docRef.set({'name': name, 'phone': phone}, SetOptions(merge: true));
       return true;
     } catch (e) {
       debugPrint('updateProfile error: $e');

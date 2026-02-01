@@ -1,9 +1,8 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'services/supabase_config.dart';
+import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:provider/provider.dart';
 
 import 'filters/filters_provider.dart';
@@ -33,11 +32,8 @@ import 'firebase_options.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Use central constants so other code can make REST calls if needed
-  await Supabase.initialize(
-    url: 'https://kvnwikjxjimztjqsycti.supabase.co',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt2bndpa2p4amltenRqcXN5Y3RpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg4ODgxMDcsImV4cCI6MjA4NDQ2NDEwN30.e-mZfYqzztQNbBQ4n0R3aKFFYhdGI6rZgKvgyJNx2Fw',
-  );
+  // App uses Firebase for authentication and Firestore for user profiles.
+  // Any external database-backed services should be migrated separately.
 
   if (!kIsWeb) {
     try {
@@ -85,10 +81,12 @@ class MyApp extends StatelessWidget {
       darkTheme: AppTheme.darkTheme(),
       themeMode: themeProvider.themeMode,
 
-      // 🔥 AUTH GUARD
-      home: Consumer<AuthController>(
-        builder: (context, auth, _) {
-          if (auth.isAuthenticated) {
+      // 🔥 AUTH GUARD (driven by Firebase auth state)
+      home: StreamBuilder<fb.User?>(
+        stream: fb.FirebaseAuth.instance.authStateChanges(),
+        builder: (context, snapshot) {
+          final user = snapshot.data;
+          if (user != null) {
             return const HomeScreen();
           } else {
             return const LoginScreen();
@@ -159,12 +157,9 @@ void _showLogoutConfirmation(BuildContext context) {
 
 Future<void> _performLogoutAndNavigate(BuildContext context) async {
   try {
-    // Use AuthController signOut and Navigator to avoid Supabase/GetX-specific
-    // logout behavior in UI code.
-    final auth = Provider.of<AuthController>(context, listen: false);
-    await auth.signOut();
-
-    Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+    // Use FirebaseAuth directly so authStateChanges stream updates the UI.
+    await fb.FirebaseAuth.instance.signOut();
+    // Optionally clear session data
   } catch (e, st) {
     // Log for debugging
     debugPrint('Logout failed: $e\n$st');

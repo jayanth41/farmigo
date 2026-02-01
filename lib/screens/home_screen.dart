@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/user_service.dart';
 import '../controllers/favorites_controller.dart';
 import '../controllers/location_controller.dart';
@@ -19,9 +18,11 @@ import 'owner_dashboard.dart';
 import 'filters_screen.dart';
 import 'package:provider/provider.dart';
 import '../controllers/auth_controller.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../filters/filters_provider.dart';
 import '../controllers/app_location_controller.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
 import '../models/category.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -94,7 +95,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     locationController = Get.find<LocationController>();
     
-    // Load Supabase-backed user profile (if authenticated)
+  // Load user profile from the app's user service (Firestore) if available
     loadProfile();
 
     // Subscribe to global filters provider updates after first frame
@@ -120,22 +121,16 @@ class _HomeScreenState extends State<HomeScreen> {
       _isProfileLoading = false;
     });
 
-    // If user is authenticated but no profile exists, prompt them once
-    final authUser = Supabase.instance.client.auth.currentUser;
-    if (authUser != null &&
-        (_profile == null || _profile!['profile_completed'] == false) &&
-        !_didPromptForProfile) {
-
-      _didPromptForProfile = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) async {
-        if (!mounted) return;
-        await Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const EditProfilePage(profile: {})),
-        );
-        await loadProfile();
-      });
-    }
+  // If user is authenticated but no profile exists, do not auto-navigate.
+  // Earlier behavior auto-pushed the Edit Profile page which caused
+  // unexpected navigation flows. Keep a one-time flag to avoid repeated
+  // checks but do not change UI automatically; callers may choose to
+  // navigate manually if desired.
+  final user = FirebaseAuth.instance.currentUser;
+  if (user != null && (_profile == null || _profile!['profile_completed'] == false) && !_didPromptForProfile) {
+    _didPromptForProfile = true;
+    debugPrint('[HomeScreen] profile incomplete for user ${user.uid}; not auto-navigating to EditProfile.');
+  }
   }
 
   void _onDrawerItemSelected(String label) async {
@@ -143,8 +138,7 @@ class _HomeScreenState extends State<HomeScreen> {
     // Schedule navigation to avoid using context immediately after drawer close.
     if (label.toLowerCase() == 'logout') {
       try {
-        final auth = Provider.of<AuthController>(context, listen: false);
-        await auth.signOut();
+        await FirebaseAuth.instance.signOut();
       } catch (_) {}
       if (!mounted) return;
       try {
@@ -178,14 +172,12 @@ class _HomeScreenState extends State<HomeScreen> {
         if (!mounted) return;
         if (route == AppRoutes.home) {
           try {
-            Get.offAllNamed(AppRoutes.home);
+            // Use Navigator API to clear stack and navigate to home so the
+            // top-level auth StreamBuilder remains authoritative and we
+            // avoid interactions between GetX and the auth guard.
+            Navigator.of(context).pushNamedAndRemoveUntil(route, (r) => false);
           } catch (e) {
-            debugPrint('Failed to navigate to Home via Get: $e');
-            try {
-              Navigator.of(context).pushNamedAndRemoveUntil(route, (r) => false);
-            } catch (e2) {
-              debugPrint('Fallback home navigation error: $e2');
-            }
+            debugPrint('Fallback home navigation error: $e');
           }
           return;
         }
@@ -274,7 +266,30 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_locationFuture != null) return _locationFuture!;
     _locationFuture = () async {
       try {
-        // Use the GetX LocationController to request/check permissions safely
+        // Prefer the Provider-based AppLocationController which already
+        // performs reverse-geocoding to a readable location name.
+        try {
+          final appLoc = Provider.of<AppLocationController>(context, listen: false);
+
+          // Ensure service/permissions and listener are started
+          await appLoc.initialize();
+
+          // If a human-readable name is available, return it
+          final name = appLoc.locationName;
+          if (name.isNotEmpty && name != 'Fetching location...' && name != 'Location unavailable') {
+            return name;
+          }
+
+          // Otherwise perform a one-shot position fetch which also triggers reverse geocode
+          final p = await appLoc.getCurrentPosition();
+          if (p != null) {
+            return appLoc.locationName;
+          }
+        } catch (e) {
+          debugPrint('AppLocationController not available or failed: $e');
+        }
+
+        // Fallback: use the older GetX LocationController + direct reverse geocoding
         await locationController.checkLocationStatus();
         if (!locationController.isLocationEnabled.value) {
           await locationController.requestLocationPermission();
@@ -285,6 +300,19 @@ class _HomeScreenState extends State<HomeScreen> {
         }
 
         final pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.best).timeout(const Duration(seconds: 10));
+        try {
+          final placemarks = await placemarkFromCoordinates(pos.latitude, pos.longitude);
+          if (placemarks.isNotEmpty) {
+            final p = placemarks.first;
+            final city = p.locality ?? '';
+            final state = p.administrativeArea ?? '';
+            if (city.isNotEmpty && state.isNotEmpty) return '$city, $state';
+            if (city.isNotEmpty) return city;
+          }
+        } catch (e) {
+          debugPrint('Reverse geocode fallback error: $e');
+        }
+
         return '${pos.latitude.toStringAsFixed(5)}, ${pos.longitude.toStringAsFixed(5)}';
       } catch (_) {
         return null;
@@ -313,6 +341,7 @@ class _HomeScreenState extends State<HomeScreen> {
               builder: (context, snap) {
                 final loading = snap.connectionState == ConnectionState.waiting;
                 final detected = snap.data;
+                // If detected is a readable address, populate the field for editing
                 if (detected != null && detected.isNotEmpty) ctl.text = detected;
                 return Column(
                   mainAxisSize: MainAxisSize.min,
@@ -665,9 +694,38 @@ class _HomeScreenState extends State<HomeScreen> {
                     alignment: Alignment.centerLeft,
                     child: GestureDetector(
                       onTap: () => _showLocationSheet(context),
-                      child: Text(
-                        '📍 Current location',
-                        style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodySmall?.color),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '📍 Current location',
+                            style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodySmall?.color),
+                          ),
+                          const SizedBox(height: 2),
+                          Builder(builder: (ctx) {
+                            try {
+                              final appLoc = Provider.of<AppLocationController>(ctx);
+                              final name = appLoc.locationName;
+                              return Text(
+                                name,
+                                style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.w600),
+                              );
+                            } catch (_) {
+                              // Fallback to last-known fetched future
+                              return FutureBuilder<String?>(
+                                future: _fetchLocationOnce(),
+                                builder: (context, snap) {
+                                  if (snap.connectionState == ConnectionState.waiting) return const SizedBox.shrink();
+                                  final val = snap.data;
+                                  return Text(
+                                    val ?? 'Location unavailable',
+                                    style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.w600),
+                                  );
+                                },
+                              );
+                            }
+                          })
+                        ],
                       ),
                     ),
                   ),

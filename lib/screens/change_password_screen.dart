@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
   const ChangePasswordScreen({super.key});
@@ -18,7 +18,6 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   bool _obscureConfirm = true;
   bool _loading = false;
 
-  final supabase = Supabase.instance.client;
 
   @override
   void dispose() {
@@ -46,9 +45,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       return;
     }
 
-    final user = supabase.auth.currentUser;
-    final email = user?.email;
-    if (email == null) {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null || user.email == null) {
       _showMessage('No authenticated user found');
       return;
     }
@@ -57,23 +55,18 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
     try {
       // Re-authenticate using email + current password
-      final res = await supabase.auth.signInWithPassword(email: email, password: current);
-      if (res.user == null) {
-        // Sign-in failed
-        _showMessage('Wrong current password');
-        setState(() => _loading = false);
-        return;
-      }
+      final cred = EmailAuthProvider.credential(email: user.email!, password: current);
+      await user.reauthenticateWithCredential(cred);
 
       // Update password
-      await supabase.auth.updateUser(UserAttributes(password: fresh));
-      // If no exception thrown above, consider it successful
+      await user.updatePassword(fresh);
+
       _showMessage('Password changed successfully');
       setState(() => _loading = false);
       Navigator.pop(context);
       return;
-    } on AuthException catch (e) {
-      _showMessage(e.message);
+    } on FirebaseAuthException catch (e) {
+      _showMessage(e.message ?? 'Failed to change password');
       setState(() => _loading = false);
     } catch (e) {
       _showMessage('An error occurred. Please try again');

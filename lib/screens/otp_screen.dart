@@ -7,10 +7,11 @@ import '../theme/app_colors.dart';
 import '../controllers/auth_controller.dart';
 import '../widgets/snackbar_helper.dart';
 import '../navigation/app_routes.dart';
+import 'home_screen.dart';
 
 enum AuthType { email, phone }
 
-/// Unified OTP screen for email (Supabase) and phone (Firebase).
+/// Unified OTP screen for phone-based verification using Firebase Auth.
 class OTPScreen extends StatefulWidget {
   final String value;
   final AuthType authType;
@@ -219,7 +220,12 @@ class _OTPScreenState extends State<OTPScreen> {
 
     if (ok) {
       showAppSnack(context, 'Login successful', isSuccess: true);
-      Navigator.pushReplacementNamed(context, AppRoutes.home);
+      // Remove all previous routes (including Login) so back won't return to them
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+        (route) => false,
+      );
     } else {
       final msg = auth.errorMessage ?? 'Verification failed';
       final lower = msg.toLowerCase();
@@ -233,11 +239,15 @@ class _OTPScreenState extends State<OTPScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Use a concise title for the app bar and show the welcome/description in the body
+    final cs = Theme.of(context).colorScheme;
+    final txt = Theme.of(context).textTheme;
+
     return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('Welcome Back'),
-        backgroundColor: AppColors.primary,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: IconThemeData(color: cs.onBackground),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -245,10 +255,10 @@ class _OTPScreenState extends State<OTPScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const SizedBox(height: 8),
-              Text('Welcome Back', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
               const SizedBox(height: 6),
-              Text('Enter OTP sent to your email/phone', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7))),
+              Text('Welcome Back', style: txt.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 6),
+              Text('Enter OTP sent to your email/phone', style: txt.bodyMedium?.copyWith(color: cs.onSurface.withOpacity(0.7))),
               const SizedBox(height: 20),
 
               // Row: Change Number / Resend
@@ -273,9 +283,8 @@ class _OTPScreenState extends State<OTPScreen> {
               // OTP boxes (responsive width)
               LayoutBuilder(builder: (context, constraints) {
                 final screenW = constraints.maxWidth;
-                // padding accounted above; calculate a reasonable box width
-                final horizontalSpacing = 12.0; // margin between boxes
-                final totalSpacing = horizontalSpacing * 5; // between 6 boxes
+                final horizontalSpacing = 12.0;
+                final totalSpacing = horizontalSpacing * 5;
                 final available = screenW - totalSpacing;
                 double boxW = (available / 6).clamp(40.0, 56.0);
 
@@ -292,7 +301,7 @@ class _OTPScreenState extends State<OTPScreen> {
                         keyboardType: TextInputType.number,
                         textAlign: TextAlign.center,
                         maxLength: 1,
-                        style: Theme.of(context).textTheme.titleLarge,
+                        style: txt.titleLarge,
                         decoration: InputDecoration(
                           counterText: '',
                           filled: true,
@@ -301,7 +310,6 @@ class _OTPScreenState extends State<OTPScreen> {
                         ),
                         onChanged: (v) {
                           if (v.isNotEmpty) {
-                            // move focus
                             if (i + 1 < _digitFocus.length) {
                               _digitFocus[i + 1].requestFocus();
                             } else {
@@ -310,7 +318,6 @@ class _OTPScreenState extends State<OTPScreen> {
                           } else {
                             if (i - 1 >= 0) _digitFocus[i - 1].requestFocus();
                           }
-                          // update aggregated controller
                           _otpController.text = _digitControllers.map((c) => c.text).join();
                         },
                       ),
@@ -322,17 +329,25 @@ class _OTPScreenState extends State<OTPScreen> {
               const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.primary, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                  onPressed: () {
-                    // compute current otp length
-                    String otp = _otpController.text.trim();
-                    if (otp.isEmpty) otp = _digitControllers.map((c) => c.text).join();
-                    if (_isVerifying || otp.length < 6) return;
-                    _verify();
-                  },
-                  child: _isVerifying ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('Verify OTP'),
+                height: 54,
+                child: Material(
+                  borderRadius: BorderRadius.circular(12),
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                    onTap: () {
+                      String otp = _otpController.text.trim();
+                      if (otp.isEmpty) otp = _digitControllers.map((c) => c.text).join();
+                      if (_isVerifying || otp.length < 6) return;
+                      _verify();
+                    },
+                    child: Ink(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(colors: [cs.primary, cs.primary.withOpacity(0.9)], begin: Alignment.centerLeft, end: Alignment.centerRight),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Center(child: _isVerifying ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : Text('Verify OTP', style: txt.titleMedium?.copyWith(color: Colors.white, fontWeight: FontWeight.bold))),
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 12),

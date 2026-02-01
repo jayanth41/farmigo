@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 // theme-aware: use Theme.of(context) colors instead of AppColors
 import '../controllers/app_location_controller.dart';
@@ -62,40 +62,27 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
 
     setState(() => _loading = true);
     try {
-      final user = Supabase.instance.client.auth.currentUser;
+      final user = FirebaseAuth.instance.currentUser;
       if (user == null) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Not authenticated')));
         setState(() => _loading = false);
         return;
       }
 
+      // Backend for adding properties is not implemented in this Firebase-only
+      // migration. Log the payload for debugging and navigate back to owner
+      // properties screen to keep user flow intact.
       final Map<String, dynamic> payload = {
-        'owner_id': user.id,
+        'owner_id': user.uid,
         'title': title,
         'location': location,
         'price': priceValue,
         'description': description,
       };
-
-      // If the app location provider is available and has coordinates, save them too
-      // as separate fields (lat, lng) to remain backward compatible with existing
-      // schema that expects a string `location`.
-      try {
-        final locCtrl = Provider.of<AppLocationController>(context, listen: false);
-        if (locCtrl.latitude != null && locCtrl.longitude != null) {
-          payload['lat'] = locCtrl.latitude;
-          payload['lng'] = locCtrl.longitude;
-        }
-      } catch (_) {
-        // Provider not available — ignore.
-      }
-
-      final res = await Supabase.instance.client.from('properties').insert(payload).select();
-
-      debugPrint('AddProperty result: $res');
+      debugPrint('AddProperty payload (not saved): $payload');
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Property added successfully')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Property add currently unsupported (demo mode)')));
 
       Navigator.pushReplacement(
         context,

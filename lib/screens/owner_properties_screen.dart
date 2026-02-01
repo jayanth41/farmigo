@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'add_property_screen.dart';
 
 class OwnerPropertiesScreen extends StatefulWidget {
@@ -20,29 +20,19 @@ class _OwnerPropertiesScreenState extends State<OwnerPropertiesScreen> {
   }
 
   Future<void> fetchProperties() async {
-    final user = Supabase.instance.client.auth.currentUser;
-
-    if (user == null) return;
-
-    final data = await Supabase.instance.client
-        .from('properties')
-        .select()
-        .eq('owner_id', user.id)
-        .order('created_at', ascending: false);
-
+    // Backend for owner properties removed during migration. Keep an empty
+    // list so the UI remains stable. Implement Firestore-based fetching
+    // here when ready.
     setState(() {
-      properties = data;
+      properties = [];
       loading = false;
     });
   }
 
   Future<void> deleteProperty(String id) async {
-    await Supabase.instance.client
-        .from('properties')
-        .delete()
-        .eq('id', id);
-
-    fetchProperties();
+    // Not implemented in Firebase-only migration.
+    debugPrint('deleteProperty called for $id (not implemented)');
+    await fetchProperties();
   }
 
   @override

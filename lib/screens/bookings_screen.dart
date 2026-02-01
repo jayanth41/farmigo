@@ -41,7 +41,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pushReplacementNamed(context, AppRoutes.home),
+          onPressed: () => Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (route) => false),
         ),
         backgroundColor: AppColors.primary,
         iconTheme: const IconThemeData(color: Colors.white),
@@ -76,16 +76,14 @@ class _BookingsScreenState extends State<BookingsScreen> {
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                 ),
                 const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: () {
-                    try {
-                      Navigator.of(context).pushReplacementNamed(AppRoutes.home);
-                    } catch (_) {
-                      // fallback
-                    }
-                  },
-                  child: const Text('Explore Properties'),
-                ),
+                  ElevatedButton(
+                    onPressed: () {
+                      try {
+                        Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false);
+                      } catch (_) {}
+                    },
+                    child: const Text('Explore Properties'),
+                  ),
               ],
             ),
           );
@@ -211,13 +209,13 @@ class BookingItemCard extends StatelessWidget {
                     fit: BoxFit.cover,
                     errorBuilder: (ctx, err, st) => Container(
                       height: 160,
-                      color: cs.surfaceVariant,
+                      color: cs.surfaceContainerHighest,
                       child: Icon(Icons.home, size: 48, color: cs.onSurface.withOpacity(0.3)),
                     ),
                   )
                 : Container(
                     height: 160,
-                    color: cs.surfaceVariant,
+                    color: cs.surfaceContainerHighest,
                     child: Icon(Icons.home, size: 48, color: cs.onSurface.withOpacity(0.3)),
                   ),
           ),

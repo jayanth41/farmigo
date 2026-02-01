@@ -25,10 +25,9 @@ class _SignupPageState extends State<SignupPage> {
     }
 
     if (value.contains('@')) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => OTPScreen(value: value, authType: AuthType.email)),
-      );
+      // Do not route email addresses into the OTP flow. Guide users to
+      // the email/password flow or social sign-in instead.
+      _showSnack('Email signup is handled via email/password flow. Use Sign up form or Google to continue.', error: false);
       return;
     }
 
@@ -68,13 +67,14 @@ class _SignupPageState extends State<SignupPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  height: 92,
-                  width: 92,
+                  height: 100,
+                  width: 100,
                   decoration: BoxDecoration(
-                    color: cs.primary.withOpacity(0.1),
+                    color: cs.primary.withOpacity(0.12),
                     shape: BoxShape.circle,
+                    boxShadow: [BoxShadow(color: cs.onBackground.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 4))],
                   ),
-                  child: Icon(Icons.person_add, size: 48, color: cs.primary),
+                  child: Center(child: Icon(Icons.person_add, size: 48, color: cs.primary)),
                 ),
                 const SizedBox(height: 20),
                 Text('Create Account', style: txt.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
@@ -91,21 +91,33 @@ class _SignupPageState extends State<SignupPage> {
                     filled: true,
                     fillColor: Theme.of(context).cardColor,
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: Theme.of(context).dividerColor)),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(color: Theme.of(context).dividerColor.withOpacity(0.9)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(color: cs.primary, width: 1.5),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
 
                 SizedBox(
                   width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: _sendOtp,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: cs.primary,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  height: 54,
+                  child: Material(
+                    borderRadius: BorderRadius.circular(14),
+                    clipBehavior: Clip.antiAlias,
+                    child: InkWell(
+                      onTap: _sendOtp,
+                      child: Ink(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(colors: [cs.primary, cs.primary.withOpacity(0.9)], begin: Alignment.centerLeft, end: Alignment.centerRight),
+                        ),
+                        child: Center(child: Text('Send OTP', style: txt.titleMedium?.copyWith(color: cs.onPrimary, fontWeight: FontWeight.bold))),
+                      ),
                     ),
-                    child: Container(alignment: Alignment.center, child: Text('Send OTP', style: txt.titleMedium?.copyWith(color: cs.onPrimary, fontWeight: FontWeight.bold))),
                   ),
                 ),
 

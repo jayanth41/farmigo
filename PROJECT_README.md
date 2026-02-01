@@ -1,18 +1,18 @@
 # Farmigo - Farm Booking & Property Management App
 
-A modern Flutter application for farm property browsing, bookings, and user management powered by Firebase Authentication and Supabase backend.
+A modern Flutter application for farm property browsing, bookings, and user management powered by Firebase Authentication and Cloud Firestore backend.
 
 ## 🎯 Key Features
 
 ### Authentication
 ✅ **Firebase Email/Password Auth** - Secure signup and login  
-✅ **Phone OTP Login** - Via Supabase (toggle between methods)  
+✅ **Phone OTP Login** - Via Firebase (toggle between methods)  
 ✅ **Auth Guard** - Automatic routing based on login state  
 ✅ **Password Reset** - Email-based password recovery  
 
 ### User Management
 ✅ **Settings Controller** - Notifications, language, currency, dark mode  
-✅ **User Profiles** - Stored in Supabase with persistent storage  
+✅ **User Profiles** - Stored in Cloud Firestore with persistent storage  
 ✅ **Preference Persistence** - SharedPreferences for local settings  
 
 ### Location Features
@@ -42,13 +42,12 @@ A modern Flutter application for farm property browsing, bookings, and user mana
 - **Firebase** - Handles user authentication and session management
 
 ### Backend
-- **Firebase Authentication** - Email/password user management
-- **Supabase** - PostgreSQL database for properties, bookings, user profiles
-- **Cloud Firestore** - Future expansion for real-time features
+- **Firebase Authentication** - Email/password and phone OTP user management
+- **Cloud Firestore** - Database for properties, bookings, user profiles
 
 ### Data Flow
 ```
-User Input → Controller → Backend (Firebase/Supabase)
+User Input → Controller → Backend (Firebase/Cloud Firestore)
          ↓
     State Change
          ↓
@@ -89,8 +88,8 @@ lib/
 │   └── app_routes.dart               # Named route definitions
 ├── models/                           # Data models
 ├── services/
-│   ├── user_service.dart             # Supabase user operations
-│   └── booking_service.dart          # Supabase booking operations
+│   ├── user_service.dart             # Firestore-backed user operations
+│   └── booking_service.dart          # Booking operations (backend optional)
 ├── widgets/                          # Reusable UI components
 ├── data/                             # Local data and constants
 └── assets/                           # Images, animations, icons
@@ -104,7 +103,6 @@ lib/
 - Flutter SDK 3.0+
 - Dart 3.0+
 - Firebase project configured
-- Supabase project configured
 
 ### Installation
 
@@ -125,9 +123,8 @@ lib/
    - Place in respective directories
    - Already configured in firebase_options.dart
 
-4. **Configure Supabase**
-   - URL and anon key already set in main.dart
-   - Update if needed with your project credentials
+4. **Configure Backend (if needed)**
+  - The project uses Firebase by default. If you add another backend, update configuration accordingly.
 
 5. **Run the app**
    ```bash
@@ -142,7 +139,7 @@ lib/
 1. User fills signup form (name, email, phone, password)
 2. Taps "Sign Up" button
 3. AuthController.signUp() calls Firebase Auth
-4. User profile created in Supabase
+4. User profile created in Cloud Firestore
 5. Auth guard auto-navigates to Home
 
 ### Email/Password Login
@@ -160,7 +157,7 @@ lib/
 ### Phone OTP (Alternative)
 1. User selects "Use phone login" toggle
 2. Enters phone number and gets OTP
-3. Supabase handles phone verification
+3. Firebase handles phone verification
 4. Logs user in
 
 ---

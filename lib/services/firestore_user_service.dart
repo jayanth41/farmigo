@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import 'network_utils.dart';
 
@@ -25,52 +26,34 @@ class UserProfile {
     this.updatedAt,
   });
 
-  // Convert to Firestore document
   Map<String, dynamic> toJson() => {
-    'uid': uid,
-    'email': email,
-    'name': name,
-    'phone': phone,
-    'photoUrl': photoUrl,
-    'loginType': loginType,
-    'createdAt': createdAt,
-    'updatedAt': updatedAt ?? DateTime.now(),
-  };
+        'uid': uid,
+        'email': email,
+        'name': name,
+        'phone': phone,
+        'photoUrl': photoUrl,
+        'loginType': loginType,
+        'createdAt': createdAt.toIso8601String(),
+        'updatedAt': updatedAt?.toIso8601String() ?? DateTime.now().toIso8601String(),
+      };
 
-  // Create from Firestore document
   factory UserProfile.fromJson(Map<String, dynamic> json) => UserProfile(
-    uid: json['uid'] as String,
-    email: json['email'] as String,
-    name: json['name'] as String?,
-    phone: json['phone'] as String?,
-    photoUrl: json['photoUrl'] as String?,
-    loginType: json['loginType'] as String?,
-    createdAt: _parseDate(json['createdAt']),
-    updatedAt: json['updatedAt'] != null ? _parseDate(json['updatedAt']) : null,
-  );
+        uid: json['uid'] as String,
+        email: json['email'] as String,
+        name: json['name'] as String?,
+        phone: json['phone'] as String?,
+        photoUrl: json['photoUrl'] as String?,
+        loginType: json['loginType'] as String?,
+        createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? '') ?? DateTime.now(),
+        updatedAt: json['updatedAt'] != null ? DateTime.tryParse(json['updatedAt'].toString()) : null,
+      );
 
-  static DateTime _parseDate(dynamic value) {
-    if (value == null) return DateTime.now();
-    if (value is DateTime) return value;
-    if (value is String) {
-      try {
-        return DateTime.parse(value);
-      } catch (_) {
-        // attempt to parse as int
-      }
-    }
-    if (value is int) {
-      return DateTime.fromMillisecondsSinceEpoch(value);
-    }
-    // fallback
-    return DateTime.now();
-  }
 }
 
 /// Firestore service for managing user profiles
 class FirestoreUserService {
   static final FirestoreUserService _instance = FirestoreUserService._internal();
-  final _supabase = Supabase.instance.client;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   // Simple in-memory cache to avoid repeated reads on rebuilds
   final Map<String, UserProfile> _cache = {};
 
@@ -82,10 +65,8 @@ class FirestoreUserService {
 
   static const String _usersCollection = 'users';
 
-  /// Create or update user profile in Firestore
   Future<bool> saveUserProfile(UserProfile profile) async {
-    // enforce that a signed-in user exists
-    final current = _supabase.auth.currentUser;
+    final current = FirebaseAuth.instance.currentUser;
     if (current == null) {
       debugPrint('⚠️ saveUserProfile: no authenticated user');
       return false;
@@ -97,7 +78,7 @@ class FirestoreUserService {
     }
 
     try {
-  await _supabase.from(_usersCollection).upsert(profile.toJson());
+      await _firestore.collection(_usersCollection).doc(profile.uid).set(profile.toJson(), SetOptions(merge: true));
       _cache[profile.uid] = profile;
       debugPrint('✅ User profile saved: ${profile.email}');
       return true;
@@ -107,16 +88,14 @@ class FirestoreUserService {
     }
   }
 
-  /// Fetch user profile from Firestore
   Future<UserProfile?> getUserProfile(String uid) async {
-    // return cached value when available
     if (_cache.containsKey(uid)) return _cache[uid];
 
     try {
-      final resp = await _supabase.from(_usersCollection).select().eq('uid', uid).maybeSingle();
-      if (resp == null) return null;
-      final map = Map<String, dynamic>.from(resp as Map);
-      final profile = UserProfile.fromJson(map);
+      final doc = await _firestore.collection(_usersCollection).doc(uid).get();
+      if (!doc.exists) return null;
+      final map = doc.data() ?? {};
+      final profile = UserProfile.fromJson(Map<String, dynamic>.from(map));
       _cache[uid] = profile;
       debugPrint('✅ User profile fetched: ${map['email']}');
       return profile;
@@ -126,11 +105,10 @@ class FirestoreUserService {
     }
   }
 
-  /// Update specific fields in user profile
   Future<bool> updateUserProfile(String uid, Map<String, dynamic> updates) async {
     try {
       updates['updatedAt'] = DateTime.now().toUtc().toIso8601String();
-      await _supabase.from(_usersCollection).update(updates).eq('uid', uid);
+      await _firestore.collection(_usersCollection).doc(uid).set(updates, SetOptions(merge: true));
       _cache.remove(uid);
       debugPrint('✅ User profile updated: $uid');
       return true;
@@ -140,25 +118,9 @@ class FirestoreUserService {
     }
   }
 
-  /// Update user name
-  Future<bool> updateUserName(String uid, String name) async {
-    return updateUserProfile(uid, {'name': name});
-  }
-
-  /// Update user phone
-  Future<bool> updateUserPhone(String uid, String phone) async {
-    return updateUserProfile(uid, {'phone': phone});
-  }
-
-  /// Update user photo
-  Future<bool> updateUserPhoto(String uid, String photoUrl) async {
-    return updateUserProfile(uid, {'photoUrl': photoUrl});
-  }
-
-  /// Delete user profile (when account is deleted)
   Future<bool> deleteUserProfile(String uid) async {
     try {
-      await _supabase.from(_usersCollection).delete().eq('uid', uid);
+      await _firestore.collection(_usersCollection).doc(uid).delete();
       _cache.remove(uid);
       debugPrint('✅ User profile deleted: $uid');
       return true;
@@ -168,13 +130,13 @@ class FirestoreUserService {
     }
   }
 
-  /// Check if user profile exists
   Future<bool> userProfileExists(String uid) async {
     if (_cache.containsKey(uid)) return true;
     try {
-      final res = await _supabase.from(_usersCollection).select('uid').eq('uid', uid).maybeSingle();
-      if (res == null) return false;
-      _cache[uid] = UserProfile.fromJson(Map<String, dynamic>.from(res as Map));
+      final doc = await _firestore.collection(_usersCollection).doc(uid).get();
+      if (!doc.exists) return false;
+      final profile = UserProfile.fromJson(Map<String, dynamic>.from(doc.data() ?? {}));
+      _cache[uid] = profile;
       return true;
     } catch (e) {
       debugPrint('❌ Error checking user profile: $e');

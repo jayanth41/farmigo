@@ -1,27 +1,18 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/foundation.dart';
 
 class OwnerService {
-  final supabase = Supabase.instance.client;
+  /// Owner-related backend functionality is not implemented in this
+  /// migration. These are safe no-op implementations to keep the UI
+  /// functional. Implement Firestore equivalents when you need owner
+  /// booking persistence.
 
   Future<List<Map<String, dynamic>>> fetchOwnerBookings() async {
-    final data = await supabase
-        .from('bookings')
-        .select('''
-          id,
-          visit_date,
-          status,
-          properties(title)
-        ''')
-        .order('created_at', ascending: false);
-
-    return List<Map<String, dynamic>>.from(data);
+    debugPrint('fetchOwnerBookings called but backend not implemented');
+    return [];
   }
 
-  Future<void> updateBookingStatus(
-      String bookingId, String status) async {
-    await supabase
-        .from('bookings')
-        .update({'status': status})
-        .eq('id', bookingId);
+  Future<void> updateBookingStatus(String bookingId, String status) async {
+    debugPrint('updateBookingStatus called for $bookingId -> $status (not persisted)');
+    return;
   }
 }
