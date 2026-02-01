@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../widgets/app_drawer.dart';
 import '../widgets/image_with_fallback.dart';
 import '../models/farmhouse_model.dart';
@@ -9,6 +8,7 @@ import '../controllers/bookings_controller.dart';
 import '../data/farmhouses_data.dart'; // ADDED: Import farmhouses data
 import 'bookings_screen.dart';
 import 'dart:async';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class FarmhouseDetailsScreen extends StatefulWidget {
   final String name;
@@ -95,8 +95,9 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
       );
     });
 
-    final user = Supabase.instance.client.auth.currentUser;
-    debugPrint("USER ID = ${user?.id}");
+  
+  final user = FirebaseAuth.instance.currentUser;
+  debugPrint("USER ID = ${user?.uid}");
 
     try {
       favoritesController = Get.find<FavoritesController>();

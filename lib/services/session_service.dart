@@ -1,28 +1,19 @@
-import 'package:shared_preferences/shared_preferences.dart';
-
-/// Simple session helper to mark a guest session and clear it on logout.
-///
-/// This is intentionally tiny to avoid changing app flow. It provides a
-/// single source of truth for a "guest" flag so multiple places can check
-/// whether the current session is a guest session.
+// SessionService is retained as a compatibility shim but guest-session
+// semantics have been removed. All methods are no-ops to avoid changing
+// app flow while ensuring any remaining calls continue to compile.
 class SessionService {
-  static const _kIsGuest = 'is_guest_session';
-
-  /// Mark/unmark guest session.
-  static Future<void> setGuest(bool isGuest) async {
-    final sp = await SharedPreferences.getInstance();
-    await sp.setBool(_kIsGuest, isGuest);
+  /// Deprecated: guest/session flags are removed. This is a no-op.
+  static Future<void> setGuest(bool _) async {
+    return;
   }
 
-  /// Returns whether the current stored session is a guest session.
+  /// Deprecated: always returns false (no guest sessions).
   static Future<bool> isGuest() async {
-    final sp = await SharedPreferences.getInstance();
-    return sp.getBool(_kIsGuest) ?? false;
+    return false;
   }
 
-  /// Clear guest flag (used during logout)
+  /// Deprecated: no-op
   static Future<void> clear() async {
-    final sp = await SharedPreferences.getInstance();
-    await sp.remove(_kIsGuest);
+    return;
   }
 }

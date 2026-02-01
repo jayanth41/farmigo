@@ -1,3 +1,2 @@
-// Supabase configuration constants used in REST calls
-const String SUPABASE_URL = 'https://kvnwikjxjimztjqsycti.supabase.co';
-const String SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
+// This file intentionally left blank. The project uses Firebase Authentication
+// and Cloud Firestore. Do not add external database configuration or client code here.

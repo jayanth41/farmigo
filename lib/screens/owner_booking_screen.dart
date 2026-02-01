@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/foundation.dart';
 
 class OwnerBookingsScreen extends StatefulWidget {
   const OwnerBookingsScreen({super.key});
@@ -19,19 +19,11 @@ class _OwnerBookingsScreenState extends State<OwnerBookingsScreen> {
   }
 
   Future<void> fetchBookings() async {
-    final user = Supabase.instance.client.auth.currentUser;
-
-    if (user == null) return;
-
+    // Owner bookings backend removed in Firebase-only migration. Return
+    // an empty list to keep the UI stable.
     try {
-      final data = await Supabase.instance.client
-          .from('bookings')
-          .select('id, visit_date, status, properties(title)')
-          .eq('owner_id', user.id)
-          .order('created_at', ascending: false);
-
       setState(() {
-        bookings = data;
+        bookings = [];
         loading = false;
       });
     } catch (e) {

@@ -1,13 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-import 'package:provider/provider.dart';
-import '../controllers/auth_controller.dart';
-import '../services/session_service.dart';
+import 'package:firebase_auth/firebase_auth.dart' as fb;
 import '../widgets/snackbar_helper.dart';
 import '../screens/about_us_screen.dart';
 import '../screens/terms_policy_screen.dart';
+// Navigation is performed via named routes (GetX) or delegated to parent
+// `MainScaffold`. Avoid importing screen widgets directly to prevent unused
+// import warnings when using named navigation.
 import '../navigation/app_routes.dart';
 
+/// App drawer used across the app.
+///
+/// Requirements implemented:
+/// - Home, Favorites, Bookings navigate to their screens using Get.offAll()
+///   so the Login screen is removed from the back stack.
+/// - "Profile" item removed from the navigation list.
+/// - Drawer header is clickable and navigates to `ProfileScreen`.
 class AppDrawer extends StatelessWidget {
   final String? activeItem;
   final ValueChanged<String>? onItemSelected;
@@ -24,40 +31,6 @@ class AppDrawer extends StatelessWidget {
 
   bool get isOwner => profile?['is_owner'] == true;
 
-  void _navigateTo(BuildContext context, String route) {
-    final navigator = Navigator.of(context);
-
-    // Schedule navigation after the drawer closes to avoid context misuse.
-    Future.microtask(() {
-      try {
-        // If route is home, try to return to the first route. If the first
-        // route is not the home route, push home. This avoids using
-        // pushReplacement directly for Home.
-        if (route == AppRoutes.home) {
-          try {
-            // Prefer Get to ensure named route mapping is used consistently.
-            Get.offAllNamed(AppRoutes.home);
-          } catch (e) {
-            debugPrint('Error navigating to Home via Get: $e');
-            try {
-              navigator.popUntil((r) => r.isFirst);
-              final current = ModalRoute.of(navigator.context)?.settings.name;
-              if (current != route) {
-                navigator.pushNamed(route);
-              }
-            } catch (e2) {
-              debugPrint('Fallback home navigation error: $e2');
-            }
-          }
-        } else {
-          navigator.pushNamed(route);
-        }
-      } catch (e) {
-        debugPrint('Drawer navigation error: $e');
-      }
-    });
-  }
-
   void _logout(BuildContext context) {
     showDialog(
       context: context,
@@ -65,46 +38,28 @@ class AppDrawer extends StatelessWidget {
         title: const Text('Logout'),
         content: const Text('Are you sure you want to logout?'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
+          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cancel')),
+              TextButton(
             onPressed: () async {
-              // Close the confirmation dialog first
               Navigator.of(ctx).pop();
-
-              // Use AuthController via Provider and sign out
               try {
-                final auth = Provider.of<AuthController>(context, listen: false);
-                await auth.signOut();
+                await fb.FirebaseAuth.instance.signOut();
               } catch (e) {
-                // Best-effort clear session if needed
-                try {
-                  await SessionService.clear();
-                } catch (_) {}
+                // Sign-out failed; proceed to let auth state handle routing
+                debugPrint('Logout failed: $e');
               }
 
-              // Close the drawer (if open)
               try {
-                Navigator.of(context).pop(); // close drawer
+                Navigator.of(context).pop(); // close drawer if open
               } catch (_) {}
 
-              // Show confirmation and navigate to login clearing the stack
               try {
                 showAppSnack(context, 'Logged out successfully', isSuccess: true);
               } catch (_) {}
 
-              try {
-                Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
-              } catch (e) {
-                debugPrint('Logout navigation error: $e');
-              }
+              // Let app-level auth listener handle navigation to login
             },
-            child: Text(
-              'Logout',
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
-            ),
+            child: Text('Logout', style: TextStyle(color: Theme.of(context).colorScheme.error)),
           ),
         ],
       ),
@@ -126,103 +81,136 @@ class AppDrawer extends StatelessWidget {
         child: Column(
           children: [
             // ===== HEADER =====
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [colorScheme.primary, colorScheme.primaryContainer],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(22),
-                  bottomRight: Radius.circular(22),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.home, color: Theme.of(context).colorScheme.onPrimary, size: 28),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Farmigo',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).colorScheme.onPrimary,
-                        ),
-                      ),
-                    ],
+            InkWell(
+              onTap: () {
+                // Close drawer then navigate to Profile
+                try {
+                  Navigator.of(context).pop();
+                } catch (_) {}
+
+                if (onItemSelected != null && AppRoutes.labelToRoute.containsKey(AppRoutes.labelProfile)) {
+                  Future.microtask(() => onItemSelected!(AppRoutes.labelProfile));
+                  return;
+                }
+
+                try {
+                  Navigator.of(context).pushNamed(AppRoutes.profile);
+                } catch (e) {
+                  debugPrint('Profile navigation error: $e');
+                }
+              },
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [colorScheme.primary, colorScheme.primaryContainer],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: colorScheme.primary.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Row(
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(22),
+                    bottomRight: Radius.circular(22),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
                       children: [
-                        CircleAvatar(
-                          radius: 28,
-                          backgroundColor: surface,
-                          child: Text(
-                            (profile?['name'] ?? 'U')
-                                    .toString()
-                                    .isNotEmpty
-                                ? (profile?['name']?[0] ?? 'U')
-                                : 'U',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: colorScheme.primary,
-                            ),
+                        Icon(Icons.home, color: theme.colorScheme.onPrimary, size: 28),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Farmigo',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.onPrimary,
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: isProfileLoading
-                              ? Text(
-                                  'Loading...',
-                                  style: TextStyle(color: colorScheme.onPrimary.withOpacity(0.9)),
-                                )
-                              : Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      profile?['name'] ?? "Guest User",
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                        color: colorScheme.onPrimary,
-                                      ),
-                                    ),
-                                    if (isOwner)
-                                      Container(
-                                        margin: const EdgeInsets.only(top: 4),
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 8, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: colorScheme.secondary,
-                                          borderRadius:
-                                              BorderRadius.circular(12),
-                                        ),
-                                        child: const Text(
-                                          "Property Owner",
-                                          style: TextStyle(
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w600),
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                        )
                       ],
                     ),
-                  )
-                ],
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: colorScheme.primary.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Row(
+                        children: [
+                          Builder(builder: (ctx) {
+                            final fb.User? user = fb.FirebaseAuth.instance.currentUser;
+                            final String initials = (profile?['name'] ?? user?.displayName ?? user?.phoneNumber ?? 'U').toString();
+                            final String avatarLetter = initials.isNotEmpty ? initials[0] : 'U';
+                            final String? photoUrl = user?.photoURL;
+
+                            return CircleAvatar(
+                              radius: 28,
+                              backgroundColor: surface,
+                              backgroundImage: photoUrl != null ? NetworkImage(photoUrl) : null,
+                              child: photoUrl == null
+                                  ? Text(
+                                      avatarLetter,
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: colorScheme.primary,
+                                      ),
+                                    )
+                                  : null,
+                            );
+                          }),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: isProfileLoading
+                                ? Text(
+                                    'Loading...',
+                                    style: TextStyle(color: theme.colorScheme.onPrimary.withOpacity(0.9)),
+                                  )
+                                : Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Builder(builder: (ctx) {
+                                        final fb.User? user = fb.FirebaseAuth.instance.currentUser;
+                                        final displayName = (profile?['name'] ?? user?.displayName ?? (user?.phoneNumber))?.toString() ?? 'Guest User';
+                                        final email = user?.email;
+                                        return Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              displayName,
+                                              style: TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.bold,
+                                                color: theme.colorScheme.onPrimary,
+                                              ),
+                                            ),
+                                            if (email != null && email.isNotEmpty)
+                                              Text(email, style: TextStyle(color: theme.colorScheme.onPrimary.withOpacity(0.9), fontSize: 12)),
+                                          ],
+                                        );
+                                      }),
+                                      if (isOwner)
+                                        Container(
+                                          margin: const EdgeInsets.only(top: 4),
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: colorScheme.secondary,
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                          child: const Text(
+                                            "Property Owner",
+                                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                          )
+                        ],
+                      ),
+                    )
+                  ],
+                ),
               ),
             ),
 
@@ -232,38 +220,140 @@ class AppDrawer extends StatelessWidget {
                 padding: const EdgeInsets.all(16),
                 children: [
                   _sectionTitle("Navigation", muted),
-                  _item(context, Icons.home_outlined, "Home",
-                      () => _navigateTo(context, AppRoutes.home)),
-                  _item(context, Icons.favorite_border, "Favorites",
-                      () => _navigateTo(context, AppRoutes.favorites)),
-                  _item(context, Icons.calendar_month_outlined, "My Bookings",
-                      () => _navigateTo(context, AppRoutes.bookings)),
-                  _item(context, Icons.person_outline, "Profile",
-                      () => _navigateTo(context, AppRoutes.profile)),
+                  ListTile(
+                    leading: Icon(Icons.home_outlined, color: onSurface),
+                    title: Text('Home', style: TextStyle(color: onSurface)),
+                    onTap: () {
+                            // Close drawer first
+                            try {
+                              Navigator.of(context).pop();
+                            } catch (_) {}
+
+                            // Delegate to parent (MainScaffold) so it can switch tabs.
+                            if (onItemSelected != null && AppRoutes.labelToRoute.containsKey(AppRoutes.labelHome)) {
+                              Future.microtask(() => onItemSelected!(AppRoutes.labelHome));
+                              return;
+                            }
+
+                            // Fallback: navigate to home and clear previous stack so Back
+                            // doesn't return to login or previous screens. Use the
+                            // Navigator API (not Get) to respect the app's top-level
+                            // routing and auth-driven home logic.
+                            try {
+                              final route = AppRoutes.labelToRoute[AppRoutes.labelHome] ?? AppRoutes.home;
+                              Navigator.of(context).pushNamedAndRemoveUntil(route, (r) => false);
+                            } catch (e) {
+                              debugPrint('Navigation to Home failed: $e');
+                            }
+                    },
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.favorite_border, color: onSurface),
+                    title: Text('Favorites', style: TextStyle(color: onSurface)),
+                    onTap: () {
+                      try {
+                        Navigator.of(context).pop();
+                      } catch (_) {}
+
+                      if (onItemSelected != null && AppRoutes.labelToRoute.containsKey(AppRoutes.labelFavorites)) {
+                        Future.microtask(() => onItemSelected!(AppRoutes.labelFavorites));
+                        return;
+                      }
+
+                      try {
+                        final route = AppRoutes.labelToRoute[AppRoutes.labelFavorites] ?? AppRoutes.favorites;
+                        Navigator.of(context).pushNamedAndRemoveUntil(route, (r) => false);
+                      } catch (e) {
+                        debugPrint('Navigation to Favorites failed: $e');
+                      }
+                    },
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.calendar_month_outlined, color: onSurface),
+                    title: Text('My Bookings', style: TextStyle(color: onSurface)),
+                    onTap: () {
+                      try {
+                        Navigator.of(context).pop();
+                      } catch (_) {}
+
+                      if (onItemSelected != null && AppRoutes.labelToRoute.containsKey(AppRoutes.labelBookings)) {
+                        Future.microtask(() => onItemSelected!(AppRoutes.labelBookings));
+                        return;
+                      }
+
+                      try {
+                        final route = AppRoutes.labelToRoute[AppRoutes.labelBookings] ?? AppRoutes.bookings;
+                        Navigator.of(context).pushNamedAndRemoveUntil(route, (r) => false);
+                      } catch (e) {
+                        debugPrint('Navigation to Bookings failed: $e');
+                      }
+                    },
+                  ),
 
                   const SizedBox(height: 16),
                   _sectionTitle("More", muted),
-                  _item(context, Icons.settings_outlined, "Settings",
-                      () => _navigateTo(context, AppRoutes.settings)),
-                  _item(context, Icons.card_giftcard, "Offers & Coupons",
-                      () => _navigateTo(context, AppRoutes.offers)),
-                  _item(context, Icons.help_outline, "Help & Support",
-                      () => _navigateTo(context, AppRoutes.helpSupport)),
-                  _item(context, Icons.info_outline, "About Us", () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (_) => const AboutUsScreen()),
-                    );
-                  }),
-                  _item(context, Icons.privacy_tip_outlined,
-                      "Terms & Privacy Policy", () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (_) => const TermsPolicyScreen()),
-                    );
-                  }),
+                  ListTile(
+                    leading: Icon(Icons.settings_outlined, color: onSurface),
+                    title: Text('Settings', style: TextStyle(color: onSurface)),
+                    onTap: () {
+                      try {
+                        Navigator.of(context).pop();
+                      } catch (_) {}
+                      if (onItemSelected != null && AppRoutes.labelToRoute.containsKey(AppRoutes.labelSettings)) {
+                        Future.microtask(() => onItemSelected!(AppRoutes.labelSettings));
+                        return;
+                      }
+                      Navigator.pushNamed(context, '/settings');
+                    },
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.card_giftcard, color: onSurface),
+                    title: Text('Offers & Coupons', style: TextStyle(color: onSurface)),
+                    onTap: () {
+                      try {
+                        Navigator.of(context).pop();
+                      } catch (_) {}
+                      if (onItemSelected != null && AppRoutes.labelToRoute.containsKey(AppRoutes.labelOffers)) {
+                        Future.microtask(() => onItemSelected!(AppRoutes.labelOffers));
+                        return;
+                      }
+                      Navigator.pushNamed(context, '/offers');
+                    },
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.help_outline, color: onSurface),
+                    title: Text('Help & Support', style: TextStyle(color: onSurface)),
+                    onTap: () {
+                      try {
+                        Navigator.of(context).pop();
+                      } catch (_) {}
+                      if (onItemSelected != null && AppRoutes.labelToRoute.containsKey(AppRoutes.labelHelp)) {
+                        Future.microtask(() => onItemSelected!(AppRoutes.labelHelp));
+                        return;
+                      }
+                      Navigator.pushNamed(context, '/help-support');
+                    },
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.info_outline, color: onSurface),
+                    title: Text('About Us', style: TextStyle(color: onSurface)),
+                    onTap: () {
+                      try {
+                        Navigator.of(context).pop();
+                      } catch (_) {}
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => const AboutUsScreen()));
+                    },
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.privacy_tip_outlined, color: onSurface),
+                    title: Text('Terms & Privacy Policy', style: TextStyle(color: onSurface)),
+                    onTap: () {
+                      try {
+                        Navigator.of(context).pop();
+                      } catch (_) {}
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => const TermsPolicyScreen()));
+                    },
+                  ),
                 ],
               ),
             ),
@@ -287,47 +377,6 @@ class AppDrawer extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _item(BuildContext context, IconData icon, String label,
-      VoidCallback onTap) {
-    final onSurface = Theme.of(context).colorScheme.onSurface;
-
-    return ListTile(
-      onTap: () {
-        final navigator = Navigator.of(context);
-        try {
-          navigator.pop();
-        } catch (e) {
-          debugPrint('Error closing drawer: $e');
-        }
-
-        // If a parent provided a delegate and this label maps to a route in
-        // AppRoutes, prefer delegating so parent can decide (eg. tab switch,
-        // permission checks). For other labels (help/about) fall back to the
-        // item's provided handler which does a MaterialPageRoute push.
-        if (onItemSelected != null && AppRoutes.labelToRoute.containsKey(label)) {
-          // call delegate after drawer closes
-          Future.microtask(() => onItemSelected!(label));
-          return;
-        }
-
-        // fallback to the provided tap handler when no delegate is present
-        Future.microtask(() {
-          try {
-            onTap();
-          } catch (e) {
-            debugPrint('Drawer item tap error: $e');
-          }
-        });
-      },
-      leading: Icon(icon, color: onSurface),
-      title: Text(
-        label,
-        style: TextStyle(color: onSurface),
-      ),
-      contentPadding: EdgeInsets.zero,
     );
   }
 

@@ -8,6 +8,6 @@ VALUES (
 );
 
 -- Notes:
--- - You can run this in the Supabase SQL editor (recommended) where auth.uid() is available
+-- - You can run this in a compatible SQL editor where auth.uid() is available
 --   or replace auth.uid() with a real user UUID and run via psql against your DB.
 -- - To run locally with psql, replace auth.uid() with the actual user id string.

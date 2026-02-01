@@ -1,43 +1,29 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/foundation.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class FavoriteService {
-  final supabase = Supabase.instance.client;
+  /// Favorites persistence not implemented in this migration. These are
+  /// no-op implementations to keep the app stable. Replace with Firestore
+  /// when you want persistent favorites.
 
-  /// Add to favorites
   Future<void> addFavorite(String propertyId) async {
-    final user = supabase.auth.currentUser;
+    final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
-
-    await supabase.from('favorites').insert({
-      'user_id': user.id,
-      'property_id': propertyId,
-    });
+    debugPrint('addFavorite called for ${user.uid} -> $propertyId (not saved)');
+    return;
   }
 
-  /// Remove from favorites
   Future<void> removeFavorite(String propertyId) async {
-    final user = supabase.auth.currentUser;
+    final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
-
-    await supabase
-        .from('favorites')
-        .delete()
-        .eq('user_id', user.id)
-        .eq('property_id', propertyId);
+    debugPrint('removeFavorite called for ${user.uid} -> $propertyId (not removed)');
+    return;
   }
 
-  /// Check if favorited
   Future<bool> isFavorite(String propertyId) async {
-    final user = supabase.auth.currentUser;
+    final user = FirebaseAuth.instance.currentUser;
     if (user == null) return false;
-
-    final res = await supabase
-        .from('favorites')
-        .select()
-        .eq('user_id', user.id)
-        .eq('property_id', propertyId)
-        .maybeSingle();
-
-    return res != null;
+    debugPrint('isFavorite called for ${user.uid} -> $propertyId (default false)');
+    return false;
   }
 }

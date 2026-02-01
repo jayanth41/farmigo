@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../controllers/auth_controller.dart';
 import '../settings/theme_provider.dart';
 import '../theme/app_colors.dart';
 import 'change_password_screen.dart';
 import 'privacy_security_screen.dart';
-import 'mfa_setup_screen.dart';
+// MFA setup screen replaced with a placeholder; import removed to avoid direct dependency.
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../services/supabase_config.dart';
+// TOTP/MFA backend integration is not implemented. The UI keeps the
+// 2FA toggle but server-side enrollment/unenroll calls are currently
+// stubbed to avoid runtime errors until a provider is chosen.
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -25,11 +27,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   String language = "English";
   String currency = "USD";
-
-  final supabase = Supabase.instance.client;
   bool _twoFactorEnabled = false;
   bool _mfaLoading = false;
-  List<Map<String, dynamic>> _enrolledFactors = [];
+  // MFA enrollment list removed for Firebase-only migration.
 
   @override
   Widget build(BuildContext context) {
@@ -118,44 +118,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
               value: _twoFactorEnabled,
               activeThumbColor: Theme.of(context).colorScheme.primary,
               onChanged: (v) async {
+                // Note: MFA backend integration is not implemented in this
+                // migration. Firebase multi-factor flows are different and
+                // aren't implemented here yet. For now we show an informative
+                // message and keep the UI intact.
                 if (v) {
-                  // enable 2FA: enroll via REST helper and navigate to setup screen
-                  setState(() => _mfaLoading = true);
-                  try {
-                    final res = await _enrollTotp();
-                    if (!mounted) return;
-                    setState(() => _mfaLoading = false);
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => MfaSetupScreen(enrollResponse: res))).then((ok) async {
-                      await _loadMfaStatus();
-                    });
-                  } catch (e) {
-                    setState(() => _mfaLoading = false);
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to start 2FA: $e')));
-                  }
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text('Enrolling in TOTP / MFA is not implemented for Firebase yet.'),
+                  ));
+                  return;
                 } else {
-                  // disable: require re-authentication first
-                  final password = await showDialog<String?>(
-                    context: context,
-                    builder: (ctx) => _PasswordDialog(),
-                  );
-                  if (password == null) return; // user cancelled
-                  setState(() => _mfaLoading = true);
-                  try {
-                    // re-authenticate
-                    final user = supabase.auth.currentUser;
-                    final email = user?.email;
-                    if (email == null) throw 'No authenticated user';
-                    final signInRes = await supabase.auth.signInWithPassword(email: email, password: password);
-                    if (signInRes.user == null) throw 'Re-authentication failed';
-                    // Unenroll all factors
-                    await _unenrollAll();
-                    setState(() => _mfaLoading = false);
-                    await _loadMfaStatus();
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Two-factor authentication disabled')));
-                  } catch (e) {
-                    setState(() => _mfaLoading = false);
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to disable 2FA: $e')));
-                  }
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text('Disabling MFA is not implemented for Firebase yet.'),
+                  ));
+                  return;
                 }
               },
             ),
@@ -186,89 +162,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void initState() {
     super.initState();
-    _loadMfaStatus();
+  // MFA status is not yet implemented for the Firebase-only migration.
+  // Initialize local flags to conservative defaults.
+  _mfaLoading = false;
+  _twoFactorEnabled = false;
   }
 
-  Future<void> _loadMfaStatus() async {
-    try {
-      setState(() => _mfaLoading = true);
-      final accessToken = supabase.auth.currentSession?.accessToken;
-      final url = '$SUPABASE_URL/auth/v1/mfa';
-      final res = await http.get(Uri.parse(url), headers: {
-        'apikey': SUPABASE_ANON_KEY,
-        if (accessToken != null) 'Authorization': 'Bearer $accessToken',
-      });
+  // MFA enrollment/unenroll helpers removed — not implemented for Firebase-only migration.
 
-      if (res.statusCode == 200) {
-        final body = jsonDecode(res.body);
-        if (body is List) {
-          _enrolledFactors = List<Map<String, dynamic>>.from(body);
-          setState(() => _twoFactorEnabled = _enrolledFactors.isNotEmpty);
-        } else {
-          setState(() => _twoFactorEnabled = false);
-        }
-      } else {
-        setState(() => _twoFactorEnabled = false);
-      }
-    } catch (e) {
-      // ignore
-    } finally {
-      setState(() => _mfaLoading = false);
-    }
-  }
-
-  Future<Map<String, dynamic>> _enrollTotp() async {
-    final accessToken = supabase.auth.currentSession?.accessToken;
-    final url = '$SUPABASE_URL/auth/v1/mfa/enroll';
-    final res = await http.post(Uri.parse(url),
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': SUPABASE_ANON_KEY,
-          if (accessToken != null) 'Authorization': 'Bearer $accessToken',
-        },
-        body: jsonEncode({'factor_type': 'totp'}));
-
-    if (res.statusCode == 200 || res.statusCode == 201) {
-      return jsonDecode(res.body) as Map<String, dynamic>;
-    }
-    throw Exception('Enroll failed: ${res.statusCode} ${res.body}');
-  }
-
-  Future<void> _unenrollAll() async {
-    final accessToken = supabase.auth.currentSession?.accessToken;
-    // reload enrolled factors to get ids
-    await _loadMfaStatus();
-    for (final f in _enrolledFactors) {
-      final id = f['id'] ?? f['factor_id'] ?? f['factorId'];
-      if (id == null) continue;
-      final url = '$SUPABASE_URL/auth/v1/mfa/unenroll';
-      await http.post(Uri.parse(url),
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': SUPABASE_ANON_KEY,
-            if (accessToken != null) 'Authorization': 'Bearer $accessToken',
-          },
-          body: jsonEncode({'factor_id': id}));
-    }
-    await _loadMfaStatus();
-  }
-
-  // Simple password dialog for re-authentication when disabling 2FA
-  Widget _PasswordDialog() {
-    final controller = TextEditingController();
-    return AlertDialog(
-      title: const Text('Confirm password'),
-      content: TextField(
-        controller: controller,
-        obscureText: true,
-        decoration: const InputDecoration(labelText: 'Password'),
-      ),
-      actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop<String?>(null), child: const Text('Cancel')),
-        TextButton(onPressed: () => Navigator.of(context).pop<String?>(controller.text.trim()), child: const Text('Confirm')),
-      ],
-    );
-  }
+  // Password dialog removed: re-authentication flows for disabling 2FA are
+  // not available in the Firebase-only migration stub. If you need
+  // re-authentication-based flows, we should implement Firebase reauth.
 
   // ---------------- UI HELPERS ----------------
 
@@ -347,8 +251,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // ---------------- LOGOUT ----------------
 
   Future<void> _logout() async {
-    final auth = Provider.of<AuthController>(context, listen: false);
-    await auth.signOut();
+    // Directly sign out from Firebase (AuthController also calls this).
+    await FirebaseAuth.instance.signOut();
 
     if (!mounted) return;
     Navigator.of(context).pushNamedAndRemoveUntil(
