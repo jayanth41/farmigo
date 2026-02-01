@@ -8,11 +8,9 @@ class AppTheme {
     final colorScheme = const ColorScheme.light().copyWith(
       primary: primaryGreen,
       primaryContainer: darkGreen,
-      background: const Color(0xFFF4FFF6),
       surface: Colors.white,
       onPrimary: Colors.white,
       onSurface: Colors.black87,
-      onBackground: Colors.black87,
     );
 
     return ThemeData(
@@ -20,7 +18,7 @@ class AppTheme {
       colorScheme: colorScheme,
       brightness: Brightness.light,
       primaryColor: colorScheme.primary,
-      scaffoldBackgroundColor: colorScheme.background,
+      scaffoldBackgroundColor: colorScheme.surface,
 
       appBarTheme: AppBarTheme(
         backgroundColor: colorScheme.primary,
@@ -40,9 +38,9 @@ class AppTheme {
       iconTheme: IconThemeData(color: colorScheme.primary),
 
       textTheme: TextTheme(
-        bodyLarge: TextStyle(color: colorScheme.onBackground),
-        bodyMedium: TextStyle(color: colorScheme.onBackground.withOpacity(0.9)),
-        bodySmall: TextStyle(color: colorScheme.onBackground.withOpacity(0.7)),
+        bodyLarge: TextStyle(color: colorScheme.onSurface),
+        bodyMedium: TextStyle(color: colorScheme.onSurface.withOpacity(0.9)),
+        bodySmall: TextStyle(color: colorScheme.onSurface.withOpacity(0.7)),
       ),
 
       inputDecorationTheme: InputDecorationTheme(
@@ -61,11 +59,9 @@ class AppTheme {
     final colorScheme = const ColorScheme.dark().copyWith(
       primary: primaryGreen,
       primaryContainer: darkGreen,
-      background: const Color(0xFF121212),
       surface: const Color(0xFF1E1E1E),
       onPrimary: Colors.white,
       onSurface: Colors.white70,
-      onBackground: Colors.white70,
     );
 
     return ThemeData(
@@ -73,7 +69,7 @@ class AppTheme {
       colorScheme: colorScheme,
       brightness: Brightness.dark,
       primaryColor: colorScheme.primary,
-      scaffoldBackgroundColor: colorScheme.background,
+      scaffoldBackgroundColor: colorScheme.surface,
 
       appBarTheme: AppBarTheme(
         backgroundColor: colorScheme.primary,
@@ -93,9 +89,9 @@ class AppTheme {
       iconTheme: IconThemeData(color: colorScheme.primary),
 
       textTheme: TextTheme(
-        bodyLarge: TextStyle(color: colorScheme.onBackground),
-        bodyMedium: TextStyle(color: colorScheme.onBackground.withOpacity(0.9)),
-        bodySmall: TextStyle(color: colorScheme.onBackground.withOpacity(0.7)),
+        bodyLarge: TextStyle(color: colorScheme.onSurface),
+        bodyMedium: TextStyle(color: colorScheme.onSurface.withOpacity(0.9)),
+        bodySmall: TextStyle(color: colorScheme.onSurface.withOpacity(0.7)),
       ),
 
       inputDecorationTheme: InputDecorationTheme(

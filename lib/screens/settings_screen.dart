@@ -347,19 +347,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // ---------------- LOGOUT ----------------
 
   Future<void> _logout() async {
-    // Use AuthController to centralize logout behavior and loading state
-    try {
-      final auth = Provider.of<AuthController>(context, listen: false);
-      await auth.signOut();
-    } catch (e) {
-      // fallback to direct signOut if controller fails
-      try {
-        await supabase.auth.signOut();
-      } catch (_) {}
-    }
+    final auth = Provider.of<AuthController>(context, listen: false);
+    await auth.signOut();
 
-    // Navigate to login and clear stack
     if (!mounted) return;
-    Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+    Navigator.of(context).pushNamedAndRemoveUntil(
+      '/login',
+      (route) => false,
+    );
   }
 }

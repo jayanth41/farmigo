@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'services/supabase_config.dart';
 import 'package:provider/provider.dart';
 
@@ -26,6 +27,8 @@ import 'controllers/app_location_controller.dart';
 import 'controllers/auth_controller.dart';
 import 'controllers/settings_controller.dart';
 import 'settings/theme_provider.dart';
+import 'services/firebase_helper.dart';
+import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -36,9 +39,19 @@ void main() async {
     anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt2bndpa2p4amltenRqcXN5Y3RpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg4ODgxMDcsImV4cCI6MjA4NDQ2NDEwN30.e-mZfYqzztQNbBQ4n0R3aKFFYhdGI6rZgKvgyJNx2Fw',
   );
 
-  // Firebase initialization removed — app uses Supabase only.
-  // If you had guarded Firebase-dependent services, they should be migrated
-  // to Supabase or implemented as no-ops. See services/* for migration notes.
+  if (!kIsWeb) {
+    try {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+      // mark firebase available for guarded services
+      FirebaseHelper.setAvailable(true);
+    } catch (e, st) {
+      debugPrint('⚠️ Firebase.initializeApp failed: $e');
+      debugPrint('$st');
+      FirebaseHelper.setAvailable(false);
+    }
+  }
 
   Get.put(FavoritesController());
   Get.put(BookingsController());
@@ -146,15 +159,12 @@ void _showLogoutConfirmation(BuildContext context) {
 
 Future<void> _performLogoutAndNavigate(BuildContext context) async {
   try {
-    // Sign out from Supabase
-    await Supabase.instance.client.auth.signOut();
+    // Use AuthController signOut and Navigator to avoid Supabase/GetX-specific
+    // logout behavior in UI code.
+    final auth = Provider.of<AuthController>(context, listen: false);
+    await auth.signOut();
 
-    // Clear navigation stack and go to login.
-    // Preferred (GetX):
-    Get.offAllNamed('/login');
-
-    // Alternative using Navigator (uncomment if you don't use GetX):
-    // Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+    Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
   } catch (e, st) {
     // Log for debugging
     debugPrint('Logout failed: $e\n$st');

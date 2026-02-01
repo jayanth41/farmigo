@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import '../navigation/app_routes.dart';
 import '../controllers/bookings_controller.dart';
 // app_drawer removed from this secondary screen to keep back navigation consistent
-import '../widgets/no_data_widget.dart';
 import '../widgets/loading_widget.dart';
 import '../theme/app_colors.dart';
+
 
 class BookingsScreen extends StatefulWidget {
   const BookingsScreen({super.key});
@@ -40,7 +41,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () => Navigator.pushReplacementNamed(context, AppRoutes.home),
         ),
         backgroundColor: AppColors.primary,
         iconTheme: const IconThemeData(color: Colors.white),
@@ -58,7 +59,36 @@ class _BookingsScreenState extends State<BookingsScreen> {
         if (bookingsController.isLoading.value) {
           return const LoadingWidget();
         } else if (bookingsController.bookings.isEmpty) {
-          return const NoDataWidget(message: 'No bookings found.');
+          // Centered empty state per design requirements
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.calendar_today, size: 72, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3)),
+                const SizedBox(height: 12),
+                Text(
+                  'No bookings yet',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'You have no bookings at the moment',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () {
+                    try {
+                      Navigator.of(context).pushReplacementNamed(AppRoutes.home);
+                    } catch (_) {
+                      // fallback
+                    }
+                  },
+                  child: const Text('Explore Properties'),
+                ),
+              ],
+            ),
+          );
         } else {
           return Column(
             children: [
@@ -145,161 +175,172 @@ class BookingItemCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Enhanced booking card UI
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
+  // Prefer the canonical keys used by the bookings API
+  String imageUrl = booking['imageUrl'] ?? booking['image'] ?? booking['propertyImage'] ?? '';
+
+    String formatDate(String? raw) {
+      if (raw == null || raw.toString().trim().isEmpty) return '';
+      try {
+        final dt = DateTime.parse(raw);
+        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
+      } catch (_) {
+        return raw;
+      }
+    }
+
     return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header: Name & Status
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
-                    booking['propertyName'] ?? 'Property',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
+      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      color: cs.surface,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Image
+          ClipRRect(
+            borderRadius: const BorderRadius.only(topLeft: Radius.circular(14), topRight: Radius.circular(14)),
+            child: imageUrl.isNotEmpty
+                ? Image.network(
+                    imageUrl,
+                    height: 160,
+                    fit: BoxFit.cover,
+                    errorBuilder: (ctx, err, st) => Container(
+                      height: 160,
+                      color: cs.surfaceVariant,
+                      child: Icon(Icons.home, size: 48, color: cs.onSurface.withOpacity(0.3)),
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  )
+                : Container(
+                    height: 160,
+                    color: cs.surfaceVariant,
+                    child: Icon(Icons.home, size: 48, color: cs.onSurface.withOpacity(0.3)),
                   ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: _getStatusColor(booking['status']),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    booking['status']?.toString().toUpperCase() ?? 'UNKNOWN',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+          ),
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        booking['propertyName'] ?? '',
+                        style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: _getStatusColor(booking['status']),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        booking['status']?.toString().toUpperCase() ?? 'UNKNOWN',
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            const SizedBox(height: 8),
-
-            // Location
-            Row(
-              children: [
-                const Icon(Icons.location_on, size: 14, color: Colors.grey),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    booking['location'] ?? 'Unknown location',
-                    style: const TextStyle(fontSize: 12, color: Colors.grey),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(Icons.location_on, size: 14, color: cs.onSurface.withOpacity(0.7)),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        booking['location'] ?? '',
+                        style: theme.textTheme.bodySmall?.copyWith(color: cs.onSurface.withOpacity(0.8)),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            const SizedBox(height: 8),
-
-            // Check-in & Check-out dates
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Check-in',
-                          style:
-                              TextStyle(fontSize: 11, color: Colors.grey)),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Check-in', style: theme.textTheme.bodySmall?.copyWith(color: cs.onSurface.withOpacity(0.7))),
+                          const SizedBox(height: 4),
+                          Text(formatDate(booking['checkIn']), style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Check-out', style: theme.textTheme.bodySmall?.copyWith(color: cs.onSurface.withOpacity(0.7))),
+                          const SizedBox(height: 4),
+                          Text(formatDate(booking['checkOut']), style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    if (booking['totalPrice'] != null && (booking['totalPrice'] is num ? (booking['totalPrice'] as num) > 0 : booking['totalPrice'].toString().isNotEmpty))
                       Text(
-                        booking['checkInDate'] ?? 'N/A',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
+                        '₹${booking['totalPrice'].toString()}',
+                        style: theme.textTheme.titleSmall?.copyWith(color: Colors.green[700], fontWeight: FontWeight.bold),
+                      ),
+                    const SizedBox(width: 8),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => _showBookingDetails(context, booking),
+                        child: const Text('View Details'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    if (booking['status'] == 'upcoming')
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () => _showCancelDialog(context, booking),
+                          style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                          child: const Text('Cancel'),
                         ),
                       ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Check-out',
-                          style:
-                              TextStyle(fontSize: 11, color: Colors.grey)),
-                      Text(
-                        booking['checkOutDate'] ?? 'N/A',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
+                  ],
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-
-            // Price
-            Text(
-              '₹${booking['totalPrice']?.toString() ?? '0'} Total',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: AppColors.primary,
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // Action Buttons
-            Row(
-              children: [
-                Expanded(
-                    child: OutlinedButton.icon(
-                    icon: const Icon(Icons.visibility, size: 16),
-                    label: const Text('View Details'),
-                    onPressed: () {
-                      _showBookingDetails(context, booking);
-                    },
-                    style: OutlinedButton.styleFrom(
-                      side: BorderSide(color: AppColors.primary),
-                      foregroundColor: AppColors.primary,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                if (booking['status'] == 'upcoming')
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      icon: const Icon(Icons.close, size: 16),
-                      label: const Text('Cancel'),
-                      onPressed: () {
-                        _showCancelDialog(context, booking);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  Color _getStatusColor(String status) {
-    switch (status) {
+  Color _getStatusColor(dynamic status) {
+    final s = (status ?? '').toString().toLowerCase();
+    switch (s) {
       case 'upcoming':
         return Colors.blue;
       case 'completed':
         return Colors.green;
       case 'cancelled':
+      case 'canceled':
         return Colors.red;
       default:
         return Colors.grey;
@@ -317,20 +358,14 @@ class BookingItemCard extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildDetailRow('Booking ID', booking['id'] ?? 'N/A'),
-              _buildDetailRow(
-                  'Property', booking['propertyName'] ?? 'N/A'),
-              _buildDetailRow('Location', booking['location'] ?? 'N/A'),
-              _buildDetailRow(
-                  'Check-in', booking['checkInDate'] ?? 'N/A'),
-              _buildDetailRow(
-                  'Check-out', booking['checkOutDate'] ?? 'N/A'),
-              _buildDetailRow('Guests',
-                  booking['guests']?.toString() ?? 'N/A'),
-              _buildDetailRow('Total Price',
-                  '₹${booking['totalPrice'] ?? 0}'),
-              _buildDetailRow('Status',
-                  booking['status']?.toString().toUpperCase() ?? 'N/A'),
+    _buildDetailRow('Booking ID', booking['id']?.toString() ?? ''),
+    _buildDetailRow('Property', booking['propertyName'] ?? ''),
+    _buildDetailRow('Location', booking['location'] ?? ''),
+    _buildDetailRow('Check-in', booking['checkIn'] ?? ''),
+    _buildDetailRow('Check-out', booking['checkOut'] ?? ''),
+    _buildDetailRow('Guests', booking['guests']?.toString() ?? ''),
+    _buildDetailRow('Total Price', booking['totalPrice'] != null ? '₹${booking['totalPrice']}' : ''),
+    _buildDetailRow('Status', booking['status']?.toString().toUpperCase() ?? ''),
               const SizedBox(height: 12),
               const Text(
                 'Cancellation Policy',
@@ -364,7 +399,7 @@ class BookingItemCard extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Booking ID: ${booking['id'] ?? 'N/A'}'),
+            Text('Booking ID: ${booking['id']?.toString() ?? ''}'),
             const SizedBox(height: 12),
             const Text(
               'Are you sure you want to cancel this booking?',
@@ -406,13 +441,14 @@ class BookingItemCard extends StatelessWidget {
             child: const Text('Keep Booking'),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
+              final bookingsController = Get.find<BookingsController>();
+              final success = await bookingsController.cancelBooking(booking['id']);
               Navigator.pop(ctx);
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text(
-                      'Booking cancelled successfully. Refund initiated.'),
-                  duration: Duration(seconds: 2),
+                SnackBar(
+                  content: Text(success ? 'Booking cancelled' : 'Failed to cancel booking'),
+                  duration: const Duration(seconds: 2),
                 ),
               );
             },

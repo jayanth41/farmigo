@@ -37,5 +37,5 @@ class AppColors {
       Theme.of(context).dividerColor;
 
   static Color chipBg(BuildContext context) =>
-      Theme.of(context).colorScheme.surfaceVariant;
+      Theme.of(context).colorScheme.surfaceContainerHighest;
 }

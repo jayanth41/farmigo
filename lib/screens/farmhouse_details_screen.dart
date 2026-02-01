@@ -5,7 +5,7 @@ import '../widgets/app_drawer.dart';
 import '../widgets/image_with_fallback.dart';
 import '../models/farmhouse_model.dart';
 import '../controllers/favorites_controller.dart';
-import '../services/booking_service.dart';
+import '../controllers/bookings_controller.dart';
 import '../data/farmhouses_data.dart'; // ADDED: Import farmhouses data
 import 'bookings_screen.dart';
 import 'dart:async';
@@ -1046,12 +1046,15 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
               return;
             }
 
-            final success = await BookingService.createBooking(
-              propertyId: widget.id!,
-              visitDate: selectedCheckInDate!,
+            // Use the BookingsController so UI state refreshes after insert
+            final bookingsController = Get.find<BookingsController>();
+            final success = await bookingsController.addBooking(
               propertyName: widget.name,
               location: widget.location,
-              status: 'upcoming',
+              imageUrl: widget.imageUrl,
+              checkIn: selectedCheckInDate?.toIso8601String() ?? '',
+              checkOut: selectedCheckOutDate?.toIso8601String() ?? '',
+              totalPrice: calculatedPrice,
             );
 
             if (!mounted) return;

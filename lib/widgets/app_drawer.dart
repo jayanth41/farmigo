@@ -74,12 +74,12 @@ class AppDrawer extends StatelessWidget {
               // Close the confirmation dialog first
               Navigator.of(ctx).pop();
 
-              // Call AuthController.signOut() (backward-compatible alias) via Provider
+              // Use AuthController via Provider and sign out
               try {
-                final auth = context.read<AuthController>();
+                final auth = Provider.of<AuthController>(context, listen: false);
                 await auth.signOut();
               } catch (e) {
-                // Best-effort: clear session if signOut fails
+                // Best-effort clear session if needed
                 try {
                   await SessionService.clear();
                 } catch (_) {}
@@ -90,18 +90,15 @@ class AppDrawer extends StatelessWidget {
                 Navigator.of(context).pop(); // close drawer
               } catch (_) {}
 
-              // Show a short confirmation snackbar and navigate to login clearing the stack
+              // Show confirmation and navigate to login clearing the stack
               try {
                 showAppSnack(context, 'Logged out successfully', isSuccess: true);
               } catch (_) {}
 
               try {
-                Get.offAllNamed('/login');
+                Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
               } catch (e) {
                 debugPrint('Logout navigation error: $e');
-                try {
-                  Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
-                } catch (_) {}
               }
             },
             child: Text(
