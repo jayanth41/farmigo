@@ -47,6 +47,7 @@ void main() async {
       debugPrint('$st');
       FirebaseHelper.setAvailable(false);
     }
+  
   }
 
   Get.put(FavoritesController());
@@ -81,18 +82,11 @@ class MyApp extends StatelessWidget {
       darkTheme: AppTheme.darkTheme(),
       themeMode: themeProvider.themeMode,
 
-      // 🔥 AUTH GUARD (driven by Firebase auth state)
-      home: StreamBuilder<fb.User?>(
-        stream: fb.FirebaseAuth.instance.authStateChanges(),
-        builder: (context, snapshot) {
-          final user = snapshot.data;
-          if (user != null) {
-            return const HomeScreen();
-          } else {
-            return const LoginScreen();
-          }
-        },
-      ),
+      // Use a one-time splash check instead of switching the app root on
+      // every authStateChanges event. This prevents auth state events from
+      // unexpectedly replacing the entire app (and re-triggering login)
+      // while preserving FirebaseAuth as the canonical auth source.
+      home: const SplashScreen(),
 
       getPages: [
         GetPage(name: '/login', page: () => const LoginScreen()),

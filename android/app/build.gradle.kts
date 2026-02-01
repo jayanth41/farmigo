@@ -22,10 +22,13 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.flutter_application_1"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
+    applicationId = "com.example.flutter_application_1"
+        // Ensure minSdk is at least 21 for multidex support required by some Firebase
         minSdk = flutter.minSdkVersion
+        // Enable multidex to avoid 64K method limit issues
+        multiDexEnabled = true
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -38,6 +41,11 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+}
+
+dependencies {
+    // Required when your app exceeds the 64K method limit (multidex)
+    implementation("androidx.multidex:multidex:2.0.1")
 }
 
 flutter {

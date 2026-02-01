@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../widgets/snackbar_helper.dart';
 import '../screens/about_us_screen.dart';
 import '../screens/terms_policy_screen.dart';
@@ -140,24 +141,58 @@ class AppDrawer extends StatelessWidget {
                         children: [
                           Builder(builder: (ctx) {
                             final fb.User? user = fb.FirebaseAuth.instance.currentUser;
-                            final String initials = (profile?['name'] ?? user?.displayName ?? user?.phoneNumber ?? 'U').toString();
-                            final String avatarLetter = initials.isNotEmpty ? initials[0] : 'U';
-                            final String? photoUrl = user?.photoURL;
+                            final uid = user?.uid;
 
-                            return CircleAvatar(
-                              radius: 28,
-                              backgroundColor: surface,
-                              backgroundImage: photoUrl != null ? NetworkImage(photoUrl) : null,
-                              child: photoUrl == null
-                                  ? Text(
-                                      avatarLetter,
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        color: colorScheme.primary,
-                                      ),
-                                    )
-                                  : null,
+                            if (uid == null) {
+                              return CircleAvatar(
+                                radius: 28,
+                                backgroundColor: surface,
+                                child: Text('U', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: colorScheme.primary)),
+                              );
+                            }
+
+                            return FutureBuilder<Map<String, dynamic>?>(
+                              // Safe fetch with timeout to avoid indefinite loading
+                              future: _fetchUserDoc(uid),
+                              builder: (context, snap) {
+                                final fb.User? userLocal = fb.FirebaseAuth.instance.currentUser;
+                                // While waiting, show a subtle loader inside the avatar so UI isn't blocked
+                                if (snap.connectionState == ConnectionState.waiting) {
+                                  return CircleAvatar(
+                                    radius: 28,
+                                    backgroundColor: surface,
+                                    child: const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)),
+                                  );
+                                }
+
+                                final data = snap.data ?? {};
+                                final displayName = (profile?['name'] ?? data['name'] ?? userLocal?.displayName ?? '')?.toString() ?? '';
+                                final email = (userLocal?.email ?? data['email'])?.toString();
+                                final photoUrl = (data['photoUrl'] as String?) ?? userLocal?.photoURL;
+                                final avatarLetter = displayName.isNotEmpty ? displayName[0] : (email?.isNotEmpty == true ? email![0] : 'U');
+
+                                // If photoUrl is present, try to show it; otherwise show initial
+                                if (photoUrl != null && photoUrl.isNotEmpty) {
+                                  return CircleAvatar(
+                                    radius: 28,
+                                    backgroundColor: surface,
+                                    backgroundImage: NetworkImage(photoUrl),
+                                  );
+                                }
+
+                                return CircleAvatar(
+                                  radius: 28,
+                                  backgroundColor: surface,
+                                  child: Text(
+                                    avatarLetter,
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: colorScheme.primary,
+                                    ),
+                                  ),
+                                );
+                              },
                             );
                           }),
                           const SizedBox(width: 12),
@@ -170,26 +205,49 @@ class AppDrawer extends StatelessWidget {
                                 : Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Builder(builder: (ctx) {
-                                        final fb.User? user = fb.FirebaseAuth.instance.currentUser;
-                                        final displayName = (profile?['name'] ?? user?.displayName ?? (user?.phoneNumber))?.toString() ?? 'Guest User';
-                                        final email = user?.email;
-                                        return Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              displayName,
-                                              style: TextStyle(
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.bold,
-                                                color: theme.colorScheme.onPrimary,
+                                      FutureBuilder<Map<String, dynamic>?>(
+                                        future: _fetchUserDoc(fb.FirebaseAuth.instance.currentUser?.uid ?? '').then((d) {
+                                          // If doc missing, attempt to ensure it's created in background
+                                          final uid = fb.FirebaseAuth.instance.currentUser?.uid;
+                                          if (d == null && uid != null && uid.isNotEmpty) {
+                                            // fire-and-forget; permission errors are caught inside
+                                            ensureUserDoc(uid);
+                                          }
+                                          return d;
+                                        }),
+                                        builder: (context, snap) {
+                                          final fb.User? user = fb.FirebaseAuth.instance.currentUser;
+                                          if (snap.connectionState == ConnectionState.waiting) {
+                                            return Row(
+                                              children: [
+                                                const SizedBox(width: 6),
+                                                const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                                                const SizedBox(width: 8),
+                                                Text('Loading...', style: TextStyle(color: theme.colorScheme.onPrimary.withOpacity(0.9))),
+                                              ],
+                                            );
+                                          }
+
+                                          final data = snap.data ?? {};
+                                          final displayName = (profile?['name'] ?? data['name'] ?? user?.displayName ?? 'Guest User')?.toString() ?? 'Guest User';
+                                          final email = (user?.email ?? data['email'])?.toString();
+                                          return Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                displayName,
+                                                style: TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: theme.colorScheme.onPrimary,
+                                                ),
                                               ),
-                                            ),
-                                            if (email != null && email.isNotEmpty)
-                                              Text(email, style: TextStyle(color: theme.colorScheme.onPrimary.withOpacity(0.9), fontSize: 12)),
-                                          ],
-                                        );
-                                      }),
+                                              if (email != null && email.isNotEmpty)
+                                                Text(email, style: TextStyle(color: theme.colorScheme.onPrimary.withOpacity(0.9), fontSize: 12)),
+                                            ],
+                                          );
+                                        },
+                                      ),
                                       if (isOwner)
                                         Container(
                                           margin: const EdgeInsets.only(top: 4),
@@ -224,27 +282,46 @@ class AppDrawer extends StatelessWidget {
                     leading: Icon(Icons.home_outlined, color: onSurface),
                     title: Text('Home', style: TextStyle(color: onSurface)),
                     onTap: () {
-                            // Close drawer first
-                            try {
-                              Navigator.of(context).pop();
-                            } catch (_) {}
+                      // Close drawer first so the UI is tidy before navigation.
+                      try {
+                        Navigator.of(context).pop();
+                      } catch (_) {}
 
-                            // Delegate to parent (MainScaffold) so it can switch tabs.
-                            if (onItemSelected != null && AppRoutes.labelToRoute.containsKey(AppRoutes.labelHome)) {
-                              Future.microtask(() => onItemSelected!(AppRoutes.labelHome));
-                              return;
-                            }
+                      // If parent scaffold wants to handle item selection (e.g.
+                      // switch bottom tabs), delegate to it. This avoids
+                      // creating a new Home route on top of the existing one.
+                      if (onItemSelected != null && AppRoutes.labelToRoute.containsKey(AppRoutes.labelHome)) {
+                        Future.microtask(() => onItemSelected!(AppRoutes.labelHome));
+                        return;
+                      }
 
-                            // Fallback: navigate to home and clear previous stack so Back
-                            // doesn't return to login or previous screens. Use the
-                            // Navigator API (not Get) to respect the app's top-level
-                            // routing and auth-driven home logic.
-                            try {
-                              final route = AppRoutes.labelToRoute[AppRoutes.labelHome] ?? AppRoutes.home;
-                              Navigator.of(context).pushNamedAndRemoveUntil(route, (r) => false);
-                            } catch (e) {
-                              debugPrint('Navigation to Home failed: $e');
-                            }
+                      // Attempt to reuse an existing Home route by popping until
+                      // we find it. This avoids rebuilding Home if it's already
+                      // present in the navigator stack. If Home isn't found we
+                      // push it (normal push) so we don't clear the whole app.
+                      try {
+                        bool foundHome = false;
+
+                        Navigator.of(context).popUntil((route) {
+                          final name = route.settings.name;
+                          if (name == (AppRoutes.labelToRoute[AppRoutes.labelHome] ?? AppRoutes.home)) {
+                            foundHome = true;
+                            return true; // stop popping; we've reached Home
+                          }
+                          // Stop at first route to avoid popping entire stack if Home
+                          // is not present.
+                          return route.isFirst;
+                        });
+
+                        // If we didn't find an existing Home route, push it so we
+                        // land on Home without clearing unrelated routes.
+                        if (!foundHome) {
+                          final route = AppRoutes.labelToRoute[AppRoutes.labelHome] ?? AppRoutes.home;
+                          Navigator.of(context).pushNamed(route);
+                        }
+                      } catch (e) {
+                        debugPrint('Navigation to Home failed: $e');
+                      }
                     },
                   ),
                   ListTile(
@@ -393,5 +470,47 @@ class AppDrawer extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  /// Fetches the Firestore user document for the given uid. Returns null if
+  /// not available or on error. Kept as an instance method so it can be used
+  /// inside FutureBuilders in the header without introducing state.
+  Future<Map<String, dynamic>?> _fetchUserDoc(String? uid) async {
+    if (uid == null || uid.isEmpty) return null;
+    try {
+      // Add a short timeout so the UI doesn't hang waiting on network/firestore
+      final snap = await FirebaseFirestore.instance.collection('users').doc(uid).get().timeout(const Duration(seconds: 5));
+      if (!snap.exists) return null;
+      return snap.data();
+    } catch (e) {
+      debugPrint('Failed to fetch user doc for $uid: $e');
+      return null;
+    }
+  }
+
+  /// Ensure the user document exists. If missing, create a minimal doc with
+  /// public fields. This is a safe, best-effort helper and will swallow
+  /// permission errors (so it won't crash the UI in restricted environments).
+  Future<void> ensureUserDoc(String uid) async {
+    if (uid.isEmpty) return;
+    try {
+      final docRef = FirebaseFirestore.instance.collection('users').doc(uid);
+      final snap = await docRef.get().timeout(const Duration(seconds: 5));
+      if (snap.exists) return;
+
+      final user = fb.FirebaseAuth.instance.currentUser;
+      final data = {
+        'name': user?.displayName ?? '',
+        'email': user?.email ?? '',
+        'phone': user?.phoneNumber ?? '',
+        'photoUrl': user?.photoURL ?? '',
+        'createdAt': FieldValue.serverTimestamp(),
+      };
+
+      await docRef.set(data, SetOptions(merge: true));
+    } catch (e) {
+      // Don't fail the UI; log for diagnostics
+      debugPrint('ensureUserDoc failed for $uid: $e');
+    }
   }
 }
