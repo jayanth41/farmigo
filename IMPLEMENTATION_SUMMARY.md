@@ -2,7 +2,7 @@
 
 ## Summary
 
-Your Farmigo Flutter app now has **production-ready Firebase Authentication** with email/password signup and login, integrated with Supabase user profiles, automatic routing, and comprehensive error handling.
+Your Farmigo Flutter app now has **production-ready Firebase Authentication** with email/password signup and login, integrated with user profiles stored in Cloud Firestore, automatic routing, and comprehensive error handling.
 
 ---
 
@@ -29,7 +29,7 @@ Your Farmigo Flutter app now has **production-ready Firebase Authentication** wi
 **File:** `lib/screens/signup_screen.dart`
 - ✅ Integrated with AuthController
 - ✅ Firebase Auth signup
-- ✅ Supabase user profile creation
+-- ✅ Cloud Firestore user profile creation
 - ✅ Loading states and error messages
 - ✅ Auto-navigation to Home on success
 
@@ -121,10 +121,10 @@ Your Farmigo Flutter app now has **production-ready Firebase Authentication** wi
                  │
          Provider + Context.read()
                  │
-    ┌────────────┴────────────┐
-    │                         │
+  ┌────────────┴────────────┐
+  │                         │
 ┌───▼─────────────┐  ┌───────▼──────────┐
-│ Firebase Auth   │  │ Supabase (users) │
+│ Firebase Auth   │  │ Cloud Firestore  │
 │ (Email/Pass)    │  │ (profiles)       │
 └─────────────────┘  └──────────────────┘
 ```
@@ -192,13 +192,8 @@ Check these are configured:
 - ✅ Users can sign up (allowed)
 - ✅ firebase_options.dart linked
 
-### Supabase Dashboard
-**URL:** https://app.supabase.com
-
-Tables configured:
-- ✅ `users` table for user profiles
-- ✅ `bookings` table for bookings
-- ✅ RLS policies configured
+### Legacy Supabase (removed)
+Supabase was used in earlier versions but has been removed in favor of Firebase Authentication and Cloud Firestore. If you are migrating from an older branch, remove any Supabase configuration and migrate data to Firestore if needed.
 
 ---
 

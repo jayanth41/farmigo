@@ -70,13 +70,13 @@ Successfully integrated Firebase Authentication (email/password) into Farmigo ap
 2. Taps "Sign Up" button
 3. `signUpUser()` calls `context.read<AuthController>().signUp()`
 4. AuthController handles Firebase Auth registration
-5. On success, creates user profile in Supabase "users" table
+5. On success, creates user profile in Cloud Firestore `users` collection
 6. Shows success SnackBar
 7. Auth guard auto-navigates to HomeScreen when `isAuthenticated = true`
 
 **User Profile:**
-- Still uses UserService to create profile in Supabase after Firebase signup
-- Maintains integration with existing Supabase user table
+-- Uses UserService to create profile in Cloud Firestore after Firebase signup
+-- Stores profiles in the Firestore `users` collection
 
 ---
 
@@ -132,7 +132,7 @@ signUpUser() → context.read<AuthController>().signUp()
   ↓
 Firebase Auth creates user account
   ↓
-Success? Yes → Create user profile in Supabase
+Success? Yes → Create user profile in Cloud Firestore
            → Show success SnackBar
            → Auth state listener triggers
            → Auth guard detects isAuthenticated = true
