@@ -77,7 +77,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     child: ElevatedButton(
                       onPressed: () async {
                         await _auth.signOut();
-                        Navigator.popUntil(context, (route) => route.isFirst);
+                        if (!mounted) return;
+                        Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
                       },
                       style: ElevatedButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error),
                       child: const Text('Logout'),
