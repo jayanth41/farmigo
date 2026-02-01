@@ -1,5 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart' as fb;
+// Note: keep imports minimal for the splash's one-shot auth check.
+import '../screens/home_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -29,13 +32,40 @@ class _SplashScreenState extends State<SplashScreen>
     );
 
     _controller.forward();
-    _goToLogin();
+    _goNext();
   }
 
-  Future<void> _goToLogin() async {
-    await Future.delayed(const Duration(seconds: 4));
+  /// One-time navigation decision after the splash. If the user is already
+  /// signed in, navigate to Home using pushAndRemoveUntil so that the
+  /// app isn't replaced reactively by auth state changes; otherwise go to
+  /// the login screen.
+  Future<void> _goNext() async {
+    await Future.delayed(const Duration(seconds: 2));
     if (!mounted) return;
-    Navigator.pushReplacementNamed(context, '/login');
+
+    final fb.User? user = fb.FirebaseAuth.instance.currentUser;
+
+    if (user != null) {
+      // Navigate to Home and clear previous routes so the app starts
+      // in the authenticated experience. Use pushAndRemoveUntil once so
+      // the app isn't rebuilt by a StreamBuilder on auth changes.
+      try {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
+          (route) => false,
+        );
+      } catch (e) {
+        debugPrint('Splash -> Home navigation failed: $e');
+      }
+    } else {
+      // Not signed in: go to login screen. Use pushReplacement so the
+      // splash is removed from the stack.
+      try {
+        Navigator.pushReplacementNamed(context, '/login');
+      } catch (e) {
+        debugPrint('Splash -> Login navigation failed: $e');
+      }
+    }
   }
 
   @override

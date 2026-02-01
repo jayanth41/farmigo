@@ -26,6 +26,7 @@ dependencies:
   firebase_auth: ^4.17.0
   cloud_firestore: ^4.15.0
   google_sign_in: ^6.2.1
+  firebase_storage: ^11.7.7
 
   # Location & permissions
   geolocator: ^12.0.0
