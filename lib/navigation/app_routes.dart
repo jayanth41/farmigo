@@ -1,6 +1,7 @@
 class AppRoutes {
   // Main tabs
-  static const String home = '/';
+  // Use an explicit /home route to avoid accidental root ('/') navigation.
+  static const String home = '/home';
   static const String favorites = '/favorites';
   static const String bookings = '/bookings';
   static const String profile = '/profile';

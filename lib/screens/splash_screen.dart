@@ -2,7 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 // Note: keep imports minimal for the splash's one-shot auth check.
-import '../screens/home_screen.dart';
+// splash uses named navigation; don't import HomeScreen directly to avoid
+// accidental direct widget pushes.
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -46,14 +47,11 @@ class _SplashScreenState extends State<SplashScreen>
     final fb.User? user = fb.FirebaseAuth.instance.currentUser;
 
     if (user != null) {
-      // Navigate to Home and clear previous routes so the app starts
-      // in the authenticated experience. Use pushAndRemoveUntil once so
-      // the app isn't rebuilt by a StreamBuilder on auth changes.
+      // Replace the splash with '/home' using pushReplacementNamed so the
+      // splash screen is never on the back stack and navigation points to
+      // the explicit '/home' route.
       try {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
-          (route) => false,
-        );
+        Navigator.pushReplacementNamed(context, '/home');
       } catch (e) {
         debugPrint('Splash -> Home navigation failed: $e');
       }
