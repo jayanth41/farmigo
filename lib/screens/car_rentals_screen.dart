@@ -58,7 +58,7 @@ class CarRentalsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bgColor = Theme.of(context).colorScheme.background;
+    final bgColor = Theme.of(context).colorScheme.surface;
     final textColor = Theme.of(context).colorScheme.onSurface;
 
     return Scaffold(

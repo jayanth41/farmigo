@@ -18,6 +18,7 @@ import '../widgets/properties_grid.dart';
 import 'owner_dashboard.dart';
 import 'filters_screen.dart';
 import 'package:provider/provider.dart';
+import '../controllers/auth_controller.dart';
 import '../filters/filters_provider.dart';
 import '../controllers/app_location_controller.dart';
 import 'package:geolocator/geolocator.dart';
@@ -142,11 +143,12 @@ class _HomeScreenState extends State<HomeScreen> {
     // Schedule navigation to avoid using context immediately after drawer close.
     if (label.toLowerCase() == 'logout') {
       try {
-        await Supabase.instance.client.auth.signOut();
+        final auth = Provider.of<AuthController>(context, listen: false);
+        await auth.signOut();
       } catch (_) {}
       if (!mounted) return;
       try {
-        Get.offAllNamed('/login');
+        Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
       } catch (_) {
         try {
           Navigator.of(context).pushReplacementNamed('/login');
@@ -823,7 +825,7 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 class _GuestProfileView extends StatelessWidget {
-  _GuestProfileView();
+  const _GuestProfileView();
 
   @override
   Widget build(BuildContext context) {

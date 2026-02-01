@@ -2,6 +2,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:provider/provider.dart';
+import '../controllers/auth_controller.dart';
 import '../services/session_service.dart';
 import '../theme/app_colors.dart';
 
@@ -304,7 +306,11 @@ class _ProfileScreenState extends State<ProfileScreen>
     if (user == null) return;
 
     await supabase.from('profiles').delete().eq('id', user.id);
-    await supabase.auth.signOut();
+    // Use central AuthController for sign out
+    try {
+      final auth = Provider.of<AuthController>(context, listen: false);
+      await auth.signOut();
+    } catch (_) {}
 
     try {
       await SessionService.clear();
@@ -319,7 +325,10 @@ class _ProfileScreenState extends State<ProfileScreen>
       width: double.infinity,
       child: ElevatedButton(
         onPressed: () async {
-          await supabase.auth.signOut();
+          try {
+            final auth = Provider.of<AuthController>(context, listen: false);
+            await auth.signOut();
+          } catch (_) {}
           try {
             await SessionService.clear();
           } catch (_) {}
