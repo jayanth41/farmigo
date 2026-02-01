@@ -163,16 +163,13 @@ await Firebase.initializeApp(
 
 ---
 
-## Supabase Commands
+## Legacy Supabase (removed)
 
-### Check Supabase Initialization
-```dart
-// In main.dart, check this runs without errors:
-await Supabase.initialize(
-  url: 'https://kvnwikjxjimztjqsycti.supabase.co',
-  anonKey: 'eyJhbGciOi...',
-);
-```
+This project previously included Supabase integrations which have been removed
+in favor of Firebase Authentication and Cloud Firestore. If you are migrating
+from an older branch that relied on Supabase, remove any Supabase-related
+configuration and replace it with Firebase configuration. The repository no
+longer initializes or depends on Supabase at runtime.
 
 ---
 

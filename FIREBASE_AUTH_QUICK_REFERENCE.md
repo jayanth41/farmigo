@@ -154,11 +154,10 @@ import '../controllers/auth_controller.dart';
 3. Go to Authentication → Users
 4. See all registered users with signup timestamps
 
-### Test Supabase Integration
-1. Go to [Supabase Dashboard](https://app.supabase.com)
-2. Select farmigo project
-3. Go to Table Editor → users
-4. See user profiles created on signup
+### Test Database / Profiles
+1. Verify user profiles in Cloud Firestore (Firestore Console)
+2. In Firebase Console → Firestore, open the `users` collection
+3. Confirm user documents are created on signup with expected fields
 
 ### Debug Logging
 AuthController includes debug prints:
@@ -194,10 +193,9 @@ Phone login still works as before (unchanged):
 - Toggle in LoginScreen between email/phone
 - Separate from Firebase email auth
 
-Both systems coexist:
-- Firebase for email/password
-- Supabase for phone OTP
-- User can login with either method
+Phone OTP now uses Firebase Authentication's phone verification.
+The app uses Firebase Auth for email/password and phone OTP flows; user
+profiles are stored in Cloud Firestore.
 
 ## Troubleshooting
 

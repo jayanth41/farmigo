@@ -273,7 +273,7 @@ if (granted) {
 - `cloud_firestore: ^5.6.12` - Database (future use)
 
 ### Backend
-- `supabase_flutter: ^2.5.0` - Supabase client
+<!-- Supabase dependency removed during migration to Firebase-only -->
 - `http: ^1.1.0` - HTTP requests
 
 ### Location & Geocoding
