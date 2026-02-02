@@ -16,7 +16,6 @@ class FavoritesScreen extends StatefulWidget {
 
 class _FavoritesScreenState extends State<FavoritesScreen> {
   late FavoritesController favoritesController;
-  String _selectedCategory = 'All';
 
   @override
   void initState() {
@@ -24,12 +23,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     favoritesController = Get.find<FavoritesController>();
   }
 
-  List get filteredFavorites {
-    if (_selectedCategory == 'All') {
-      return favoritesController.favorites.toList();
-    }
-  return favoritesController.favorites.where((fav) => fav.category == _selectedCategory).toList();
-  }
+  // Using the controller's full favorites list directly (no category filters)
 
   @override
   Widget build(BuildContext context) {
@@ -154,32 +148,16 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
 
           return Column(
             children: [
-              // FILTER TABS (NEW)
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8.0, vertical: 12.0),
-                  child: Row(
-                    children: [
-                      _filterChip('All'),
-                      _filterChip('Farmhouses'),
-                      _filterChip('Villas'),
-                      _filterChip('Hotels'),
-                      _filterChip('Hourly Rentals'),
-                    ],
-                  ),
-                ),
-              ),
+              // (Category filters removed - showing all favorites)
 
-              // SAVED COUNT (NEW)
+              // SAVED COUNT
               Padding(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                 child: Row(
                   children: [
                     Text(
-                      'Saved: ${filteredFavorites.length}',
+                      'Saved: ${favoritesController.favorites.length}',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                         color: Theme.of(context).colorScheme.onSurface.withOpacity(0.75),
@@ -191,7 +169,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
 
               // FAVORITES LIST
               Expanded(
-                child: filteredFavorites.isEmpty
+                child: favoritesController.favorites.isEmpty
                     ? Center(
                         child: Text(
                           'No favorites in this category',
@@ -202,9 +180,9 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                       )
                     : ListView.builder(
                         padding: const EdgeInsets.all(16),
-                        itemCount: filteredFavorites.length,
+                        itemCount: favoritesController.favorites.length,
                         itemBuilder: (context, index) {
-                          final farmhouse = filteredFavorites[index];
+                          final farmhouse = favoritesController.favorites[index];
                           return FavoriteCard(
                             farmhouse: farmhouse,
                             onRemove: () {
@@ -228,22 +206,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     );
   }
 
-  Widget _filterChip(String category) {
-    final isSelected = _selectedCategory == category;
-    return Padding(
-      padding: const EdgeInsets.only(right: 8.0),
-      child: FilterChip(
-        label: Text(category),
-        selected: isSelected,
-        onSelected: (_) => setState(() => _selectedCategory = category),
-        selectedColor: Theme.of(context).colorScheme.primary,
-        labelStyle: TextStyle(
-          color: isSelected ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.onSurface.withOpacity(0.9),
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-    );
-  }
+  // category filters removed; no helper needed
 }
 
 class FavoriteCard extends StatelessWidget {

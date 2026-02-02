@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../widgets/snackbar_helper.dart';
 import '../screens/about_us_screen.dart';
 import '../screens/terms_policy_screen.dart';
+import '../screens/owner_dashboard.dart';
 // Navigation is performed via named routes (GetX) or delegated to parent
 // `MainScaffold`. Avoid importing screen widgets directly to prevent unused
 // import warnings when using named navigation.
@@ -30,7 +31,12 @@ class AppDrawer extends StatelessWidget {
     this.isProfileLoading = false,
   });
 
-  bool get isOwner => profile?['is_owner'] == true;
+  /// Whether the current profile indicates an owner.
+  ///
+  /// Prefer the canonical `role` field (expected values: "user" | "owner").
+  /// For backward compatibility fall back to boolean `is_owner` if `role`
+  /// is not present.
+ bool get isOwner => (profile?['role'] ?? '') == 'owner';
 
   void _logout(BuildContext context) {
     showDialog(
@@ -93,18 +99,14 @@ class AppDrawer extends StatelessWidget {
             // ===== HEADER =====
             InkWell(
               onTap: () {
-                // Close drawer then navigate to Profile
+                // Always close the drawer, then navigate directly to Profile.
+                // Remove delegation to parent via `onItemSelected` and label-based routing.
                 try {
                   Navigator.of(context).pop();
                 } catch (_) {}
 
-                if (onItemSelected != null && AppRoutes.labelToRoute.containsKey(AppRoutes.labelProfile)) {
-                  Future.microtask(() => onItemSelected!(AppRoutes.labelProfile));
-                  return;
-                }
-
                 try {
-                  Navigator.of(context).pushNamed(AppRoutes.profile);
+                  Navigator.pushNamed(context, AppRoutes.profile);
                 } catch (e) {
                   debugPrint('Profile navigation error: $e');
                 }
@@ -376,6 +378,35 @@ class AppDrawer extends StatelessWidget {
                     },
                   ),
 
+                  // Owner Dashboard (visible only for users whose Firestore
+                  // `users/{uid}.role` == 'owner'). We fetch the user doc with
+                  // the existing helper to avoid duplicating Firestore logic.
+                  FutureBuilder<Map<String, dynamic>?>(
+                    future: _fetchUserDoc(fb.FirebaseAuth.instance.currentUser?.uid),
+                    builder: (context, snap) {
+                      if (snap.connectionState == ConnectionState.waiting) return const SizedBox.shrink();
+                      final data = snap.data ?? {};
+                      final role = (data['role'] ?? '').toString().toLowerCase();
+                      if (role == 'owner') {
+                        return ListTile(
+                          leading: Icon(Icons.dashboard_outlined, color: onSurface),
+                          title: Text('Owner Dashboard', style: TextStyle(color: onSurface)),
+                          onTap: () {
+                            try {
+                              Navigator.of(context).pop();
+                            } catch (_) {}
+                            try {
+                              Navigator.push(context, MaterialPageRoute(builder: (_) => const OwnerDashboard()));
+                            } catch (e) {
+                              debugPrint('Owner Dashboard navigation failed: $e');
+                            }
+                          },
+                        );
+                      }
+                      return const SizedBox.shrink();
+                    },
+                  ),
+
                   const SizedBox(height: 16),
                   _sectionTitle("More", muted),
                   ListTile(
@@ -508,13 +539,15 @@ class AppDrawer extends StatelessWidget {
       if (snap.exists) return;
 
       final user = fb.FirebaseAuth.instance.currentUser;
-      final data = {
-        'name': user?.displayName ?? '',
-        'email': user?.email ?? '',
-        'phone': user?.phoneNumber ?? '',
-        'photoUrl': user?.photoURL ?? '',
-        'createdAt': FieldValue.serverTimestamp(),
-      };
+     final data = {
+  'name': user?.displayName ?? '',
+  'email': user?.email ?? '',
+  'phone': user?.phoneNumber ?? '',
+  'photoUrl': user?.photoURL ?? '',
+  'role': 'user', // DEFAULT ROLE
+  'createdAt': FieldValue.serverTimestamp(),
+};
+
 
       await docRef.set(data, SetOptions(merge: true));
     } catch (e) {

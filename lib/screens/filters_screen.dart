@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import '../theme/app_colors.dart';
 import '../models/category.dart';
 import '../filters/filters_provider.dart';
+import '../navigation/app_routes.dart';
+import 'location_selector_screen.dart';
 
 class FiltersScreen extends StatefulWidget {
   final Function(Map<String, dynamic>) onFiltersApplied;
@@ -354,14 +356,37 @@ class _FiltersScreenState extends State<FiltersScreen> {
               const Text('Location', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
               const SizedBox(height: 8),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                 decoration: BoxDecoration(border: Border.all(color: Colors.grey[300]!), borderRadius: BorderRadius.circular(8)),
-                child: DropdownButton<String>(
-                  value: _locationOptions.contains(_locationText) ? _locationText : _locationOptions.first,
-                  isExpanded: true,
-                  underline: Container(),
-                  items: _locationOptions.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
-                  onChanged: (v) => setState(() => _locationText = v ?? _locationOptions.first),
+                child: InkWell(
+                  onTap: () {
+                    // If Filters is shown as a bottom sheet/dialog, close it first.
+                    try {
+                      Navigator.of(context).pop();
+                    } catch (_) {}
+
+                    try {
+                      // Reuse the same Location selector used on the Home screen.
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        shape: const RoundedRectangleBorder(
+                          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                        ),
+                        builder: (bc) => const LocationSelectorScreen(),
+                      );
+                    } catch (e) {
+                      debugPrint('Location selector navigation error: $e');
+                    }
+                  },
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(_locationOptions.contains(_locationText) ? _locationText : _locationOptions.first),
+                      const Icon(Icons.chevron_right),
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(height: 12),
@@ -419,7 +444,37 @@ Container(
             children: [
               const Text('Location', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
               const SizedBox(height: 8),
-              Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4), decoration: BoxDecoration(border: Border.all(color: Colors.grey[300]!), borderRadius: BorderRadius.circular(8)), child: DropdownButton<String>(value: _locationOptions.contains(_locationText) ? _locationText : _locationOptions.first, isExpanded: true, underline: Container(), items: _locationOptions.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(), onChanged: (v) => setState(() => _locationText = v ?? _locationOptions.first))),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                decoration: BoxDecoration(border: Border.all(color: Colors.grey[300]!), borderRadius: BorderRadius.circular(8)),
+                child: InkWell(
+                  onTap: () {
+                    try {
+                      Navigator.of(context).pop();
+                    } catch (_) {}
+                    try {
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        shape: const RoundedRectangleBorder(
+                          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                        ),
+                        builder: (bc) => const LocationSelectorScreen(),
+                      );
+                    } catch (e) {
+                      debugPrint('Location selector navigation error: $e');
+                    }
+                  },
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(_locationOptions.contains(_locationText) ? _locationText : _locationOptions.first),
+                      const Icon(Icons.chevron_right),
+                    ],
+                  ),
+                ),
+              ),
               const SizedBox(height: 12),
               const Text('Price Range', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
               const SizedBox(height: 8),
@@ -480,7 +535,37 @@ Container(
             children: [
               const Text('Pickup location', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
               const SizedBox(height: 8),
-              Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4), decoration: BoxDecoration(border: Border.all(color: Colors.grey[300]!), borderRadius: BorderRadius.circular(8)), child: DropdownButton<String>(value: _locationOptions.contains(_locationText) ? _locationText : _locationOptions.first, isExpanded: true, underline: Container(), items: _locationOptions.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(), onChanged: (v) => setState(() => _locationText = v ?? _locationOptions.first))),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                decoration: BoxDecoration(border: Border.all(color: Colors.grey[300]!), borderRadius: BorderRadius.circular(8)),
+                child: InkWell(
+                  onTap: () {
+                    try {
+                      Navigator.of(context).pop();
+                    } catch (_) {}
+                    try {
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        shape: const RoundedRectangleBorder(
+                          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                        ),
+                        builder: (bc) => const LocationSelectorScreen(),
+                      );
+                    } catch (e) {
+                      debugPrint('Location selector navigation error: $e');
+                    }
+                  },
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(_locationOptions.contains(_locationText) ? _locationText : _locationOptions.first),
+                      const Icon(Icons.chevron_right),
+                    ],
+                  ),
+                ),
+              ),
               const SizedBox(height: 12),
               const Text('Pickup date & time', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
               const SizedBox(height: 8),
@@ -538,7 +623,37 @@ Container(
             children: [
               const Text('Location', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
               const SizedBox(height: 8),
-              Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4), decoration: BoxDecoration(border: Border.all(color: Colors.grey[300]!), borderRadius: BorderRadius.circular(8)), child: DropdownButton<String>(value: _locationOptions.contains(_locationText) ? _locationText : _locationOptions.first, isExpanded: true, underline: Container(), items: _locationOptions.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(), onChanged: (v) => setState(() => _locationText = v ?? _locationOptions.first))),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                decoration: BoxDecoration(border: Border.all(color: Colors.grey[300]!), borderRadius: BorderRadius.circular(8)),
+                child: InkWell(
+                  onTap: () {
+                    try {
+                      Navigator.of(context).pop();
+                    } catch (_) {}
+                    try {
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        shape: const RoundedRectangleBorder(
+                          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                        ),
+                        builder: (bc) => const LocationSelectorScreen(),
+                      );
+                    } catch (e) {
+                      debugPrint('Location selector navigation error: $e');
+                    }
+                  },
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(_locationOptions.contains(_locationText) ? _locationText : _locationOptions.first),
+                      const Icon(Icons.chevron_right),
+                    ],
+                  ),
+                ),
+              ),
               const SizedBox(height: 12),
               const Text('Price per hour', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
               const SizedBox(height: 8),
