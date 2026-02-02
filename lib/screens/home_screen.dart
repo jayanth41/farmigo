@@ -1055,21 +1055,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 : const Text('Save'),
             ),
             const SizedBox(height: 12),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const OwnerDashboard(),
-                  ),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.primary,
-
-              ),
-              child: const Text("Owner Dashboard"),
-            ),
+            // Owner Dashboard navigation removed from Edit Profile; moved to App Drawer for owners only.
           ],
         ),
       ),
