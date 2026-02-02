@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 class EditProfileScreen extends StatefulWidget {
-  const EditProfileScreen({Key? key}) : super(key: key);
+  const EditProfileScreen({super.key});
 
   @override
   State<EditProfileScreen> createState() => _EditProfileScreenState();
@@ -70,8 +70,21 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     try {
       if (_pickedImage != null) {
         final ref = _storage.ref().child('users/${user.uid}/profile.jpg');
-        await ref.putFile(_pickedImage!);
-        photoUrl = await ref.getDownloadURL();
+        try {
+          // Upload the file and wait for completion. We avoid relying on
+          // specific upload task types so this code is robust to SDK changes.
+          await ref.putFile(_pickedImage!);
+          // Attempt to read the download URL, but guard it in a try/catch.
+          try {
+            photoUrl = await ref.getDownloadURL();
+          } catch (e) {
+            debugPrint('getDownloadURL failed after upload: $e');
+            photoUrl = null;
+          }
+        } catch (e) {
+          // Upload failed; log and continue — we still save textual profile data
+          debugPrint('Failed to upload profile image: $e');
+        }
       }
 
       final updateData = {

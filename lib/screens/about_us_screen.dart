@@ -12,33 +12,33 @@ class AboutUsScreen extends StatelessWidget {
       ),
       body: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 16),
+              const SizedBox(height: 8),
               // Company Info Section
               _buildSection(
                 title: 'About Farmigo',
                 content:
                     'Farmigo is a leading platform for discovering and booking premium farmhouses, villas, and rural getaways. We connect travelers with authentic countryside experiences.',
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 28),
               // Mission Section
               _buildSection(
                 title: 'Our Mission',
                 content:
                     'To provide seamless access to beautiful rural properties while supporting local communities and sustainable tourism practices.',
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 28),
               // Vision Section
               _buildSection(
                 title: 'Our Vision',
                 content:
                     'To be the most trusted platform for rural hospitality, offering memorable experiences at every step of the journey.',
               ),
-              const SizedBox(height: 24),
-              // Contact Section
+              const SizedBox(height: 28),
+              // Contact Section (placeholder)
               const Text(
                 'Get in Touch',
                 style: TextStyle(
@@ -47,22 +47,17 @@ class AboutUsScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              _buildContactItem(
-                icon: Icons.email,
-                label: 'Email',
-                value: 'support@farmigo.com',
-              ),
-              const SizedBox(height: 12),
-              _buildContactItem(
-                icon: Icons.phone,
-                label: 'Phone',
-                value: '+91 9876543210',
-              ),
-              const SizedBox(height: 12),
-              _buildContactItem(
-                icon: Icons.location_on,
-                label: 'Address',
-                value: 'Bangalore, India',
+              Card(
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                color: Colors.green.shade50,
+                child: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Text(
+                    'Contact details will be available soon.',
+                    style: TextStyle(fontSize: 14, color: Colors.grey.shade800, height: 1.5),
+                  ),
+                ),
               ),
               const SizedBox(height: 32),
             ],
@@ -96,35 +91,5 @@ class AboutUsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildContactItem({
-    required IconData icon,
-    required String label,
-    required String value,
-  }) {
-    return Row(
-      children: [
-        Icon(icon, size: 20, color: Colors.green),
-        const SizedBox(width: 12),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 12,
-                color: Colors.grey,
-              ),
-            ),
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
+  // Contact items removed - replaced by a placeholder message above.
 }
