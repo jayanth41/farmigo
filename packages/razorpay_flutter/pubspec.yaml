@@ -1,0 +1,13 @@
+name: razorpay_flutter
+version: 1.0.0
+description: Local stub of razorpay_flutter for development (no native bindings)
+environment:
+  sdk: '>=2.17.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+flutter:
+  plugin:
+    platforms: {}

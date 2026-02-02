@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/booking_service.dart';
 
 class BookingsController extends GetxController {
@@ -19,9 +20,21 @@ class BookingsController extends GetxController {
         bookings.clear();
         return;
       }
+      // Read bookings from Firestore
+      final snap = await FirebaseFirestore.instance
+          .collection('bookings')
+          .where('userId', isEqualTo: user.uid)
+          .orderBy('createdAt', descending: true)
+          .get();
 
-      // No backend configured for bookings yet. Keep empty list to avoid crashes.
-      bookings.clear();
+      final List<Map<String, dynamic>> results = [];
+      for (final doc in snap.docs) {
+        final data = Map<String, dynamic>.from(doc.data() as Map<String, dynamic>);
+        data['id'] = doc.id;
+        results.add(data);
+      }
+
+      bookings.value = results;
     } catch (e) {
       bookings.clear();
       debugPrint('Error fetching bookings: $e');
@@ -59,7 +72,27 @@ class BookingsController extends GetxController {
   }
 
   Future<bool> cancelBooking(dynamic id) async {
-    debugPrint('cancelBooking called but no backend configured');
-    return false;
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return false;
+
+      final bookingId = id?.toString();
+      if (bookingId == null || bookingId.isEmpty) return false;
+
+      final batch = FirebaseFirestore.instance.batch();
+      final bookingRef = FirebaseFirestore.instance.collection('bookings').doc(bookingId);
+      batch.update(bookingRef, {'status': 'cancelled'});
+
+      final userBookingRef = FirebaseFirestore.instance.collection('users').doc(user.uid).collection('bookings').doc(bookingId);
+      batch.update(userBookingRef, {'status': 'cancelled'});
+
+      await batch.commit();
+
+      await fetchBookings();
+      return true;
+    } catch (e) {
+      debugPrint('cancelBooking failed: $e');
+      return false;
+    }
   }
 }
