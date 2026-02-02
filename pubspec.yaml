@@ -28,6 +28,8 @@ dependencies:
   cloud_firestore: ^4.15.0
   google_sign_in: ^6.2.1
   firebase_storage: ^11.6.0
+  razorpay_flutter:
+    path: packages/razorpay_flutter
 
   # Location & permissions
   geolocator: ^12.0.0
@@ -50,3 +52,8 @@ flutter:
     - assets/animations/
     - assets/images/
     - assets/lottie/
+
+dependency_overrides:
+  razorpay_flutter:
+    path: packages/razorpay_flutter
+

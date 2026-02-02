@@ -204,15 +204,15 @@ class BookingItemCard extends StatelessWidget {
             borderRadius: const BorderRadius.only(topLeft: Radius.circular(14), topRight: Radius.circular(14)),
             child: imageUrl.isNotEmpty
                 ? Image.network(
-                    imageUrl,
-                    height: 160,
-                    fit: BoxFit.cover,
-                    errorBuilder: (ctx, err, st) => Container(
-                      height: 160,
-                      color: cs.surfaceContainerHighest,
-                      child: Icon(Icons.home, size: 48, color: cs.onSurface.withOpacity(0.3)),
-                    ),
-                  )
+  imageUrl,
+  fit: BoxFit.cover,
+  errorBuilder: (context, error, stackTrace) {
+    return Image.asset(
+      'assets/images/fallback.png',
+      fit: BoxFit.cover,
+    );
+  },
+)
                 : Container(
                     height: 160,
                     color: cs.surfaceContainerHighest,
@@ -294,9 +294,9 @@ class BookingItemCard extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    if (booking['totalPrice'] != null && (booking['totalPrice'] is num ? (booking['totalPrice'] as num) > 0 : booking['totalPrice'].toString().isNotEmpty))
+                    if (booking['totalAmount'] != null && (booking['totalAmount'] is num ? (booking['totalAmount'] as num) > 0 : booking['totalAmount'].toString().isNotEmpty))
                       Text(
-                        '₹${booking['totalPrice'].toString()}',
+                        '₹${booking['totalAmount'].toString()}',
                         style: theme.textTheme.titleSmall?.copyWith(color: Colors.green[700], fontWeight: FontWeight.bold),
                       ),
                     const SizedBox(width: 8),
@@ -362,7 +362,7 @@ class BookingItemCard extends StatelessWidget {
     _buildDetailRow('Check-in', booking['checkIn'] ?? ''),
     _buildDetailRow('Check-out', booking['checkOut'] ?? ''),
     _buildDetailRow('Guests', booking['guests']?.toString() ?? ''),
-    _buildDetailRow('Total Price', booking['totalPrice'] != null ? '₹${booking['totalPrice']}' : ''),
+  _buildDetailRow('Total Price', booking['totalAmount'] != null ? '₹${booking['totalAmount']}' : ''),
     _buildDetailRow('Status', booking['status']?.toString().toUpperCase() ?? ''),
               const SizedBox(height: 12),
               const Text(
@@ -411,7 +411,7 @@ class BookingItemCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Text(
-                'Refund: ₹${((booking['totalPrice'] ?? 0) * 0.5).toStringAsFixed(0)} (50% of total)',
+                'Refund: ₹${((booking['totalAmount'] ?? 0) * 0.5).toStringAsFixed(0)} (50% of total)',
                 style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,

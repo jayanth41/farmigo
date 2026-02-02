@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart' show FirebaseException;
+import 'package:get/get.dart';
 
 import 'reward_service.dart';
 
@@ -80,6 +82,17 @@ class BookingService {
       }
 
       return true;
+    } on FirebaseException catch (e) {
+      // Handle Firestore-specific errors (e.g., permission denied)
+      debugPrint('createBooking FirebaseException: ${e.code} ${e.message}');
+      if (e.code.toString().toLowerCase().contains('permission')) {
+        try {
+          Get.snackbar('Booking failed', 'Booking failed: Check Firestore rules');
+        } catch (_) {
+          // ignore if Get isn't available at runtime
+        }
+      }
+      return false;
     } catch (e) {
       debugPrint('createBooking error: $e');
       return false;

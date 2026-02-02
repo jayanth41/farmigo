@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:razorpay_flutter/razorpay_flutter.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../widgets/app_drawer.dart';
 import '../widgets/image_with_fallback.dart';
 import '../models/farmhouse_model.dart';
@@ -75,6 +77,9 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
   ];
 
   List<Map<String, dynamic>> similarFarmhouses = [];
+  late Razorpay _razorpay;
+  static const String _razorpayKey = '<RAZORPAY_KEY_HERE>'; // replace with live key when available
+  Map<String, dynamic>? _pendingBooking;
 
   @override
   void initState() {
@@ -119,13 +124,128 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
 
     // ADDED: Load similar farmhouses
     _loadSimilarFarmhouses();
+
+    // Initialize Razorpay
+    try {
+      _razorpay = Razorpay();
+      _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
+      _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
+      _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
+    } catch (_) {}
   }
 
   @override
   void dispose() {
     _autoSlideTimer?.cancel();
     _pageController.dispose();
+    try {
+      _razorpay.clear();
+    } catch (_) {}
     super.dispose();
+  }
+
+  // Open Razorpay checkout with given amount (in app currency units)
+  void _openCheckout(num amount) {
+    final user = FirebaseAuth.instance.currentUser;
+    final options = {
+      'key': _razorpayKey,
+      // Razorpay expects amount in paise (i.e., INR * 100)
+      'amount': (amount * 100).round(),
+      'name': widget.name ?? 'Farmigo',
+      'description': 'Property booking',
+      'prefill': {
+        'contact': user?.phoneNumber ?? '',
+        'email': user?.email ?? '',
+      },
+      'theme': {
+        'color': '#00A86B',
+      }
+    };
+
+    try {
+      _razorpay.open(options);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Payment failed to start')),
+      );
+    }
+  }
+
+  // Called when payment is successful. Create booking document and increment user count.
+  void _handlePaymentSuccess(PaymentSuccessResponse response) async {
+    if (_pendingBooking == null) return;
+
+    final bookingsController = Get.find<BookingsController>();
+    final success = await bookingsController.addBooking(
+      listingId: _pendingBooking!['listingId'],
+      propertyName: _pendingBooking!['propertyName'],
+      location: _pendingBooking!['location'],
+      imageUrl: _pendingBooking!['imageUrl'],
+      ownerId: _pendingBooking!['ownerId'],
+      checkIn: _pendingBooking!['checkIn'],
+      checkOut: _pendingBooking!['checkOut'],
+      totalPrice: _pendingBooking!['totalPrice'],
+    );
+
+    if (!mounted) return;
+
+    if (success) {
+      // increment bookingsCount on user
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid != null) {
+        try {
+          await FirebaseFirestore.instance.collection('users').doc(uid).update({
+            'bookingsCount': FieldValue.increment(1),
+          });
+        } catch (e) {
+          // If update fails (missing doc), try set with merge
+          try {
+            await FirebaseFirestore.instance.collection('users').doc(uid).set({
+              'bookingsCount': FieldValue.increment(1),
+            }, SetOptions(merge: true));
+          } catch (_) {}
+        }
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Booking successful')),
+      );
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const BookingsScreen(),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Booking failed after payment. Contact support.')),
+      );
+    }
+
+    _pendingBooking = null;
+  }
+
+  void _handlePaymentError(PaymentFailureResponse response) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Payment failed'),
+        content: Text('Payment failed: ${response.message ?? response.code.toString()}'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+    _pendingBooking = null;
+  }
+
+  void _handleExternalWallet(ExternalWalletResponse response) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('External wallet selected: ${response.walletName}')),
+    );
   }
 
   // ADDED: Method to load similar farmhouses
@@ -1050,37 +1170,20 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
               return;
             }
 
-            // Use the BookingsController so UI state refreshes after insert
-            final bookingsController = Get.find<BookingsController>();
-            final success = await bookingsController.addBooking(
-              listingId: widget.id!,
-              propertyName: widget.name,
-              location: widget.location,
-              imageUrl: widget.imageUrl,
-              ownerId: widget.ownerId,
-              checkIn: selectedCheckInDate?.toIso8601String() ?? '',
-              checkOut: selectedCheckOutDate?.toIso8601String() ?? '',
-              totalPrice: calculatedPrice,
-            );
+            // Prepare pending booking data and open Razorpay checkout.
+            // The actual booking document will be created only after payment success.
+            _pendingBooking = {
+              'listingId': widget.id!,
+              'propertyName': widget.name,
+              'location': widget.location,
+              'imageUrl': widget.imageUrl,
+              'ownerId': widget.ownerId,
+              'checkIn': selectedCheckInDate?.toIso8601String() ?? '',
+              'checkOut': selectedCheckOutDate?.toIso8601String() ?? '',
+              'totalPrice': calculatedPrice,
+            };
 
-            if (!mounted) return;
-            final localContext = context;
-
-            if (success) {
-              ScaffoldMessenger.of(localContext).showSnackBar(
-                const SnackBar(content: Text('Booking successful')),
-              );
-              Navigator.push(
-                localContext,
-                MaterialPageRoute(
-                  builder: (_) => const BookingsScreen(),
-                ),
-              );
-            } else {
-              ScaffoldMessenger.of(localContext).showSnackBar(
-                const SnackBar(content: Text('Booking failed, try again')),
-              );
-            }
+            _openCheckout(calculatedPrice);
           },
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.green,
