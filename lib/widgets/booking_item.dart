@@ -154,13 +154,13 @@ class BookingItem extends StatelessWidget {
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(color: AppTheme.bookingBadgeConfirmedBg, borderRadius: BorderRadius.circular(20)),
-          child: Row(children: const [Icon(Icons.check_circle, color: AppTheme.bookingBadgeConfirmedFg, size: 16), SizedBox(width: 6), Text('Confirmed', style: TextStyle(color: AppTheme.bookingBadgeConfirmedFg))]),
+          child: Row(children: [Icon(Icons.check_circle, color: AppTheme.bookingBadgeConfirmedFg, size: 16), const SizedBox(width: 6), Text('Confirmed', style: TextStyle(color: AppTheme.bookingBadgeConfirmedFg))]),
         );
       case 'upcoming':
           return Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(color: AppTheme.bookingBadgeUpcomingBg, borderRadius: BorderRadius.circular(20)),
-            child: Row(children: const [Icon(Icons.access_time, color: AppTheme.bookingBadgeUpcomingFg, size: 16), SizedBox(width: 6), Text('Upcoming', style: TextStyle(color: AppTheme.bookingBadgeUpcomingFg))]),
+            child: Row(children: [Icon(Icons.access_time, color: AppTheme.bookingBadgeUpcomingFg, size: 16), const SizedBox(width: 6), Text('Upcoming', style: TextStyle(color: AppTheme.bookingBadgeUpcomingFg))]),
           );
       case 'completed':
           return Container(
@@ -172,7 +172,7 @@ class BookingItem extends StatelessWidget {
           return Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(color: AppTheme.bookingBadgeCancelledBg, borderRadius: BorderRadius.circular(20)),
-            child: Row(children: const [Icon(Icons.close, color: AppTheme.bookingBadgeCancelledFg, size: 16), SizedBox(width: 6), Text('Cancelled', style: TextStyle(color: AppTheme.bookingBadgeCancelledFg))]),
+            child: Row(children: [Icon(Icons.close, color: AppTheme.bookingBadgeCancelledFg, size: 16), const SizedBox(width: 6), Text('Cancelled', style: TextStyle(color: AppTheme.bookingBadgeCancelledFg))]),
           );
       default:
         return const SizedBox.shrink();

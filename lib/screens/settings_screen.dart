@@ -137,23 +137,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
 
-          const SizedBox(height: 20),
-
-          ElevatedButton(
-            onPressed: _logout,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: colorScheme.error,
-              foregroundColor: colorScheme.onError,
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-            ),
-            child: Text(
-              "LOGOUT",
-              style: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.bold, color: colorScheme.onError),
-            ),
-          ),
+          
         ],
       ),
     );

@@ -22,11 +22,11 @@ class HelpSupportScreen extends StatelessWidget {
         children: [
           _buildHeader(),
           const SizedBox(height: 16),
-          _buildContactSection(),
+          _buildContactSection(context),
           const SizedBox(height: 20),
           _buildFaqSection(),
           const SizedBox(height: 20),
-          _buildLearningResources(),
+          _buildLearningResources(context),
           const SizedBox(height: 20),
           _buildSupportHours(),
         ],
@@ -65,51 +65,51 @@ class HelpSupportScreen extends StatelessWidget {
             "We're here to help you",
             style: TextStyle(color: Colors.white70),
           ),
-          SizedBox(height: 12),
-          TextField(
-            decoration: InputDecoration(
-              hintText: "Search for help...",
-              prefixIcon: Icon(Icons.search),
-              filled: true,
-              fillColor: Colors.white,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.all(Radius.circular(12)),
-                borderSide: BorderSide.none,
-              ),
-            ),
-          )
+          // Search bar removed to simplify header
+          SizedBox(height: 4),
         ],
       ),
     );
   }
 
   // 🔹 Contact cards
-  Widget _buildContactSection() {
+  Widget _buildContactSection(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text("Contact Us",
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         const SizedBox(height: 10),
-        _contactTile(Icons.chat, "Live Chat", "Chat with our support team"),
-        _contactTile(Icons.call, "Call Us", "+1 (800) 123-4567"),
-        _contactTile(Icons.email, "Email Support", "support@farmigo.com"),
+        _contactTile(context, Icons.chat, "Live Chat", "Chat with our support team"),
+        _contactTile(context, Icons.call, "Call Us", "Coming soon"),
+        _contactTile(context, Icons.email, "Email Support", "Coming soon"),
       ],
     );
   }
 
-  Widget _contactTile(IconData icon, String title, String subtitle) {
+  Widget _contactTile(BuildContext context, IconData icon, String title, String subtitle) {
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: Colors.blue.shade50,
-          child: Icon(icon, color: Colors.blue),
+          backgroundColor: Colors.green.shade50,
+          child: Icon(icon, color: Colors.green),
         ),
         title: Text(title),
         subtitle: Text(subtitle),
         trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-        onTap: () {},
+        onTap: () {
+          showDialog<void>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: Text(title),
+              content: const Text('This feature is coming soon.'),
+              actions: [
+                TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('OK')),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
@@ -150,21 +150,20 @@ class HelpSupportScreen extends StatelessWidget {
   }
 
   // 🔹 Learning resources
-  Widget _buildLearningResources() {
+  Widget _buildLearningResources(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text("Learning Resources",
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         const SizedBox(height: 10),
-        _resourceTile(Icons.menu_book, "User Guide", "Learn how to use the app"),
-        _resourceTile(
-            Icons.video_library, "Video Tutorials", "Watch step-by-step guides"),
+        _resourceTile(context, Icons.menu_book, "User Guide", "Learn how to use the app"),
+        _resourceTile(context, Icons.video_library, "Video Tutorials", "Watch step-by-step guides"),
       ],
     );
   }
 
-  Widget _resourceTile(IconData icon, String title, String subtitle) {
+  Widget _resourceTile(BuildContext context, IconData icon, String title, String subtitle) {
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
@@ -172,7 +171,26 @@ class HelpSupportScreen extends StatelessWidget {
         title: Text(title),
         subtitle: Text(subtitle),
         trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-        onTap: () {},
+        onTap: () => _showNoticeItem(context, title),
+      ),
+    );
+  }
+
+  void _showNoticeItem(BuildContext context, String title) {
+    final message = title == 'User Guide'
+        ? 'User guide will be available soon.'
+        : title == 'Video Tutorials'
+            ? 'Tutorial videos coming soon.'
+            : 'Coming soon.';
+
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('OK')),
+        ],
       ),
     );
   }

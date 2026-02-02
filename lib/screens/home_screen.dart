@@ -24,6 +24,7 @@ import '../controllers/app_location_controller.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import '../models/category.dart';
+import 'location_selector_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -391,6 +392,19 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // Open the new Location Selector bottom sheet (BookMyShow-style)
+  void _openLocationSelector(BuildContext ctx) {
+    showModalBottomSheet(
+      context: ctx,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (bc) => const LocationSelectorScreen(),
+    );
+  }
+
   void _applyFilters() {
     final query = _searchController.text.toLowerCase();
     final selectedState = _selectedState.toLowerCase();
@@ -572,9 +586,9 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _homePage() {
     return Column(
       children: [
-        // ---------- HEADER ----------
+        // ---------- HEADER (redesigned widget only) ----------
         Container(
-          padding: EdgeInsets.fromLTRB(16, 12, 16, 16),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16), // slightly increased vertical space
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
@@ -587,298 +601,332 @@ class _HomeScreenState extends State<HomeScreen> {
             borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
           ),
           child: Column(
-              children: [
-                Row(
-                  children: [
-                    Builder(
-                      builder: (context) => IconButton(
-                        icon: Icon(Icons.menu, color: Theme.of(context).colorScheme.onPrimary),
-                        onPressed: () => Scaffold.of(context).openDrawer(),
-                      ),
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Top row: menu, logo, title+location stacked, filter
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Builder(
+                    builder: (context) => IconButton(
+                      icon: Icon(Icons.menu, color: Theme.of(context).colorScheme.onPrimary),
+                      onPressed: () => Scaffold.of(context).openDrawer(),
                     ),
-                    const SizedBox(width: 6),
-                    // App logo
-                    Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primaryContainer,
-                        borderRadius: BorderRadius.circular(8),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Theme.of(context).colorScheme.primary.withOpacity(0.25),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Center(
-                        child: Text(
-                          'F',
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.primary,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 18,
-                          ),
+                  ),
+                  const SizedBox(width: 6),
+                  // App logo
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Theme.of(context).colorScheme.primary.withOpacity(0.25),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Center(
+                      child: Text(
+                        'F',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 18,
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Farmigo',
-                      style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900,
-                        color: Theme.of(context).colorScheme.onPrimary,
+                  ),
+                  const SizedBox(width: 8),
+                  // Title + location stacked so location sits directly under title (left aligned)
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Farmigo title (bigger, bold, white)
+                        Text(
+                          'Farmigo',
+                          style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                                fontSize: 26,
+                                fontWeight: FontWeight.w900,
+                                color: Theme.of(context).colorScheme.onPrimary,
+                              ),
+                        ),
+                        const SizedBox(height: 4),
+                        // Location row (pin icon + text) - clickable; logic unchanged
+                        InkWell(
+                          onTap: () => _openLocationSelector(context),
+                          borderRadius: BorderRadius.circular(6),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 2.0),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.location_on_outlined,
+                                  size: 14,
+                                  color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.95),
+                                ),
+                                const SizedBox(width: 6),
+                                // Preserve existing logic for retrieving/displaying location (unchanged)
+                                Builder(builder: (ctx) {
+                                  try {
+                                    final appLoc = Provider.of<AppLocationController>(ctx);
+                                    final name = appLoc.locationName;
+                                    return Text(
+                                      name,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.92),
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    );
+                                  } catch (_) {
+                                    // fallback to LocationController & FutureBuilder combo (exact same logic as before)
+                                    return Obx(() {
+                                      final name = locationController.selectedLocationName;
+                                      if (locationController.selectedCity.value.isNotEmpty) {
+                                        return Text(
+                                          name,
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.92),
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        );
+                                      }
+                                      return FutureBuilder<String?>(
+                                        future: _fetchLocationOnce(),
+                                        builder: (context, snap) {
+                                          if (snap.connectionState == ConnectionState.waiting) return const SizedBox.shrink();
+                                          final val = snap.data;
+                                          return Text(
+                                            val ?? 'Location unavailable',
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.92),
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          );
+                                        },
+                                      );
+                                    });
+                                  }
+                                }),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Filter icon (kept logic intact)
+                  IconButton(
+                    icon: Icon(Icons.tune, color: Theme.of(context).colorScheme.onPrimary),
+                    onPressed: () {
+                      final cat = () {
+                        final s = _selectedCategory.toLowerCase();
+                        if (s.contains('farm')) return Category.farmhouse;
+                        if (s.contains('villa')) return Category.villa;
+                        if (s.contains('hotel')) return Category.hotel;
+                        if (s.contains('flight') || s.contains('flights')) return Category.flights;
+                        if (s.contains('car')) return Category.car;
+                        if (s.contains('hour')) return Category.hourly;
+                        return Category.all;
+                      }();
+
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => FiltersScreen(
+                            category: cat,
+                            onFiltersApplied: (filters) {
+                              setState(() {
+                                _priceRange = filters['priceRange'] ?? _priceRange;
+                                _maxDistance = filters['maxDistance'] ?? _maxDistance;
+                                _luxuryOnly = filters['luxuryOnly'] ?? _luxuryOnly;
+                                _minRating = filters['minRating'] ?? _minRating;
+                                _amenities.addAll(filters['amenities'] ?? {});
+                                _propertyTypes.addAll(filters['propertyTypes'] ?? {});
+                                _sortOption = filters['sortOption'] ?? _sortOption;
+
+                                // map back some category-specific values if present
+                                if (cat == Category.farmhouse || cat == Category.villa) {
+                                  // optional: read guests/location
+                                }
+                              });
+                              _applyFilters();
+                            },
+                            initialFilters: {
+                              'priceRange': _priceRange,
+                              'maxDistance': _maxDistance,
+                              'luxuryOnly': _luxuryOnly,
+                              'minRating': _minRating,
+                              'amenities': _amenities,
+                              'propertyTypes': _propertyTypes,
+                              'sortOption': _sortOption,
+                            },
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 10), // small gap before search bar (search bar unchanged)
+              // SEARCH BAR (exact same behavior; alignment preserved)
+              Builder(builder: (ctx) {
+                final cs = Theme.of(ctx).colorScheme;
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 2),
+                  child: TextField(
+                    controller: _searchController,
+                    cursorColor: cs.primary,
+                    style: TextStyle(color: cs.onSurface),
+                    decoration: InputDecoration(
+                      hintText: 'Search farmhouses, villas...',
+                      hintStyle: TextStyle(color: cs.onSurface.withOpacity(0.65)),
+                      filled: true,
+                      fillColor: cs.surface,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      prefixIcon: Icon(Icons.search, color: cs.primary),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide.none,
                       ),
                     ),
-                    // Title area - kept compact. Location label placed below this row.
-                    const Spacer(),
-                    IconButton(
-                      icon: Icon(Icons.tune, color: Theme.of(context).colorScheme.onPrimary),
-                      onPressed: () {
-                        final cat = () {
-                          final s = _selectedCategory.toLowerCase();
-                          if (s.contains('farm')) return Category.farmhouse;
-                          if (s.contains('villa')) return Category.villa;
-                          if (s.contains('hotel')) return Category.hotel;
-                          if (s.contains('flight') || s.contains('flights')) return Category.flights;
-                          if (s.contains('car')) return Category.car;
-                          if (s.contains('hour')) return Category.hourly;
-                          return Category.all;
-                        }();
+                  ),
+                );
+              }),
+            ],
+          ),
+        ),
 
+        // ---------- BODY ----------
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.only(bottom: 120),
+            children: [
+              const SizedBox(height: 16),
+              // GREETING
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Hello 👋', style: Theme.of(context).textTheme.bodyLarge),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Where would you like to go?',
+                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        color: Theme.of(context).colorScheme.primary,
+
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              // CATEGORIES
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  "Categories",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+                ),
+              ),
+              const SizedBox(height: 8.5),
+              CategoryGrid(
+                selectedCategory: _selectedCategory,
+                onTap: (c) {
+                  setState(() {
+                    _selectedCategory = c;
+                    _applyFilters();
+                  });
+                },
+              ),
+              const SizedBox(height: 20),
+              // OFFERS
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  "Best Offers",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+                ),
+              ),
+              const SizedBox(height: 8),
+              OffersCarousel(
+                offers: const [
+                  OfferItem(
+                    title: 'Weekend Deals',
+                    subtitle: 'Up to 40% off',
+                    icon: Icons.local_fire_department,
+                    color: Color.fromARGB(255, 62, 179, 132),
+                  ),
+                  OfferItem(
+                    title: 'Early Bird',
+                    subtitle: 'Save 15%',
+                    icon: Icons.percent,
+                    color: Color.fromARGB(255, 108, 162, 207),
+                  ),
+                  OfferItem(
+                    title: 'First Booking',
+                    subtitle: '20% off',
+                    icon: Icons.star_border,
+                    color: Color.fromARGB(255, 58, 196, 67),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              // FEATURED
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                child: Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        "Featured Properties",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => FiltersScreen(
-                              category: cat,
-                              onFiltersApplied: (filters) {
-                                setState(() {
-                                  _priceRange = filters['priceRange'] ?? _priceRange;
-                                  _maxDistance = filters['maxDistance'] ?? _maxDistance;
-                                  _luxuryOnly = filters['luxuryOnly'] ?? _luxuryOnly;
-                                  _minRating = filters['minRating'] ?? _minRating;
-                                  _amenities.addAll(filters['amenities'] ?? {});
-                                  _propertyTypes.addAll(filters['propertyTypes'] ?? {});
-                                  _sortOption = filters['sortOption'] ?? _sortOption;
-
-                                  // map back some category-specific values if present
-                                  if (cat == Category.farmhouse || cat == Category.villa) {
-                                    // optional: read guests/location
-                                  }
-                                });
-                                _applyFilters();
-                              },
-                              initialFilters: {
-                                'priceRange': _priceRange,
-                                'maxDistance': _maxDistance,
-                                'luxuryOnly': _luxuryOnly,
-                                'minRating': _minRating,
-                                'amenities': _amenities,
-                                'propertyTypes': _propertyTypes,
-                                'sortOption': _sortOption,
-                              },
+                            builder: (_) => AllPropertiesScreen(
+                              properties: _filteredFarmhouses,
                             ),
                           ),
                         );
                       },
-                    ),
-                  ],
-        ),
-          const SizedBox(height: 4),
-                // Small clickable current location placed under title, left aligned
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: GestureDetector(
-                      onTap: () => _showLocationSheet(context),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(
-                            '📍 Current location',
-                            style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodySmall?.color),
-                          ),
-                          const SizedBox(height: 2),
-                          Builder(builder: (ctx) {
-                            try {
-                              final appLoc = Provider.of<AppLocationController>(ctx);
-                              final name = appLoc.locationName;
-                              return Text(
-                                name,
-                                style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.w600),
-                              );
-                            } catch (_) {
-                              // Fallback to last-known fetched future
-                              return FutureBuilder<String?>(
-                                future: _fetchLocationOnce(),
-                                builder: (context, snap) {
-                                  if (snap.connectionState == ConnectionState.waiting) return const SizedBox.shrink();
-                                  final val = snap.data;
-                                  return Text(
-                                    val ?? 'Location unavailable',
-                                    style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.w600),
-                                  );
-                                },
-                              );
-                            }
-                          })
+                          Text('View all'),
+                          SizedBox(width: 4),
+                          Icon(Icons.arrow_forward_ios, size: 14),
                         ],
                       ),
-                    ),
-                  ),
-                ),
-
-                // SEARCH BAR (single rounded field)
-                Builder(builder: (ctx) {
-                  final cs = Theme.of(ctx).colorScheme;
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 2),
-                    child: TextField(
-                      controller: _searchController,
-                      cursorColor: cs.primary,
-                      style: TextStyle(color: cs.onSurface),
-                      decoration: InputDecoration(
-                        hintText: 'Search farmhouses, villas...',
-                        hintStyle: TextStyle(color: cs.onSurface.withOpacity(0.65)),
-                        filled: true,
-                        fillColor: cs.surface,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        prefixIcon: Icon(Icons.search, color: cs.primary),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                    ),
-                  );
-                }),
-              ],
-            ),
-          ),
-
-          // ---------- BODY ----------
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.only(bottom: 120),
-              children: [
-                const SizedBox(height: 16),
-                // GREETING
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Hello 👋', style: Theme.of(context).textTheme.bodyLarge),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Where would you like to go?',
-                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          color: Theme.of(context).colorScheme.primary,
-
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                // CATEGORIES
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16),
-                  child: Text(
-                    "Categories",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
-                  ),
-                ),
-                const SizedBox(height: 8.5),
-                CategoryGrid(
-                  selectedCategory: _selectedCategory,
-                  onTap: (c) {
-                    setState(() {
-                      _selectedCategory = c;
-                      _applyFilters();
-                    });
-                  },
-                ),
-                const SizedBox(height: 20),
-                // OFFERS
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16),
-                  child: Text(
-                    "Best Offers",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                OffersCarousel(
-                  offers: const [
-                    OfferItem(
-                      title: 'Weekend Deals',
-                      subtitle: 'Up to 40% off',
-                      icon: Icons.local_fire_department,
-                      color: Color.fromARGB(255, 62, 179, 132),
-                    ),
-                    OfferItem(
-                      title: 'Early Bird',
-                      subtitle: 'Save 15%',
-                      icon: Icons.percent,
-                      color: Color.fromARGB(255, 108, 162, 207),
-                    ),
-                    OfferItem(
-                      title: 'First Booking',
-                      subtitle: '20% off',
-                      icon: Icons.star_border,
-                      color: Color.fromARGB(255, 58, 196, 67),
-                    ),
+                    )
                   ],
                 ),
-                const SizedBox(height: 20),
-                // FEATURED
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  child: Row(
-                    children: [
-                      const Expanded(
-                        child: Text(
-                          "Featured Properties",
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => AllPropertiesScreen(
-                                properties: _filteredFarmhouses,
-                              ),
-                            ),
-                          );
-                        },
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text('View all'),
-                            SizedBox(width: 4),
-                            Icon(Icons.arrow_forward_ios, size: 14),
-                          ],
-                        ),
-                      )
-                    ],
-                  ),
-                ),
-                PropertiesGrid(properties: _filteredFarmhouses),
-              ],
-            ),
+              ),
+              PropertiesGrid(properties: _filteredFarmhouses),
+            ],
           ),
-        ],
-      );
+        ),
+      ],
+    );
   }
 }
 
