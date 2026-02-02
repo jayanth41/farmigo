@@ -293,6 +293,51 @@ class OwnerDashboard extends StatelessWidget {
     );
   }
 
+  Widget _buildPropertyCard(BuildContext context,
+      {required String name,
+      required String type,
+      required String city,
+      required num price,
+      required bool active}) {
+    return Card(
+      margin: EdgeInsets.zero,
+      elevation: 0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade100),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(name, style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 6),
+                Text('$type • $city', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey.shade600)),
+              ]),
+            ),
+            const SizedBox(width: 12),
+            Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+              Text('₹ ${price.toString()}', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                decoration: BoxDecoration(
+                  color: active ? Colors.green.shade50 : Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(active ? 'Active' : 'Inactive', style: TextStyle(color: active ? Colors.green.shade700 : Colors.grey.shade700, fontWeight: FontWeight.w600)),
+              )
+            ])
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildQuickAction(BuildContext context, {required IconData icon, required String label, VoidCallback? onTap}) {
     return InkWell(
       onTap: onTap ?? () {
@@ -418,6 +463,67 @@ class OwnerDashboard extends StatelessWidget {
                           _buildQuickAction(context, icon: Icons.analytics_outlined, label: 'View Analytics'),
                           _buildQuickAction(context, icon: Icons.settings_outlined, label: 'Property Settings'),
                         ],
+                      ),
+
+                      const SizedBox(height: 18),
+
+                      // My Properties
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8.0),
+                          child: Text('My Properties',
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, fontSize: 18, color: Colors.grey.shade900)),
+                        ),
+                      ),
+
+                      StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                        stream: FirebaseFirestore.instance
+                            .collection('properties')
+                            .where('ownerId', isEqualTo: FirebaseAuth.instance.currentUser?.uid)
+                            .orderBy('createdAt', descending: true)
+                            .snapshots(),
+                        builder: (context, snap) {
+                          if (snap.hasError) {
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 20.0),
+                              child: Text('Failed to load properties', style: TextStyle(color: Colors.red.shade700)),
+                            );
+                          }
+
+                          if (snap.connectionState == ConnectionState.waiting) {
+                            return const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 20.0),
+                              child: Center(child: CircularProgressIndicator()),
+                            );
+                          }
+
+                          final docs = snap.data?.docs ?? [];
+                          if (docs.isEmpty) {
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 16.0),
+                              child: Center(child: Text('You have not listed any properties yet.', style: TextStyle(color: Colors.grey.shade700))),
+                            );
+                          }
+
+                          return Column(
+                            children: docs.map((d) {
+                              final data = d.data();
+                              final name = (data['name'] as String?) ?? 'Property';
+                              final type = (data['type'] as String?) ?? '';
+                              final city = ((data['address'] as Map?)?['city'] as String?) ?? '';
+                              final price = (data['pricing'] != null && (data['pricing'] as Map)['pricePerNight'] != null)
+                                  ? (data['pricing'] as Map)['pricePerNight']
+                                  : 0;
+                              final active = (data['activeListing'] as bool?) ?? false;
+
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 12.0),
+                                child: _buildPropertyCard(context, name: name, type: type, city: city, price: price, active: active),
+                              );
+                            }).toList(),
+                          );
+                        },
                       ),
 
                       const SizedBox(height: 18),

@@ -1,4 +1,10 @@
+import 'dart:io';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 class AddPropertyScreen extends StatefulWidget {
   const AddPropertyScreen({super.key});
@@ -46,6 +52,8 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
 
   // Photos (we'll keep a list of URLs/placeholder strings for the UI)
   final List<String> _photos = [];
+  final List<XFile> _pickedFiles = [];
+  bool _isPublishing = false;
 
   // Availability
   bool _instantBooking = false;
@@ -67,45 +75,164 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
     super.dispose();
   }
 
-  void _addMockPhoto() async {
-    // Since project doesn't include a file-picker, allow the user to add a photo URL
-    final urlController = TextEditingController();
-    final ok = await showDialog<bool?>(
+  void _addPhoto() async {
+    final choice = await showModalBottomSheet<String?>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Add Photo URL'),
-        content: TextField(
-          controller: urlController,
-          decoration: const InputDecoration(hintText: 'https://...jpg or png'),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Add')),
-        ],
+      builder: (ctx) => SafeArea(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          ListTile(
+            leading: const Icon(Icons.link),
+            title: const Text('Add Photo URL'),
+            onTap: () => Navigator.of(ctx).pop('url'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.photo_library),
+            title: const Text('Pick from device'),
+            onTap: () => Navigator.of(ctx).pop('picker'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.close),
+            title: const Text('Cancel'),
+            onTap: () => Navigator.of(ctx).pop(null),
+          ),
+        ]),
       ),
     );
 
-    if (ok == true && urlController.text.trim().isNotEmpty) {
-      setState(() => _photos.add(urlController.text.trim()));
+    if (choice == 'url') {
+      final urlController = TextEditingController();
+      final ok = await showDialog<bool?>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Add Photo URL'),
+          content: TextField(
+            controller: urlController,
+            decoration: const InputDecoration(hintText: 'https://...jpg or png'),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+            TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Add')),
+          ],
+        ),
+      );
+
+      if (ok == true && urlController.text.trim().isNotEmpty) {
+        setState(() => _photos.add(urlController.text.trim()));
+      }
+    } else if (choice == 'picker') {
+      try {
+        final images = await ImagePicker().pickMultiImage(imageQuality: 85);
+        if (images != null && images.isNotEmpty) {
+          setState(() => _pickedFiles.addAll(images));
+        }
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to pick images')));
+      }
     }
   }
 
-  void _onPublish() {
+  Future<void> _onPublish() async {
     if (!_formKey.currentState!.validate()) return;
 
-    if (_photos.length < 5) {
+    final totalPhotos = _photos.length + _pickedFiles.length;
+    if (totalPhotos < 5) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please upload at least 5 photos')),
       );
       return;
     }
 
-    // Collect form data here (in a real app send to backend / Firestore).
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('You must be signed in to publish')));
+      return;
+    }
 
-    // For now show a success message and pop back to Owner Dashboard.
-    // Return `true` to indicate success so the caller can refresh.
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Property published (mock)')));
-    Navigator.of(context).pop(true);
+    setState(() => _isPublishing = true);
+
+    final List<String> uploadedUrls = [];
+
+    try {
+      // Generate a Firestore document id first
+      final docRef = FirebaseFirestore.instance.collection('properties').doc();
+      final propertyId = docRef.id;
+
+      // Upload picked files first using the generated propertyId
+      for (var i = 0; i < _pickedFiles.length; i++) {
+        final xfile = _pickedFiles[i];
+        final file = File(xfile.path);
+        final bytes = await file.length();
+        if (bytes > 10 * 1024 * 1024) {
+          // Stop and notify if any file is too large
+          throw Exception('File too large');
+        }
+
+        try {
+          final ref = FirebaseStorage.instance
+              .ref()
+              .child('users')
+              .child(uid)
+              .child('properties')
+              .child(propertyId)
+              .child('photo_${i + 1}.jpg');
+          final uploadTask = await ref.putFile(file);
+          final url = await uploadTask.ref.getDownloadURL();
+          uploadedUrls.add(url);
+        } catch (e) {
+          // If any upload fails, throw to reach the outer catch and show a friendly message
+          debugPrint('Upload failed for file index $i: $e');
+          throw Exception('Upload failed');
+        }
+      }
+
+      final allPhotos = [..._photos, ...uploadedUrls];
+
+      final pricePerNight = double.tryParse(_priceController.text.trim()) ?? 0.0;
+      final bedrooms = int.tryParse(_bedroomsController.text.trim()) ?? 0;
+      final bathrooms = int.tryParse(_bathroomsController.text.trim()) ?? 0;
+      final maxGuests = int.tryParse(_guestsController.text.trim()) ?? 0;
+      final minStay = int.tryParse(_minStayController.text.trim()) ?? 1;
+
+      final propertyData = {
+        'ownerId': uid,
+        'name': _nameController.text.trim(),
+        'type': _propertyType,
+        'description': _descriptionController.text.trim(),
+        'address': {
+          'street': _streetController.text.trim(),
+          'city': _cityController.text.trim(),
+          'state': _stateController.text.trim(),
+          'zip': _zipController.text.trim(),
+        },
+        'pricing': {
+          'pricePerNight': pricePerNight,
+          'bedrooms': bedrooms,
+          'bathrooms': bathrooms,
+          'maxGuests': maxGuests,
+          'minStay': minStay,
+        },
+        'amenities': _amenities.entries.where((e) => e.value).map((e) => e.key).toList(),
+        'photos': allPhotos,
+        'instantBooking': _instantBooking,
+        'activeListing': _activeListing,
+        'createdAt': FieldValue.serverTimestamp(),
+      };
+
+      // Write the document using the pre-generated docRef so the storage path and doc id align
+      await docRef.set(propertyData);
+
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Property published successfully')));
+      Navigator.of(context).pop(true);
+    } catch (e) {
+      debugPrint('Publish error: $e');
+      // If the error came from a failed upload, show the specific message requested
+      final message = e.toString().toLowerCase().contains('upload') || e.toString().toLowerCase().contains('file')
+          ? 'Image upload failed. Try again.'
+          : 'Failed to publish property';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    } finally {
+      if (mounted) setState(() => _isPublishing = false);
+    }
   }
 
   Widget _sectionTitle(String title, String subtitle) {
@@ -210,7 +337,7 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
                 // 5) Photos Upload
                 _sectionTitle('Photos Upload', 'PNG/JPG up to 10MB. Minimum 5 photos'),
                 GestureDetector(
-                  onTap: _addMockPhoto,
+                  onTap: _addPhoto,
                   child: DottedBorder(
                     color: Colors.grey,
                     strokeWidth: 1.5,
@@ -228,7 +355,7 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
                           const SizedBox(height: 8),
                           const Text('Click to upload or drag and drop', style: TextStyle(color: Colors.grey)),
                           const SizedBox(height: 6),
-                          Text('${_photos.length} photos added', style: const TextStyle(color: Colors.grey)),
+                          Text('${_photos.length + _pickedFiles.length} photos added', style: const TextStyle(color: Colors.grey)),
                         ],
                       ),
                     ),
@@ -236,23 +363,47 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
                 ),
 
                 const SizedBox(height: 12),
-                if (_photos.isNotEmpty)
+                if (_photos.isNotEmpty || _pickedFiles.isNotEmpty)
                   SizedBox(
                     height: 80,
                     child: ListView.separated(
                       scrollDirection: Axis.horizontal,
-                      itemCount: _photos.length,
+                      itemCount: _photos.length + _pickedFiles.length,
                       separatorBuilder: (_, __) => const SizedBox(width: 8),
-                      itemBuilder: (context, i) => Stack(
-                        children: [
-                          Container(width: 120, decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), color: Colors.grey[200]), child: Center(child: Text('Photo ${i + 1}'))),
-                          Positioned(
-                            right: 2,
-                            top: 2,
-                            child: InkWell(onTap: () => setState(() => _photos.removeAt(i)), child: const Icon(Icons.close, size: 18)),
-                          )
-                        ],
-                      ),
+                      itemBuilder: (context, i) {
+                        if (i < _photos.length) {
+                          return Stack(
+                            children: [
+                              Container(width: 120, decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), color: Colors.grey[200]), child: Center(child: Text('Photo ${i + 1}'))),
+                              Positioned(
+                                right: 2,
+                                top: 2,
+                                child: InkWell(onTap: () => setState(() => _photos.removeAt(i)), child: const Icon(Icons.close, size: 18)),
+                              )
+                            ],
+                          );
+                        } else {
+                          final idx = i - _photos.length;
+                          final file = _pickedFiles[idx];
+                          return Stack(
+                            children: [
+                              Container(
+                                width: 120,
+                                decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), color: Colors.grey[200]),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Image.file(File(file.path), fit: BoxFit.cover),
+                                ),
+                              ),
+                              Positioned(
+                                right: 2,
+                                top: 2,
+                                child: InkWell(onTap: () => setState(() => _pickedFiles.removeAt(idx)), child: const Icon(Icons.close, size: 18)),
+                              )
+                            ],
+                          );
+                        }
+                      },
                     ),
                   ),
 
@@ -286,9 +437,9 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: _onPublish,
+                        onPressed: _isPublishing ? null : _onPublish,
                         style: ElevatedButton.styleFrom(backgroundColor: Colors.green, padding: const EdgeInsets.symmetric(vertical: 14)),
-                        child: const Text('Publish Property'),
+                        child: _isPublishing ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Text('Publish Property'),
                       ),
                     ),
                   ],
