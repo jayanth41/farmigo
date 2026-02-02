@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'edit_profile_screen.dart';
+import '../navigation/app_routes.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -16,12 +17,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Map<String, dynamic>? _userDoc;
   bool _loading = true;
+  // Real-time stats: we'll use StreamBuilders directly on Firestore collections/docs
 
   @override
   void initState() {
     super.initState();
     _loadUser();
   }
+
+  @override
+  void dispose() {
+    super.dispose();
+  }
+  // (No long-lived listeners here; StreamBuilders will subscribe/unsubscribe automatically.)
 
   @override
   Widget build(BuildContext context) {
@@ -69,6 +77,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         if (changed == true) await _loadUser();
                       },
                       child: const Text('Edit Profile'),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        try {
+                          Navigator.pushNamed(context, AppRoutes.bookingHistory);
+                        } catch (e) {
+                          debugPrint('Navigation to booking history failed: $e');
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.blueGrey),
+                      child: const Text('View Booking History'),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -144,12 +167,61 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildStatsCounter() {
+    final user = _auth.currentUser;
+    if (user == null) {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: const [
+          SizedBox.shrink(),
+          SizedBox.shrink(),
+          SizedBox.shrink(),
+        ],
+      );
+    }
+
+    final uid = user.uid;
+  // Use the user's bookings subcollection so the count reflects the mirrored
+  // booking documents created under users/{uid}/bookings and updates in real-time.
+  final bookingsStream = _firestore.collection('users').doc(uid).collection('bookings').snapshots();
+    final favoritesStream = _firestore.collection('favorites').where('userId', isEqualTo: uid).snapshots();
+    final userDocStream = _firestore.collection('users').doc(uid).snapshots();
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceAround,
       children: [
-        _buildStatItem("Bookings", "12"),
-        _buildStatItem("Favorites", "5"),
-        _buildStatItem("Rewards", "1500"),
+        // Bookings count (real-time)
+        StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+          stream: bookingsStream,
+          builder: (context, snap) {
+            final bookings = snap.hasData ? snap.data!.size : 0;
+            return _buildStatItem("Bookings", bookings.toString());
+          },
+        ),
+
+        // Favorites count (real-time)
+        StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+          stream: favoritesStream,
+          builder: (context, snap) {
+            final favorites = snap.hasData ? snap.data!.size : 0;
+            return _buildStatItem("Favorites", favorites.toString());
+          },
+        ),
+
+        // Rewards from users/{uid} doc (real-time)
+        StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+          stream: userDocStream,
+          builder: (context, snap) {
+            int rewards = 0;
+            if (snap.hasData && snap.data!.exists) {
+              final data = snap.data!.data();
+              final rp = data?['rewardPoints'];
+              if (rp is int) rewards = rp;
+              else if (rp is num) rewards = rp.toInt();
+              else if (rp is String) rewards = int.tryParse(rp) ?? 0;
+            }
+            return _buildStatItem("Rewards", rewards.toString());
+          },
+        ),
       ],
     );
   }
@@ -167,6 +239,5 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   // ---------------- EDIT FORM ----------------
-
-  Widget _buildEditProfileForm() => const SizedBox.shrink();
+  // (Previously an unused helper was here; removed to keep code clean.)
 }

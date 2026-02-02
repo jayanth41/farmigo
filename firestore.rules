@@ -1,0 +1,74 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ------------------ Favorites ------------------
+    // Users may create, read and delete only their own favorite documents.
+    // A favorite document must contain at least: userId (string), listingId (string), createdAt (timestamp).
+    match /favorites/{favoriteId} {
+      allow create: if request.auth != null
+                    && request.resource.data.userId == request.auth.uid
+                    && request.resource.data.listingId is string
+                    && request.resource.data.createdAt is timestamp
+                    && request.resource.data.keys().hasAll(['userId', 'listingId', 'createdAt']);
+
+      // Reads (get and queries) allowed only for the owner (documents returned by queries must
+      // therefore include an equality filter on userId == request.auth.uid).
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+
+      // Owners may delete their own favorite documents
+      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+
+      // No client-side updates to favorite documents are allowed
+      allow update: if false;
+    }
+
+    // ------------------ Bookings ------------------
+    // Booking documents are owned by the user who created them (field: userId).
+    // - Create: allowed only if the request.auth.uid equals request.resource.data.userId
+    // - Read: allowed only for the booking owner (resource.data.userId == request.auth.uid)
+    // - Update: allowed only for the booking owner and must not change the owner field
+    // - Delete: disallowed for all users (server/owner-side deletion only)
+    match /bookings/{bookingId} {
+      allow create: if request.auth != null
+                    && request.resource.data.userId == request.auth.uid
+                    && request.resource.data.userId is string;
+
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+
+      allow update: if request.auth != null
+                    && resource.data.userId == request.auth.uid
+                    // Prevent changing the ownership of the booking
+                    && (request.resource.data.userId == resource.data.userId || !request.resource.data.keys().hasAll(['userId']));
+
+      // Deletion is disallowed for all clients (use trusted server-side code if deletion is required)
+      allow delete: if false;
+    }
+
+    // ------------------ Users / Rewards ------------------
+    // Users collection contains the profile; rewardPoints is stored inside users/{uid}.rewardPoints.
+    // - Read: a user may read only their own document
+    // - Update: a user may update only their own document (must already exist) — creation and deletion are disallowed
+    match /users/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+
+      // Allow updates by the document owner only. The existence of `resource` ensures this is not a create.
+      allow update: if request.auth != null
+                    && request.auth.uid == userId
+                    // If updating rewardPoints ensure it is numeric (optional validation)
+                    && (
+                      !request.resource.data.keys().hasAny(['rewardPoints'])
+                      || request.resource.data.rewardPoints is number
+                    );
+
+      // Disallow client-side creation and deletion of user documents to avoid spoofing.
+      allow create: if false;
+      allow delete: if false;
+    }
+
+    // Default deny everything else
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

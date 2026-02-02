@@ -2,6 +2,8 @@ import 'package:get/get.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/farmhouse_model.dart';
 
 class FavoritesController extends GetxController {
@@ -55,9 +57,46 @@ class FavoritesController extends GetxController {
 
   // Add to favorites
   Future<void> addFavorite(FarmhouseModel farmhouse) async {
-    if (!isFavorited(farmhouse.id)) {
-      favorites.add(farmhouse);
-      await _saveFavorites();
+    // To avoid duplicates and support toggle behavior if a favorite already exists
+    // in Firestore for this user + listing, check and delete it instead of creating a
+    // duplicate document. This keeps server state consistent even if local state
+    // is out of sync.
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      final query = await FirebaseFirestore.instance
+          .collection('favorites')
+          .where('userId', isEqualTo: user.uid)
+          .where('listingId', isEqualTo: farmhouse.id)
+          .get();
+
+      if (query.docs.isNotEmpty) {
+        // Favorite already exists on server: delete those docs (toggle off)
+        for (final doc in query.docs) {
+          await doc.reference.delete();
+        }
+
+        // Also remove from local favorites if present
+        favorites.removeWhere((fav) => fav.id == farmhouse.id);
+        await _saveFavorites();
+        return;
+      }
+
+      // No existing favorite on server — create one and add to local list
+      await FirebaseFirestore.instance.collection('favorites').add({
+        'userId': user.uid,
+        'listingId': farmhouse.id,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      // Update local state
+      if (!isFavorited(farmhouse.id)) {
+        favorites.add(farmhouse);
+        await _saveFavorites();
+      }
+    } catch (e) {
+      debugPrint('Failed to add/remove favorite in Firestore: $e');
     }
   }
 
@@ -65,6 +104,22 @@ class FavoritesController extends GetxController {
   Future<void> removeFavorite(String farmhouseId) async {
     favorites.removeWhere((fav) => fav.id == farmhouseId);
     await _saveFavorites();
+    // Remove from Firestore favorites collection (all matching docs)
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final query = await FirebaseFirestore.instance
+            .collection('favorites')
+            .where('userId', isEqualTo: user.uid)
+            .where('listingId', isEqualTo: farmhouseId)
+            .get();
+        for (final doc in query.docs) {
+          await doc.reference.delete();
+        }
+      }
+    } catch (e) {
+      debugPrint('Failed to remove favorite from Firestore: $e');
+    }
   }
 
   // Toggle favorite status

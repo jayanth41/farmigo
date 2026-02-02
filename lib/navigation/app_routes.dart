@@ -5,6 +5,7 @@ class AppRoutes {
   static const String favorites = '/favorites';
   static const String bookings = '/bookings';
   static const String profile = '/profile';
+  static const String bookingHistory = '/booking-history';
 
   // Category / content screens
   static const String farmhouses = '/farmhouses';

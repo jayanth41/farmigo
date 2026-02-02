@@ -9,6 +9,7 @@ import '../data/farmhouses_data.dart'; // ADDED: Import farmhouses data
 import 'bookings_screen.dart';
 import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
+// Reward updates are handled by BookingService during booking creation.
 
 class FarmhouseDetailsScreen extends StatefulWidget {
   final String name;
@@ -18,6 +19,7 @@ class FarmhouseDetailsScreen extends StatefulWidget {
   final String imageUrl;
   final List<String>? images;
   final String? id;
+  final String? ownerId;
 
   const FarmhouseDetailsScreen({
     super.key,
@@ -28,6 +30,7 @@ class FarmhouseDetailsScreen extends StatefulWidget {
     required this.imageUrl,
     this.images,
     required this.id,
+    this.ownerId,
   });
 
   @override
@@ -1050,9 +1053,11 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
             // Use the BookingsController so UI state refreshes after insert
             final bookingsController = Get.find<BookingsController>();
             final success = await bookingsController.addBooking(
+              listingId: widget.id!,
               propertyName: widget.name,
               location: widget.location,
               imageUrl: widget.imageUrl,
+              ownerId: widget.ownerId,
               checkIn: selectedCheckInDate?.toIso8601String() ?? '',
               checkOut: selectedCheckOutDate?.toIso8601String() ?? '',
               totalPrice: calculatedPrice,
@@ -1062,34 +1067,18 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
             final localContext = context;
 
             if (success) {
-              showDialog(
-                context: localContext,
-                builder: (ctx) => AlertDialog(
-                  title: const Text('Congratulations'),
-                  content: const Text('Your booking is confirmed.'),
-                  actions: [
-                    TextButton(
-                      onPressed: () {
-                        Navigator.pop(ctx);
-                        Navigator.push(
-                          localContext,
-                          MaterialPageRoute(
-                            builder: (_) => const BookingsScreen(),
-                          ),
-                        );
-                      },
-                      child: const Text('View Bookings'),
-                    ),
-                    TextButton(
-                      onPressed: () => Navigator.pop(ctx),
-                      child: const Text('Close'),
-                    ),
-                  ],
+              ScaffoldMessenger.of(localContext).showSnackBar(
+                const SnackBar(content: Text('Booking successful')),
+              );
+              Navigator.push(
+                localContext,
+                MaterialPageRoute(
+                  builder: (_) => const BookingsScreen(),
                 ),
               );
             } else {
               ScaffoldMessenger.of(localContext).showSnackBar(
-                const SnackBar(content: Text('Booking failed')),
+                const SnackBar(content: Text('Booking failed, try again')),
               );
             }
           },

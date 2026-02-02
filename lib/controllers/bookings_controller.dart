@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../services/booking_service.dart';
 
 class BookingsController extends GetxController {
   var isLoading = true.obs;
@@ -30,16 +31,31 @@ class BookingsController extends GetxController {
   }
 
   Future<bool> addBooking({
+    required String listingId,
     required String propertyName,
     required String location,
     required String imageUrl,
     required String checkIn,
     required String checkOut,
     required num totalPrice,
+    String? ownerId,
   }) async {
-    // Currently no backend to save bookings to. Return false safely.
-    debugPrint('addBooking called but no backend configured');
-    return false;
+    try {
+      final success = await BookingService.createBooking(
+        propertyId: listingId,
+        ownerId: ownerId,
+        propertyName: propertyName,
+        location: location,
+        imageUrl: imageUrl,
+        checkIn: checkIn,
+        checkOut: checkOut,
+        totalPrice: totalPrice,
+      );
+      return success;
+    } catch (e) {
+      debugPrint('addBooking failed: $e');
+      return false;
+    }
   }
 
   Future<bool> cancelBooking(dynamic id) async {
