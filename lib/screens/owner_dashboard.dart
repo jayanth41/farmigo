@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class OwnerDashboard extends StatelessWidget {
   const OwnerDashboard({super.key});
@@ -411,36 +413,76 @@ class OwnerDashboard extends StatelessWidget {
                               style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, fontSize: 18, color: Colors.grey.shade900)),
                         ),
                       ),
-                      // Demo list - replace with real data
-                      Column(
-                        children: [
-                          _buildRecentBookingCard(
-                            context,
-                            property: 'Lakeview Villa',
-                            guest: 'Arjun Kumar',
-                            dateRange: '01 Feb - 03 Feb',
-                            status: 'Confirmed',
-                            amount: '₹ 12,000',
-                          ),
-                          const SizedBox(height: 16),
-                          _buildRecentBookingCard(
-                            context,
-                            property: 'Green Fields Cottage',
-                            guest: 'Neha Sharma',
-                            dateRange: '05 Feb - 06 Feb',
-                            status: 'Pending',
-                            amount: '₹ 5,200',
-                          ),
-                          const SizedBox(height: 16),
-                          _buildRecentBookingCard(
-                            context,
-                            property: 'Hilltop Retreat',
-                            guest: 'Ravi Patel',
-                            dateRange: '08 Feb - 10 Feb',
-                            status: 'Completed',
-                            amount: '₹ 18,400',
-                          ),
-                        ],
+                      // Real bookings list for the owner
+                      StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                        stream: FirebaseFirestore.instance
+                            .collection('bookings')
+                            .where('ownerId', isEqualTo: FirebaseAuth.instance.currentUser?.uid)
+                            .orderBy('createdAt', descending: true)
+                            .snapshots(),
+                        builder: (context, snap) {
+                          if (snap.hasError) {
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 20.0),
+                              child: Text('Failed to load bookings', style: TextStyle(color: Colors.red.shade700)),
+                            );
+                          }
+
+                          if (snap.connectionState == ConnectionState.waiting) {
+                            return const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 20.0),
+                              child: Center(child: CircularProgressIndicator()),
+                            );
+                          }
+
+                          final docs = snap.data?.docs ?? [];
+                          if (docs.isEmpty) {
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 16.0),
+                              child: Center(child: Text('No bookings yet.', style: TextStyle(color: Colors.grey.shade700))),
+                            );
+                          }
+
+                          return Column(
+                            children: docs.map((d) {
+                              final data = d.data();
+                              final property = (data['propertyName'] as String?)?.isNotEmpty == true
+                                  ? data['propertyName'] as String
+                                  : (data['listingId'] as String?) ?? 'Property';
+                              final guests = (data['guests'] != null) ? data['guests'].toString() : '1';
+
+                              String dateRange = '';
+                              try {
+                                final ci = data['checkIn'];
+                                final co = data['checkOut'];
+                                String ciStr = '';
+                                String coStr = '';
+                                if (ci is Timestamp) ciStr = '${ci.toDate().day}/${ci.toDate().month}/${ci.toDate().year}';
+                                if (co is Timestamp) coStr = '${co.toDate().day}/${co.toDate().month}/${co.toDate().year}';
+                                if (ciStr.isNotEmpty && coStr.isNotEmpty) dateRange = '$ciStr → $coStr';
+                                else if (ciStr.isNotEmpty) dateRange = ciStr;
+                              } catch (_) {
+                                dateRange = '';
+                              }
+
+                              final status = (data['status'] as String?) ?? 'unknown';
+                              final amountRaw = data['totalAmount'];
+                              final amount = amountRaw != null ? '₹ ${amountRaw.toString()}' : '₹ 0';
+
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 12.0),
+                                child: _buildRecentBookingCard(
+                                  context,
+                                  property: property,
+                                  guest: '$guests guests',
+                                  dateRange: dateRange,
+                                  status: status,
+                                  amount: amount,
+                                ),
+                              );
+                            }).toList(),
+                          );
+                        },
                       ),
 
                       const SizedBox(height: 18),
