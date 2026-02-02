@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'owner/add_property_screen.dart';
 
 class OwnerDashboard extends StatelessWidget {
   const OwnerDashboard({super.key});
@@ -109,8 +110,13 @@ class OwnerDashboard extends StatelessWidget {
             ),
           ),
           ElevatedButton.icon(
-            onPressed: () {
-              // keep navigation/logic unchanged — placeholder UI action only.
+            onPressed: () async {
+              final result = await Navigator.of(context).push(
+                MaterialPageRoute(fullscreenDialog: true, builder: (_) => const AddPropertyScreen()),
+              );
+              if (result == true) {
+                debugPrint('New property added — refresh dashboard here');
+              }
             },
             icon: const Icon(Icons.add),
             label: const Text('Add Property'),
@@ -287,9 +293,9 @@ class OwnerDashboard extends StatelessWidget {
     );
   }
 
-  Widget _buildQuickAction(BuildContext context, {required IconData icon, required String label}) {
+  Widget _buildQuickAction(BuildContext context, {required IconData icon, required String label, VoidCallback? onTap}) {
     return InkWell(
-      onTap: () {
+      onTap: onTap ?? () {
         // UI-only quick action; keep navigation/logic unchanged.
       },
       borderRadius: BorderRadius.circular(12),
@@ -395,7 +401,19 @@ class OwnerDashboard extends StatelessWidget {
                         mainAxisSpacing: 12,
                         childAspectRatio: isTablet ? 1.6 : 1.1,
                         children: [
-                          _buildQuickAction(context, icon: Icons.add_home, label: 'Add Property'),
+                          _buildQuickAction(
+                            context,
+                            icon: Icons.add_home,
+                            label: 'Add Property',
+                            onTap: () async {
+                              final result = await Navigator.of(context).push(
+                                MaterialPageRoute(fullscreenDialog: true, builder: (_) => const AddPropertyScreen()),
+                              );
+                              if (result == true) {
+                                debugPrint('New property added — refresh dashboard here');
+                              }
+                            },
+                          ),
                           _buildQuickAction(context, icon: Icons.book_online, label: 'Manage Bookings'),
                           _buildQuickAction(context, icon: Icons.analytics_outlined, label: 'View Analytics'),
                           _buildQuickAction(context, icon: Icons.settings_outlined, label: 'Property Settings'),
