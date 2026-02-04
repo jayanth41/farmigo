@@ -35,9 +35,9 @@ class CategorySelector extends StatelessWidget {
               decoration: BoxDecoration(
                 color: isSelected ? AppColors.primary : Colors.white,
                 borderRadius: BorderRadius.circular(16),
-                boxShadow: [
+                boxShadow: const [
                   BoxShadow(
-                    color: const Color.fromRGBO(0, 0, 0, 0.12),
+                    color: Color.fromRGBO(0, 0, 0, 0.12),
                     blurRadius: 10,
                   ),
                 ],

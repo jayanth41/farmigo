@@ -14,7 +14,6 @@ import '../widgets/category_tabs.dart';
 import '../widgets/offers_carousel.dart';
 import '../widgets/app_drawer.dart';
 import '../widgets/properties_grid.dart';
-import 'owner_dashboard.dart';
 import 'filters_screen.dart';
 import 'package:provider/provider.dart';
 import '../controllers/auth_controller.dart';
@@ -25,6 +24,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import '../models/category.dart';
 import 'location_selector_screen.dart';
+import 'category_results_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -49,7 +49,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Location & Category selectors
  final String _selectedState = 'Telangana';
-  String _selectedCategory = 'All';
+  final String _selectedCategory = 'All';
 
   // Advanced filter state (shared with filters screen)
   RangeValues _priceRange = const RangeValues(0, 10000);
@@ -155,12 +155,11 @@ class _HomeScreenState extends State<HomeScreen> {
     if (label == AppRoutes.labelProfile || label == 'Profile') {
       if (_profile == null) return;
       if (!mounted) return;
-      await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => EditProfilePage(profile: _profile!),
-        ),
-      );
+      try {
+        await Navigator.pushNamed(context, AppRoutes.profile);
+      } catch (e) {
+        debugPrint('Failed to open profile: $e');
+      }
       await loadProfile();
       return;
     }
@@ -174,8 +173,7 @@ class _HomeScreenState extends State<HomeScreen> {
         if (route == AppRoutes.home) {
           try {
             // Use Navigator API to clear stack and navigate to home so the
-            // top-level auth StreamBuilder remains authoritative and we
-            // avoid interactions between GetX and the auth guard.
+            // back stack is reset.
             Navigator.of(context).pushNamedAndRemoveUntil(route, (r) => false);
           } catch (e) {
             debugPrint('Fallback home navigation error: $e');
@@ -512,7 +510,7 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         toolbarHeight: 0,
-        systemOverlayStyle: SystemUiOverlayStyle(
+        systemOverlayStyle: const SystemUiOverlayStyle(
           statusBarColor: Colors.transparent,
           statusBarIconBrightness: Brightness.light,
           statusBarBrightness: Brightness.dark,
@@ -529,10 +527,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   body: _buildBody(),
       bottomNavigationBar: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           boxShadow: [
             BoxShadow(
-              color: const Color.fromRGBO(0, 0, 0, 0.1),
+              color: Color.fromRGBO(0, 0, 0, 0.1),
               blurRadius: 12,
             ),
           ],
@@ -548,7 +546,7 @@ class _HomeScreenState extends State<HomeScreen> {
           backgroundColor: Theme.of(context).scaffoldBackgroundColor,
 
           selectedItemColor: Theme.of(context).colorScheme.primary,
-          unselectedItemColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+          unselectedItemColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
           items: const [
             BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
             BottomNavigationBarItem(icon: Icon(Icons.favorite), label: 'Favorites'),
@@ -567,17 +565,17 @@ class _HomeScreenState extends State<HomeScreen> {
       case 0:
         return _homePage();
       case 1:
-        return FavoritesScreen();
+        return const FavoritesScreen();
       case 2:
-        return BookingsScreen();
+        return const BookingsScreen();
       case 3:
         // If no profile is available (likely a guest session), show a
         // limited guest profile view that encourages login. This prevents
         // guests from accessing edit/profile functionality.
         if (_profile == null) {
-          return _GuestProfileView();
+          return const _GuestProfileView();
         }
-        return ProfileScreen();
+        return const ProfileScreen();
       default:
         return _homePage();
     }
@@ -616,26 +614,25 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(width: 6),
                   // App logo
                   Container(
-                    width: 36,
-                    height: 36,
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primaryContainer,
+                      // Make the logo container transparent so the header gradient shows through
+                      color: Colors.transparent,
                       borderRadius: BorderRadius.circular(8),
                       boxShadow: [
                         BoxShadow(
-                          color: Theme.of(context).colorScheme.primary.withOpacity(0.25),
+                          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.25),
                           blurRadius: 4,
                           offset: const Offset(0, 2),
                         ),
                       ],
                     ),
-                    child: Center(
-                      child: Text(
-                        'F',
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.primary,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 18,
+                    child: SizedBox(
+                      width: 60,
+                      height: 60,
+                      child: Center(
+                        child: Image.asset(
+                          'assets/images/farmigo_logo.png',
+                          fit: BoxFit.contain,
                         ),
                       ),
                     ),
@@ -669,7 +666,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 Icon(
                                   Icons.location_on_outlined,
                                   size: 14,
-                                  color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.95),
+                                  color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.95),
                                 ),
                                 const SizedBox(width: 6),
                                 // Preserve existing logic for retrieving/displaying location (unchanged)
@@ -681,7 +678,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                       name,
                                       style: TextStyle(
                                         fontSize: 13,
-                                        color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.92),
+                                        color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.92),
                                         fontWeight: FontWeight.w600,
                                       ),
                                     );
@@ -694,7 +691,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                           name,
                                           style: TextStyle(
                                             fontSize: 13,
-                                            color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.92),
+                                            color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.92),
                                             fontWeight: FontWeight.w600,
                                           ),
                                         );
@@ -708,7 +705,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                             val ?? 'Location unavailable',
                                             style: TextStyle(
                                               fontSize: 13,
-                                              color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.92),
+                                              color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.92),
                                               fontWeight: FontWeight.w600,
                                             ),
                                           );
@@ -790,7 +787,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     style: TextStyle(color: cs.onSurface),
                     decoration: InputDecoration(
                       hintText: 'Search farmhouses, villas...',
-                      hintStyle: TextStyle(color: cs.onSurface.withOpacity(0.65)),
+                      hintStyle: TextStyle(color: cs.onSurface.withValues(alpha: 0.65)),
                       filled: true,
                       fillColor: cs.surface,
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -845,10 +842,15 @@ class _HomeScreenState extends State<HomeScreen> {
               CategoryGrid(
                 selectedCategory: _selectedCategory,
                 onTap: (c) {
-                  setState(() {
-                    _selectedCategory = c;
-                    _applyFilters();
-                  });
+                  // Navigate to dedicated Category Results screen instead of
+                  // keeping tabs visible on Home. Do not change filtering logic.
+                  final cat = CategoryExt.fromLabel(c);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => CategoryResultsScreen(category: cat, allProperties: farmhouses),
+                    ),
+                  );
                 },
               ),
               const SizedBox(height: 20),
@@ -861,8 +863,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               const SizedBox(height: 8),
-              OffersCarousel(
-                offers: const [
+              const OffersCarousel(
+                offers: [
                   OfferItem(
                     title: 'Weekend Deals',
                     subtitle: 'Up to 40% off',
@@ -941,7 +943,7 @@ class _GuestProfileView extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.person_outline, size: 72, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
+            Icon(Icons.person_outline, size: 72, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
             const SizedBox(height: 12),
             Text('You are browsing as a guest', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 8),

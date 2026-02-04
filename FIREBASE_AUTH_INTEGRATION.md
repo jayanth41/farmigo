@@ -59,8 +59,6 @@ Successfully integrated Firebase Authentication (email/password) into Farmigo ap
 **Updated To Use AuthController**
 
 **Changes Made:**
-- Removed Supabase import, added `provider` and `AuthController` imports
-- Replaced `Supabase.instance.client.auth.signUp()` with `AuthController.signUp()`
 - Updated `signUpUser()` method to call AuthController
 - Wrapped signup button with `Consumer<AuthController>` for loading state
 - Removed local `_isLoading` state variable (now uses AuthController.isLoading)
@@ -218,7 +216,6 @@ This hybrid approach works because:
 1. AuthController.signUp() creates user in Firebase
 2. AuthController.signIn() authenticates user
 3. AuthController.signOut() clears session
-4. signUp creates user profile in Supabase
 5. Auth guard routes correctly based on isAuthenticated
 6. Error messages display for invalid inputs
 7. Loading states work correctly
@@ -227,7 +224,7 @@ This hybrid approach works because:
 
 ✅ **Manual Tests to Perform:**
 ```
-1. Sign up with new email → verify in Firebase Console & Supabase
+1. Sign up with new email → verify in Firebase Console 
 2. Sign up with existing email → shows "Email already exists" error
 3. Login with correct credentials → navigates to HomeScreen
 4. Login with wrong password → shows error
@@ -249,7 +246,6 @@ provider: ^6.1.5+1          # State management
 firebase_auth: ^5.7.0       # Authentication
 firebase_core: ^3.15.2      # Firebase SDK
 get: ^4.6.6                 # Navigation (existing)
-supabase_flutter: ^2.5.0    # Database (existing)
 ```
 
 ---
@@ -262,7 +258,6 @@ supabase_flutter: ^2.5.0    # Database (existing)
 ✅ Auth guard automatic routing  
 ✅ User-friendly error messages  
 ✅ Loading states during auth operations  
-✅ Integration with existing Supabase for user profiles  
 ✅ Provider state management for all three controllers  
 ✅ Phone OTP login (unchanged, still works)  
 ✅ Settings persistence via SharedPreferences  
@@ -345,7 +340,7 @@ Make sure in Firebase Console:
    - Logout on token expiry
 
 5. **User Profile Enhancement**
-   - Store additional data in Firestore/Supabase
+   - Store additional data in Firestore
    - Profile picture upload
    - Profile edit screen
 
@@ -371,7 +366,6 @@ Firebase Authentication integration is **production-ready** with:
 - User-friendly error handling
 - Automatic routing via auth guard
 - Clean Provider-based state management
-- Full integration with existing Supabase & GetX systems
 - Zero breaking changes
 
 The app now has a complete authentication system! 🚀

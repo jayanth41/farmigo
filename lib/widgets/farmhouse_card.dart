@@ -44,6 +44,7 @@ class FarmhouseCard extends StatefulWidget {
 
 class _FarmhouseCardState extends State<FarmhouseCard> {
   late FavoritesController favoritesController;
+  bool? _optimisticFavorite;
 
   @override
   void initState() {
@@ -66,19 +67,26 @@ class _FarmhouseCardState extends State<FarmhouseCard> {
     );
 
     final wasFav = favoritesController.isFavorited(farmhouse.id);
+    // Optimistic UI update: show immediate change while controller handles persistence
+    _optimisticFavorite = !wasFav;
+    if (mounted) setState(() {});
+
     if (wasFav) {
       await favoritesController.removeFavorite(farmhouse.id);
     } else {
       await favoritesController.addFavorite(farmhouse);
     }
 
+    // Clear optimistic flag and refresh
+    _optimisticFavorite = null;
     if (!mounted) return;
     setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
-    final isFavorite = favoritesController.isFavorited(widget.id);
+  final isFavoriteRemote = favoritesController.isFavorited(widget.id);
+  final isFavorite = _optimisticFavorite ?? isFavoriteRemote;
 
     return GestureDetector(
       onTap: () {

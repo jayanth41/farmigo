@@ -94,17 +94,12 @@ class _SplashScreenState extends State<SplashScreen>
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 // LOGO
-                Container(
-                  height: 90,
-                  width: 90,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(22),
-                  ),
-                  child: const Icon(
-                    Icons.park,
-                    size: 50,
-                    color: Color.fromARGB(255, 29, 163, 85),
+                Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Image.asset(
+                    'assets/images/farmigo_logo.png',
+                    width: 150, height: 150,
+                    fit: BoxFit.contain,
                   ),
                 ),
 
@@ -130,9 +125,9 @@ class _SplashScreenState extends State<SplashScreen>
                 const SizedBox(height: 24),
 
                 // ICON ROW
-                Row(
+                const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
-                  children: const [
+                  children: [
                     _SplashIcon(icon: Icons.home, label: "Farmhouses"),
                     SizedBox(width: 20),
                     _SplashIcon(icon: Icons.hotel, label: "Hotels"),
@@ -181,7 +176,7 @@ class _SplashIcon extends StatelessWidget {
       children: [
         CircleAvatar(
           radius: 20,
-          backgroundColor: Colors.white.withOpacity(0.2),
+          backgroundColor: Colors.white.withValues(alpha: 0.2),
           child: Icon(icon, color: Colors.white, size: 18),
         ),
         const SizedBox(height: 6),

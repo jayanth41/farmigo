@@ -32,7 +32,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       // Explore list doesn't own global filters yet.
                       // You can wire this to search results later.
                     },
-                    initialFilters: {},
+                    initialFilters: const {},
                   ),
                 ),
               );
@@ -187,7 +187,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
       },
       child: Container(
         decoration: BoxDecoration(
-          color: selected ? Theme.of(context).primaryColor.withOpacity(0.08) : Colors.grey[100],
+          color: selected ? Theme.of(context).primaryColor.withValues(alpha:0.08) : Colors.grey[100],
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: selected ? Theme.of(context).primaryColor : Colors.grey[300]!),
         ),

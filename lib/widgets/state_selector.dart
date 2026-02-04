@@ -25,7 +25,7 @@ class StateSelector extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.location_on, color: AppColors.primary),
+            const Icon(Icons.location_on, color: AppColors.primary),
             const SizedBox(width: 6),
             Text(
               selectedState,

@@ -57,46 +57,53 @@ class FavoritesController extends GetxController {
 
   // Add to favorites
   Future<void> addFavorite(FarmhouseModel farmhouse) async {
-    // To avoid duplicates and support toggle behavior if a favorite already exists
-    // in Firestore for this user + listing, check and delete it instead of creating a
-    // duplicate document. This keeps server state consistent even if local state
-    // is out of sync.
+    // Always update local state so favorites work for signed-out users as well.
+    // If a user is signed in, mirror changes to Firestore; otherwise skip server ops.
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-
     try {
-      final query = await FirebaseFirestore.instance
-          .collection('favorites')
-          .where('userId', isEqualTo: user.uid)
-          .where('listingId', isEqualTo: farmhouse.id)
-          .get();
+      if (user != null) {
+        // To avoid duplicates and support toggle behavior if a favorite already exists
+        // in Firestore for this user + listing, check and delete it instead of creating a
+        // duplicate document. This keeps server state consistent even if local state
+        // is out of sync.
+        final query = await FirebaseFirestore.instance
+            .collection('favorites')
+            .where('userId', isEqualTo: user.uid)
+            .where('listingId', isEqualTo: farmhouse.id)
+            .get();
 
-      if (query.docs.isNotEmpty) {
-        // Favorite already exists on server: delete those docs (toggle off)
-        for (final doc in query.docs) {
-          await doc.reference.delete();
+        if (query.docs.isNotEmpty) {
+          // Favorite already exists on server: delete those docs (toggle off)
+          for (final doc in query.docs) {
+            await doc.reference.delete();
+          }
+
+          // Also remove from local favorites if present
+          favorites.removeWhere((fav) => fav.id == farmhouse.id);
+          await _saveFavorites();
+          return;
         }
 
-        // Also remove from local favorites if present
-        favorites.removeWhere((fav) => fav.id == farmhouse.id);
-        await _saveFavorites();
-        return;
+        // No existing favorite on server — create one
+        await FirebaseFirestore.instance.collection('favorites').add({
+          'userId': user.uid,
+          'listingId': farmhouse.id,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
       }
 
-      // No existing favorite on server — create one and add to local list
-      await FirebaseFirestore.instance.collection('favorites').add({
-        'userId': user.uid,
-        'listingId': farmhouse.id,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-
-      // Update local state
+      // Update local state for both signed-in and guest users
       if (!isFavorited(farmhouse.id)) {
         favorites.add(farmhouse);
         await _saveFavorites();
       }
     } catch (e) {
       debugPrint('Failed to add/remove favorite in Firestore: $e');
+      // Ensure local state is still updated even if Firestore operations fail
+      if (!isFavorited(farmhouse.id)) {
+        favorites.add(farmhouse);
+        await _saveFavorites();
+      }
     }
   }
 

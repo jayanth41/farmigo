@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:get/get.dart';
+import '../controllers/favorites_controller.dart';
 import 'edit_profile_screen.dart';
 import '../navigation/app_routes.dart';
 
@@ -17,11 +19,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Map<String, dynamic>? _userDoc;
   bool _loading = true;
+  late FavoritesController _favoritesController;
   // Real-time stats: we'll use StreamBuilders directly on Firestore collections/docs
 
   @override
   void initState() {
     super.initState();
+    if (!Get.isRegistered<FavoritesController>()) {
+      Get.put(FavoritesController());
+    }
+    _favoritesController = Get.find<FavoritesController>();
     _loadUser();
   }
 
@@ -34,8 +41,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final user = _auth.currentUser;
+    final isGuest = user == null;
 
-    if (user == null) {
+    if (isGuest) {
       return Scaffold(
         appBar: AppBar(title: const Text('Profile')),
         body: Center(
@@ -44,8 +52,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text('You are browsing as guest', style: TextStyle(fontSize: 18), textAlign: TextAlign.center),
-                const SizedBox(height: 12),
+                Text('Guest', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontSize: 22)),
+                const SizedBox(height: 8),
+                const Text('Please login to continue', style: TextStyle(fontSize: 16), textAlign: TextAlign.center),
+                const SizedBox(height: 20),
                 ElevatedButton(onPressed: () => Navigator.pushNamed(context, '/login'), child: const Text('Login')),
               ],
             ),
@@ -79,6 +89,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       child: const Text('Edit Profile'),
                     ),
                   ),
+                  const SizedBox(height: 12),
+
+                  // Always-visible button to complete owner details. Navigates to
+                  // OwnerDetailsScreen where users can fill owner-related fields.
+                 
                   const SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,
@@ -169,9 +184,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildStatsCounter() {
     final user = _auth.currentUser;
     if (user == null) {
-      return Row(
+      return const Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: const [
+        children: [
           SizedBox.shrink(),
           SizedBox.shrink(),
           SizedBox.shrink(),
@@ -180,10 +195,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
 
     final uid = user.uid;
-  // Use the user's bookings subcollection so the count reflects the mirrored
-  // booking documents created under users/{uid}/bookings and updates in real-time.
-  final bookingsStream = _firestore.collection('users').doc(uid).collection('bookings').snapshots();
-    final favoritesStream = _firestore.collection('favorites').where('userId', isEqualTo: uid).snapshots();
+    // Bookings and rewards can remain real-time via Firestore; favorites are
+    // driven by the shared FavoritesController so the UI stays in sync.
+    final bookingsStream = _firestore.collection('users').doc(uid).collection('bookings').snapshots();
     final userDocStream = _firestore.collection('users').doc(uid).snapshots();
 
     return Row(
@@ -198,14 +212,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
           },
         ),
 
-        // Favorites count (real-time)
-        StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-          stream: favoritesStream,
-          builder: (context, snap) {
-            final favorites = snap.hasData ? snap.data!.size : 0;
-            return _buildStatItem("Favorites", favorites.toString());
-          },
-        ),
+        // Favorites count (reactive via controller)
+        Obx(() {
+          final favCount = _favoritesController.favorites.length;
+          return _buildStatItem("Favorites", favCount.toString());
+        }),
 
         // Rewards from users/{uid} doc (real-time)
         StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
@@ -215,8 +226,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             if (snap.hasData && snap.data!.exists) {
               final data = snap.data!.data();
               final rp = data?['rewardPoints'];
-              if (rp is int) rewards = rp;
-              else if (rp is num) rewards = rp.toInt();
+              if (rp is int) {
+                rewards = rp;
+              } else if (rp is num) rewards = rp.toInt();
               else if (rp is String) rewards = int.tryParse(rp) ?? 0;
             }
             return _buildStatItem("Rewards", rewards.toString());

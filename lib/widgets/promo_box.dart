@@ -106,11 +106,11 @@ class _PromoBoxState extends State<PromoBox> {
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [
+        boxShadow: const [
           BoxShadow(
-            color: const Color.fromRGBO(0, 0, 0, 0.08),
+            color: Color.fromRGBO(0, 0, 0, 0.08),
             blurRadius: 20,
-            offset: const Offset(0, 10),
+            offset: Offset(0, 10),
           ),
         ],
       ),
@@ -191,7 +191,7 @@ class _PromoBoxState extends State<PromoBox> {
       ),
       child: Row(
         children: [
-          Icon(Icons.location_on_outlined, color: AppColors.iconGrey, size: 22),
+          const Icon(Icons.location_on_outlined, color: AppColors.iconGrey, size: 22),
           const SizedBox(width: 10),
           Expanded(
             child: TextFormField(

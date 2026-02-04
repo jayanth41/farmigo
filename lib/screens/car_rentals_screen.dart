@@ -6,7 +6,7 @@ import '../widgets/car_rental_card.dart';
 class CarRentalsScreen extends StatelessWidget {
   const CarRentalsScreen({super.key});
 
-  static final List<CarRental> _dummyCars = const [
+  static const List<CarRental> _dummyCars = [
     CarRental(
       id: 'swift_dzire',
       name: 'Swift Dzire',

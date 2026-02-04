@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:flutter/painting.dart';
 
 class DataPermissionsScreen extends StatefulWidget {
   const DataPermissionsScreen({super.key});
@@ -139,7 +138,7 @@ class _DataPermissionsScreenState extends State<DataPermissionsScreen> {
                     ? SizedBox(width: 48, height: 24, child: Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: colorScheme.primary))))
                     : Switch(
                         value: _locationEnabled,
-                        activeColor: colorScheme.primary,
+                        activeThumbColor: colorScheme.primary,
                         onChanged: (v) => _onLocationToggle(v),
                       ),
                 onTap: () => _onLocationToggle(!_locationEnabled),
@@ -157,7 +156,7 @@ class _DataPermissionsScreenState extends State<DataPermissionsScreen> {
                     ? SizedBox(width: 48, height: 24, child: Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: colorScheme.primary))))
                     : Switch(
                         value: _notificationsEnabled,
-                        activeColor: colorScheme.primary,
+                        activeThumbColor: colorScheme.primary,
                         onChanged: (v) => _onNotificationToggle(v),
                       ),
                 onTap: () => _onNotificationToggle(!_notificationsEnabled),

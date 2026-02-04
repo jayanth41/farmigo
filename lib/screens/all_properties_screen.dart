@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import '../widgets/properties_grid.dart';
 import '../widgets/app_drawer.dart';
+import '../models/category.dart';
 
 class AllPropertiesScreen extends StatelessWidget {
   final List<Map<String, dynamic>> properties;
-  const AllPropertiesScreen({super.key, required this.properties});
+  final Category? category;
+  const AllPropertiesScreen({super.key, required this.properties, this.category});
 
   @override
   Widget build(BuildContext context) {
@@ -21,7 +23,7 @@ class AllPropertiesScreen extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 12.0),
         child: ListView(
           children: [
-            PropertiesGrid(properties: properties),
+            PropertiesGrid(properties: properties, category: category),
           ],
         ),
       ),

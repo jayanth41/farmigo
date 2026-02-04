@@ -54,10 +54,10 @@ class SearchSection extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           // small quick-search chips
-          SingleChildScrollView(
+          const SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
-              children: const [
+              children: [
                 Padding(
                   padding: EdgeInsets.only(right: 8.0),
                   child: Chip(label: Text('Near me')),

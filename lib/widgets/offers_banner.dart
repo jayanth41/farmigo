@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
+import '../screens/offers_screen.dart';
 
 class OffersBanner extends StatelessWidget {
   const OffersBanner({super.key});
@@ -26,7 +27,12 @@ class OffersBanner extends StatelessWidget {
               ),
               TextButton(
                 onPressed: () {
-                  // TODO: navigate to offers screen
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const OffersScreen(),
+                    ),
+                  );
                 },
                 child: const Row(
                   children: [
@@ -45,7 +51,7 @@ class OffersBanner extends StatelessWidget {
             height: 130,
               child: ListView(
               scrollDirection: Axis.horizontal,
-              children: [
+              children: const [
                 _OfferCard(
                   title: 'Weekend Deals',
                   subtitle: 'Up to 40% off',

@@ -31,7 +31,7 @@ class AppColors {
       Theme.of(context).colorScheme.onSurface;
 
   static Color textMuted(BuildContext context) =>
-      Theme.of(context).colorScheme.onSurface.withOpacity(0.6);
+      Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6);
 
   static Color border(BuildContext context) =>
       Theme.of(context).dividerColor;

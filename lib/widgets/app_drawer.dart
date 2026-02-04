@@ -4,11 +4,101 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../widgets/snackbar_helper.dart';
 import '../screens/about_us_screen.dart';
 import '../screens/terms_policy_screen.dart';
+import '../screens/owner_onboarding_screen.dart';
 import '../screens/owner_dashboard.dart';
+import '../screens/add_property_screen.dart';
 // Navigation is performed via named routes (GetX) or delegated to parent
 // `MainScaffold`. Avoid importing screen widgets directly to prevent unused
 // import warnings when using named navigation.
 import '../navigation/app_routes.dart';
+
+/// Check owner verification status and route accordingly.
+/// Returns true if owner verification indicates onboarding was already completed.
+Future<bool> checkOwnerVerificationStatus({
+  required BuildContext context,
+  bool replace = true,
+}) async {
+  final uid = fb.FirebaseAuth.instance.currentUser?.uid;
+
+  if (uid == null) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (context.mounted) {
+        showAppSnack(context, 'Sign in to access owner dashboard', isError: true);
+      }
+    });
+    return false;
+  }
+
+  try {
+    final doc = await FirebaseFirestore.instance
+        .collection('owner_verification')
+        .doc(uid)
+        .get();
+
+    final verified =
+        doc.exists && (doc.data()?['isOwnerDetailsSubmitted'] == true);
+
+    // 🔹 CLOSE DRAWER FIRST
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    }
+
+    // 🔹 WAIT for drawer to fully close BEFORE navigating
+    await Future.delayed(const Duration(milliseconds: 350));
+
+    if (!context.mounted) return false;
+
+    if (verified) {
+      // If owner details submitted, check if they already have a property.
+      final propQuery = await FirebaseFirestore.instance
+          .collection('properties')
+          .where('ownerId', isEqualTo: uid)
+          .limit(1)
+          .get();
+      final hasProperty = propQuery.docs.isNotEmpty;
+
+      if (hasProperty) {
+        if (replace) {
+          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const OwnerDashboard()));
+        } else {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const OwnerDashboard()));
+        }
+      } else {
+        if (replace) {
+          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const AddPropertyScreen()));
+        } else {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const AddPropertyScreen()));
+        }
+      }
+    } else {
+      if (replace) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const OwnerOnboardingScreen()),
+        );
+      } else {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const OwnerOnboardingScreen()));
+      }
+    }
+
+    return verified;
+  } catch (e) {
+    debugPrint('Failed to check owner verification: $e');
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (context.mounted) {
+        showAppSnack(
+          context,
+          'Could not verify owner status — try again later',
+          isError: true,
+        );
+      }
+    });
+
+    return false;
+  }
+}
+
 
 /// App drawer used across the app.
 ///
@@ -31,12 +121,7 @@ class AppDrawer extends StatelessWidget {
     this.isProfileLoading = false,
   });
 
-  /// Whether the current profile indicates an owner.
-  ///
-  /// Prefer the canonical `role` field (expected values: "user" | "owner").
-  /// For backward compatibility fall back to boolean `is_owner` if `role`
-  /// is not present.
- bool get isOwner => (profile?['role'] ?? '') == 'owner';
+    // Owner role checks removed - app no longer exposes owner onboarding
 
   void _logout(BuildContext context) {
     showDialog(
@@ -46,34 +131,34 @@ class AppDrawer extends StatelessWidget {
         content: const Text('Are you sure you want to logout?'),
         actions: [
           TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cancel')),
-              TextButton(
+          TextButton(
             onPressed: () async {
-                // Close the confirmation dialog first
-                Navigator.of(ctx).pop();
+              // Close the confirmation dialog first
+              Navigator.of(ctx).pop();
 
-                // Close the drawer if it's open (best-effort)
-                try {
-                  Navigator.of(context).pop();
-                } catch (_) {}
+              // Close the drawer if it's open (best-effort)
+              try {
+                Navigator.of(context).pop();
+              } catch (_) {}
 
-                // Sign out from Firebase
-                try {
-                  await fb.FirebaseAuth.instance.signOut();
-                } catch (e) {
-                  debugPrint('Logout failed: $e');
-                }
+              // Sign out from Firebase
+              try {
+                await fb.FirebaseAuth.instance.signOut();
+              } catch (e) {
+                debugPrint('Logout failed: $e');
+              }
 
-                // Navigate to Login and clear the navigation stack so the user
-                // can't navigate back into authenticated screens.
-                try {
-                  Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
-                } catch (e) {
-                  debugPrint('Navigation to login after logout failed: $e');
-                }
-              
-                try {
-                  showAppSnack(context, 'Logged out successfully', isSuccess: true);
-                } catch (_) {}
+              // Navigate to Login and clear the navigation stack so the user
+              // can't navigate back into authenticated screens.
+              try {
+                Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+              } catch (e) {
+                debugPrint('Navigation to login after logout failed: $e');
+              }
+
+              try {
+                showAppSnack(context, 'Logged out successfully', isSuccess: true);
+              } catch (_) {}
             },
             child: Text('Logout', style: TextStyle(color: Theme.of(context).colorScheme.error)),
           ),
@@ -88,7 +173,7 @@ class AppDrawer extends StatelessWidget {
     final colorScheme = theme.colorScheme;
     final surface = colorScheme.surface;
     final onSurface = colorScheme.onSurface;
-    final muted = onSurface.withOpacity(0.6);
+    final muted = onSurface.withValues(alpha: 0.6);
 
     return Drawer(
       width: MediaQuery.of(context).size.width * 0.82,
@@ -129,14 +214,23 @@ class AppDrawer extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.home, color: theme.colorScheme.onPrimary, size: 28),
+                        SizedBox(
+                          width: 60,
+                          height: 60,
+                          child: Image.asset(
+                            'assets/images/farmigo_logo.png',
+                            fit: BoxFit.contain,
+                          ),
+                        ),
                         const SizedBox(width: 8),
-                        Text(
-                          'Farmigo',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: theme.colorScheme.onPrimary,
+                        Expanded(
+                          child: Text(
+                            'Farmigo',
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.onPrimary,
+                            ),
                           ),
                         ),
                       ],
@@ -145,7 +239,7 @@ class AppDrawer extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: colorScheme.primary.withOpacity(0.12),
+                        color: colorScheme.primary.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Row(
@@ -211,7 +305,7 @@ class AppDrawer extends StatelessWidget {
                             child: isProfileLoading
                                 ? Text(
                                     'Loading...',
-                                    style: TextStyle(color: theme.colorScheme.onPrimary.withOpacity(0.9)),
+                                    style: TextStyle(color: theme.colorScheme.onPrimary.withValues(alpha: 0.9)),
                                   )
                                 : Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -228,25 +322,50 @@ class AppDrawer extends StatelessWidget {
                                         }),
                                         builder: (context, snap) {
                                           final fb.User? user = fb.FirebaseAuth.instance.currentUser;
+
+                                          // If there's no signed-in user, show a clear Guest UI with
+                                          // a prompt to login. This avoids forcing a redirect while
+                                          // clearly indicating limited access.
+                                          if (user == null) {
+                                            return Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  'Guest',
+                                                  style: TextStyle(
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: theme.colorScheme.onPrimary,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 4),
+                                                Text(
+                                                  'Please login to continue',
+                                                  style: TextStyle(color: theme.colorScheme.onPrimary.withValues(alpha: 0.9), fontSize: 12),
+                                                ),
+                                              ],
+                                            );
+                                          }
+
                                           if (snap.connectionState == ConnectionState.waiting) {
                                             return Row(
                                               children: [
                                                 const SizedBox(width: 6),
                                                 const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2)),
                                                 const SizedBox(width: 8),
-                                                Text('Loading...', style: TextStyle(color: theme.colorScheme.onPrimary.withOpacity(0.9))),
+                                                Text('Loading...', style: TextStyle(color: theme.colorScheme.onPrimary.withValues(alpha: 0.9))),
                                               ],
                                             );
                                           }
 
                                           final data = snap.data ?? {};
-                                          final displayName = (profile?['name'] ?? data['name'] ?? user?.displayName ?? 'Guest User')?.toString() ?? 'Guest User';
-                                          final email = (user?.email ?? data['email'])?.toString();
+                                          final displayName = (profile?['name'] ?? data['name'] ?? user.displayName ?? '')?.toString() ?? '';
+                                          final email = (user.email ?? data['email'])?.toString();
                                           return Column(
                                             crossAxisAlignment: CrossAxisAlignment.start,
                                             children: [
                                               Text(
-                                                displayName,
+                                                displayName.isNotEmpty ? displayName : 'Guest',
                                                 style: TextStyle(
                                                   fontSize: 16,
                                                   fontWeight: FontWeight.bold,
@@ -254,24 +373,12 @@ class AppDrawer extends StatelessWidget {
                                                 ),
                                               ),
                                               if (email != null && email.isNotEmpty)
-                                                Text(email, style: TextStyle(color: theme.colorScheme.onPrimary.withOpacity(0.9), fontSize: 12)),
+                                                Text(email, style: TextStyle(color: theme.colorScheme.onPrimary.withValues(alpha: 0.9), fontSize: 12)),
                                             ],
                                           );
                                         },
                                       ),
-                                      if (isOwner)
-                                        Container(
-                                          margin: const EdgeInsets.only(top: 4),
-                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                          decoration: BoxDecoration(
-                                            color: colorScheme.secondary,
-                                            borderRadius: BorderRadius.circular(12),
-                                          ),
-                                          child: const Text(
-                                            "Property Owner",
-                                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-                                          ),
-                                        ),
+                                      // Owner badge removed
                                     ],
                                   ),
                           )
@@ -378,32 +485,15 @@ class AppDrawer extends StatelessWidget {
                     },
                   ),
 
-                  // Owner Dashboard (visible only for users whose Firestore
-                  // `users/{uid}.role` == 'owner'). We fetch the user doc with
-                  // the existing helper to avoid duplicating Firestore logic.
-                  FutureBuilder<Map<String, dynamic>?>(
-                    future: _fetchUserDoc(fb.FirebaseAuth.instance.currentUser?.uid),
-                    builder: (context, snap) {
-                      if (snap.connectionState == ConnectionState.waiting) return const SizedBox.shrink();
-                      final data = snap.data ?? {};
-                      final role = (data['role'] ?? '').toString().toLowerCase();
-                      if (role == 'owner') {
-                        return ListTile(
-                          leading: Icon(Icons.dashboard_outlined, color: onSurface),
-                          title: Text('Owner Dashboard', style: TextStyle(color: onSurface)),
-                          onTap: () {
-                            try {
-                              Navigator.of(context).pop();
-                            } catch (_) {}
-                            try {
-                              Navigator.push(context, MaterialPageRoute(builder: (_) => const OwnerDashboard()));
-                            } catch (e) {
-                              debugPrint('Owner Dashboard navigation failed: $e');
-                            }
-                          },
-                        );
-                      }
-                      return const SizedBox.shrink();
+                  ListTile(
+                    leading: Icon(Icons.dashboard_outlined, color: onSurface),
+                    title: Text('Owner Dashboard', style: TextStyle(color: onSurface)),
+                    onTap: () async {
+                      try {
+                        Navigator.of(context).pop();
+                      } catch (_) {}
+
+                      await checkOwnerVerificationStatus(context: context, replace: true);
                     },
                   ),
 

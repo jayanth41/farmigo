@@ -15,24 +15,37 @@ class _LocationSelectorScreenState extends State<LocationSelectorScreen> with Si
   late AnimationController _anim;
 
   final List<String> popularCities = [
-    'Hyderabad', 'Bengaluru', 'Mumbai', 'Chennai', 'Kolkata', 'Pune', 'Delhi'
+    'Mumbai', 'Delhi', 'Bengaluru', 'Hyderabad', 'Chennai', 'Kolkata', 'Pune', 'Ahmedabad', 'Surat', 'Jaipur', 'Lucknow', 'Nagpur', 'Indore', 'Coimbatore', 'Visakhapatnam', 'Bhopal', 'Thiruvananthapuram', 'Kochi', 'Vadodara', 'Vijayawada'
   ];
 
   // Lightweight fallback city->state map for common cities
   final Map<String, String> _cityStates = {
-    'Hyderabad': 'Telangana',
-    'Bengaluru': 'Karnataka',
     'Mumbai': 'Maharashtra',
+    'Delhi': 'Delhi',
+    'Bengaluru': 'Karnataka',
+    'Hyderabad': 'Telangana',
     'Chennai': 'Tamil Nadu',
     'Kolkata': 'West Bengal',
     'Pune': 'Maharashtra',
-    'Delhi': 'Delhi',
+    'Ahmedabad': 'Gujarat',
+    'Surat': 'Gujarat',
+    'Jaipur': 'Rajasthan',
+    'Lucknow': 'Uttar Pradesh',
+    'Nagpur': 'Maharashtra',
+    'Indore': 'Madhya Pradesh',
+    'Coimbatore': 'Tamil Nadu',
+    'Visakhapatnam': 'Andhra Pradesh',
+    'Bhopal': 'Madhya Pradesh',
+    'Thiruvananthapuram': 'Kerala',
+    'Kochi': 'Kerala',
+    'Vadodara': 'Gujarat',
+    'Vijayawada': 'Andhra Pradesh',
     'Anajpur': 'Telangana',
   };
 
   // A sample larger city list (can be extended)
   final List<String> allCities = [
-    'Hyderabad', 'Bengaluru', 'Mumbai', 'Chennai', 'Kolkata', 'Pune', 'Delhi', 'Anajpur', 'Visakhapatnam', 'Ahmedabad', 'Surat', 'Jaipur', 'Lucknow', 'Nagpur', 'Indore'
+    'Mumbai','Delhi','Bengaluru','Hyderabad','Chennai','Kolkata','Pune','Ahmedabad','Surat','Jaipur','Lucknow','Nagpur','Indore','Coimbatore','Visakhapatnam','Bhopal','Thiruvananthapuram','Kochi','Vadodara','Vijayawada','Nashik','Agra','Faridabad','Meerut','Rajkot','Kalyan','Vasai-Virar','Varanasi','Srinagar','Aurangabad','Dhanbad','Amritsar','Navi Mumbai','Ranchi','Howrah','Jabalpur','Gwalior','Jodhpur','Madurai','Raipur','Kota','Guwahati','Chandigarh','Dehradun','Shimla','Panaji','Dispur','Imphal','Shillong','Aizawl','Kohima','Agartala','Itanagar'
   ];
 
   @override

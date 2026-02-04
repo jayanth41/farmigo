@@ -53,7 +53,7 @@ class AppTheme {
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: colorScheme.surface,
         selectedItemColor: colorScheme.primary,
-        unselectedItemColor: colorScheme.onSurface.withOpacity(0.6),
+        unselectedItemColor: colorScheme.onSurface.withValues(alpha:0.6),
       ),
 
       cardColor: colorScheme.surface,
@@ -62,14 +62,14 @@ class AppTheme {
 
       textTheme: TextTheme(
         bodyLarge: TextStyle(color: colorScheme.onSurface),
-        bodyMedium: TextStyle(color: colorScheme.onSurface.withOpacity(0.9)),
-        bodySmall: TextStyle(color: colorScheme.onSurface.withOpacity(0.7)),
+        bodyMedium: TextStyle(color: colorScheme.onSurface.withValues(alpha:0.9)),
+        bodySmall: TextStyle(color: colorScheme.onSurface.withValues(alpha:0.7)),
       ),
 
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: colorScheme.surface,
-        hintStyle: TextStyle(color: colorScheme.onSurface.withOpacity(0.6)),
+        hintStyle: TextStyle(color: colorScheme.onSurface.withValues(alpha:0.6)),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide.none,
@@ -104,7 +104,7 @@ class AppTheme {
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: colorScheme.surface,
         selectedItemColor: colorScheme.primary,
-        unselectedItemColor: colorScheme.onSurface.withOpacity(0.6),
+        unselectedItemColor: colorScheme.onSurface.withValues(alpha:0.6),
       ),
 
       cardColor: colorScheme.surface,
@@ -113,14 +113,14 @@ class AppTheme {
 
       textTheme: TextTheme(
         bodyLarge: TextStyle(color: colorScheme.onSurface),
-        bodyMedium: TextStyle(color: colorScheme.onSurface.withOpacity(0.9)),
-        bodySmall: TextStyle(color: colorScheme.onSurface.withOpacity(0.7)),
+        bodyMedium: TextStyle(color: colorScheme.onSurface.withValues(alpha:0.9)),
+        bodySmall: TextStyle(color: colorScheme.onSurface.withValues(alpha:0.7)),
       ),
 
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: colorScheme.surface,
-        hintStyle: TextStyle(color: colorScheme.onSurface.withOpacity(0.6)),
+        hintStyle: TextStyle(color: colorScheme.onSurface.withValues(alpha:0.6)),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide.none,

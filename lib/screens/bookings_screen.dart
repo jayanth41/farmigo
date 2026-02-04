@@ -64,7 +64,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.calendar_today, size: 72, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3)),
+                Icon(Icons.calendar_today, size: 72, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3)),
                 const SizedBox(height: 12),
                 Text(
                   'No bookings yet',
@@ -73,7 +73,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
                 const SizedBox(height: 8),
                 Text(
                   'You have no bookings at the moment',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7)),
                 ),
                 const SizedBox(height: 16),
                   ElevatedButton(
@@ -216,7 +216,7 @@ class BookingItemCard extends StatelessWidget {
                 : Container(
                     height: 160,
                     color: cs.surfaceContainerHighest,
-                    child: Icon(Icons.home, size: 48, color: cs.onSurface.withOpacity(0.3)),
+                    child: Icon(Icons.home, size: 48, color: cs.onSurface.withValues(alpha:0.3)),
                   ),
           ),
           Padding(
@@ -252,12 +252,12 @@ class BookingItemCard extends StatelessWidget {
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    Icon(Icons.location_on, size: 14, color: cs.onSurface.withOpacity(0.7)),
+                    Icon(Icons.location_on, size: 14, color: cs.onSurface.withValues(alpha:0.7)),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
                         booking['location'] ?? '',
-                        style: theme.textTheme.bodySmall?.copyWith(color: cs.onSurface.withOpacity(0.8)),
+                        style: theme.textTheme.bodySmall?.copyWith(color: cs.onSurface.withValues(alpha:0.8)),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -271,7 +271,7 @@ class BookingItemCard extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Check-in', style: theme.textTheme.bodySmall?.copyWith(color: cs.onSurface.withOpacity(0.7))),
+                          Text('Check-in', style: theme.textTheme.bodySmall?.copyWith(color: cs.onSurface.withValues(alpha:0.7))),
                           const SizedBox(height: 4),
                           Text(formatDate(booking['checkIn']), style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
                         ],
@@ -282,7 +282,7 @@ class BookingItemCard extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Check-out', style: theme.textTheme.bodySmall?.copyWith(color: cs.onSurface.withOpacity(0.7))),
+                          Text('Check-out', style: theme.textTheme.bodySmall?.copyWith(color: cs.onSurface.withValues(alpha:0.7))),
                           const SizedBox(height: 4),
                           Text(formatDate(booking['checkOut']), style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
                         ],
