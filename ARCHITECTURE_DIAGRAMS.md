@@ -79,7 +79,7 @@
                      │                  │
                      ▼                  ▼
          ┌─────────────────────┐  ┌──────────────────┐
-         │ Create Supabase     │  │ errorMessage set │
+         │     │  │ errorMessage set │
          │ User Profile        │  │ (Firebase error) │
          │ (UserService)       │  │                  │
          │                     │  │ Show SnackBar:   │
@@ -240,8 +240,7 @@
 ```
 ┌──────────────────────────────────────────────────────┐
 │         void main() async                            │
-│  1. Initialize Firebase                              │
-│  2. Initialize Supabase                              │
+│  1. Initialize Firebase                              │                            │
 │  3. Register GetX controllers                        │
 │  4. Run MyApp()                                      │
 └─────────────────────┬────────────────────────────────┘
@@ -359,7 +358,7 @@ User Action
 ```
 EMAIL LOGIN                          │  PHONE OTP LOGIN
 ─────────────────────────────────────┼──────────────────────────────────
-Firebase Auth                        │  Supabase Auth
+Firebase Auth                        │ 
 Email: user@example.com              │  Phone: +1 234 567 8900
 Password: ••••••••••                 │  OTP: 123456
                                      │
@@ -369,7 +368,7 @@ Works on web                         │  Works on mobile primarily
                                      │
 Standard auth method                 │  Alternative/additional method
                                      │
-Provider-based (AuthController)      │  Supabase-based (still works)
+Provider-based (AuthController)      │  
                                      │
 Toggle in LoginScreen               │  Same toggle in LoginScreen
                                      │
@@ -478,7 +477,7 @@ lib/
     └── signup_screen.dart (245 lines) ✏️ UPDATED
         ├─ Registration form
         ├─ Firebase signup
-        └─ Supabase profile creation
+       
 ```
 
 ---
@@ -503,8 +502,7 @@ MyApp → Consumer<AuthController>
     │      │                            └─ Success → isAuthenticated = true
     │      │
     │      └─ [Use phone login] → Phone field + Continue button
-    │                               │
-    │                               └─ Supabase OTP → Success → isAuthenticated = true
+    │                              
     │
     ├─ isAuthenticated == true
     │      │
@@ -547,7 +545,6 @@ MyApp → Consumer<AuthController>
 
 ✅ Integration
    ├─ Firebase configured
-   ├─ Supabase configured
    ├─ Provider setup complete
    ├─ GetX still functional
    └─ Location & Settings working

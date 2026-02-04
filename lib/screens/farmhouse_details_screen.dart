@@ -11,6 +11,7 @@ import '../data/farmhouses_data.dart'; // ADDED: Import farmhouses data
 import 'bookings_screen.dart';
 import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'profile_screen.dart';
 // Reward updates are handled by BookingService during booking creation.
 
 class FarmhouseDetailsScreen extends StatefulWidget {
@@ -78,8 +79,9 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
 
   List<Map<String, dynamic>> similarFarmhouses = [];
   late Razorpay _razorpay;
-  static const String _razorpayKey = '<RAZORPAY_KEY_HERE>'; // replace with live key when available
+  static const String _razorpayKey = 'rzp_live_SBLnYIO8JTlM7O'; // replace with live key when available
   Map<String, dynamic>? _pendingBooking;
+  bool _isGuest = false;
 
   @override
   void initState() {
@@ -132,6 +134,29 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
       _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
       _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
     } catch (_) {}
+
+    // Determine if the user should be treated as a guest (signed-in but missing user doc or fetch error)
+    _determineGuest();
+  }
+
+  Future<void> _determineGuest() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        _isGuest = false;
+        return;
+      }
+      final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      if (!mounted) return;
+      if (!doc.exists || doc.data() == null) {
+        setState(() => _isGuest = true);
+      } else {
+        setState(() => _isGuest = false);
+      }
+    } catch (e) {
+      debugPrint('Failed to load user doc for guest determination: $e');
+      if (mounted) setState(() => _isGuest = true);
+    }
   }
 
   @override
@@ -145,31 +170,30 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
   }
 
   // Open Razorpay checkout with given amount (in app currency units)
-  void _openCheckout(num amount) {
-    final user = FirebaseAuth.instance.currentUser;
-    final options = {
-      'key': _razorpayKey,
-      // Razorpay expects amount in paise (i.e., INR * 100)
-      'amount': (amount * 100).round(),
-      'name': widget.name ?? 'Farmigo',
-      'description': 'Property booking',
-      'prefill': {
-        'contact': user?.phoneNumber ?? '',
-        'email': user?.email ?? '',
-      },
-      'theme': {
-        'color': '#00A86B',
-      }
-    };
+ void _openCheckout(num amount) {
+  final user = FirebaseAuth.instance.currentUser;
 
-    try {
-      _razorpay.open(options);
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Payment failed to start')),
-      );
-    }
+  var options = {
+    'key': _razorpayKey,
+    'amount': (amount * 100).toInt(), // PAISA
+    'name': "Farmigo",
+    'description': widget.name,
+    'prefill': {
+      'contact': user?.phoneNumber ?? '9999999999',
+      'email': user?.email ?? 'test@example.com',
+    },
+    'theme': {'color': '#00A86B'}
+  };
+
+  try {
+    _razorpay.open(options);
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Razorpay error: $e")),
+    );
   }
+}
+
 
   // Called when payment is successful. Create booking document and increment user count.
   void _handlePaymentSuccess(PaymentSuccessResponse response) async {
@@ -190,20 +214,15 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
     if (!mounted) return;
 
     if (success) {
-      // increment bookingsCount on user
+      // increment bookingsCount on user (use set with merge to be safe)
       final uid = FirebaseAuth.instance.currentUser?.uid;
       if (uid != null) {
         try {
-          await FirebaseFirestore.instance.collection('users').doc(uid).update({
+          await FirebaseFirestore.instance.collection('users').doc(uid).set({
             'bookingsCount': FieldValue.increment(1),
-          });
-        } catch (e) {
-          // If update fails (missing doc), try set with merge
-          try {
-            await FirebaseFirestore.instance.collection('users').doc(uid).set({
-              'bookingsCount': FieldValue.increment(1),
-            }, SetOptions(merge: true));
-          } catch (_) {}
+          }, SetOptions(merge: true));
+        } catch (_) {
+          // ignore increment failure
         }
       }
 
@@ -255,7 +274,7 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
   void _loadSimilarFarmhouses() {
     try {
       // Get the farmhouses list from data file
-      final allFarmhouses = farmhousesData;
+      const allFarmhouses = farmhousesData;
 
       // Extract state from location
       final currentState = _getStateFromLocation(widget.location);
@@ -399,12 +418,12 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                         onTap: () => Navigator.pop(context),
                         child: Container(
                           padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
+                          decoration: const BoxDecoration(
                             color: Colors.white,
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
-                                color: const Color.fromRGBO(0, 0, 0, 0.2),
+                                color: Color.fromRGBO(0, 0, 0, 0.2),
                                 blurRadius: 8,
                               ),
                             ],
@@ -419,36 +438,47 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                       Obx(
                         () => GestureDetector(
                           onTap: () async {
-                            final messenger = ScaffoldMessenger.of(context);
-                            await favoritesController.toggleFavorite(
-                              FarmhouseModel(
-                                id: widget.id!,
-                                name: widget.name,
-                                location: widget.location,
-                                price: widget.price,
-                                distance: widget.distance,
-                                imageUrl: widget.imageUrl,
-                              ),
-                            );
-                            messenger.showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  favoritesController.isFavorited(farmhouse.id)
-                                      ? '❤️ Added to favorites'
-                                      : '💔 Removed from favorites',
-                                ),
-                                duration: const Duration(seconds: 1),
-                              ),
-                            );
+                                final messenger = ScaffoldMessenger.of(context);
+                                final currentUser = FirebaseAuth.instance.currentUser;
+                                if (currentUser == null || _isGuest) {
+                                  messenger.showSnackBar(const SnackBar(content: Text('Complete your profile or login to save favorites')));
+                                  if (currentUser == null) {
+                                    Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen()));
+                                  } else {
+                                    Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen()));
+                                  }
+                                  return;
+                                }
+
+                                await favoritesController.toggleFavorite(
+                                  FarmhouseModel(
+                                    id: widget.id!,
+                                    name: widget.name,
+                                    location: widget.location,
+                                    price: widget.price,
+                                    distance: widget.distance,
+                                    imageUrl: widget.imageUrl,
+                                  ),
+                                );
+                                messenger.showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      favoritesController.isFavorited(farmhouse.id)
+                                          ? '❤️ Added to favorites'
+                                          : '💔 Removed from favorites',
+                                    ),
+                                    duration: const Duration(seconds: 1),
+                                  ),
+                                );
                           },
                           child: Container(
                             padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
+                            decoration: const BoxDecoration(
                               color: Colors.white,
                               shape: BoxShape.circle,
                               boxShadow: [
                                 BoxShadow(
-                                  color: const Color.fromRGBO(0, 0, 0, 0.2),
+                                  color: Color.fromRGBO(0, 0, 0, 0.2),
                                   blurRadius: 8,
                                 ),
                               ],
@@ -922,17 +952,17 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                               color: Colors.grey[200],
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: Center(
+                            child: const Center(
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  const Icon(
+                                  Icon(
                                     Icons.add_photo_alternate,
                                     size: 32,
                                     color: Colors.grey,
                                   ),
-                                  const SizedBox(height: 4),
-                                  const Text(
+                                  SizedBox(height: 4),
+                                  Text(
                                     'More',
                                     style: TextStyle(
                                       fontSize: 12,
@@ -964,12 +994,12 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                               Container(
                                 decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(12),
-                                  gradient: LinearGradient(
+                                  gradient: const LinearGradient(
                                     begin: Alignment.topCenter,
                                     end: Alignment.bottomCenter,
                                     colors: [
                                       Colors.transparent,
-                                      const Color.fromRGBO(0, 0, 0, 0.3),
+                                      Color.fromRGBO(0, 0, 0, 0.3),
                                     ],
                                   ),
                                 ),
@@ -1144,18 +1174,29 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
       ),
       bottomNavigationBar: Container(
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           color: Colors.white,
           boxShadow: [
             BoxShadow(
-              color: const Color.fromRGBO(0, 0, 0, 0.1),
+              color: Color.fromRGBO(0, 0, 0, 0.1),
               blurRadius: 8,
-              offset: const Offset(0, -2),
+              offset: Offset(0, -2),
             ),
           ],
         ),
         child: ElevatedButton(
           onPressed: () async {
+            final currentUser = FirebaseAuth.instance.currentUser;
+            if (currentUser == null || _isGuest) {
+              final messenger = ScaffoldMessenger.of(context);
+              messenger.showSnackBar(const SnackBar(content: Text('Complete your profile or login to make bookings')));
+              if (currentUser == null) {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen()));
+              } else {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen()));
+              }
+              return;
+            }
             if (widget.id == null) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text("Invalid property")),
@@ -1181,6 +1222,7 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
               'checkIn': selectedCheckInDate?.toIso8601String() ?? '',
               'checkOut': selectedCheckOutDate?.toIso8601String() ?? '',
               'totalPrice': calculatedPrice,
+              'paidAt': Timestamp.now(),
             };
 
             _openCheckout(calculatedPrice);

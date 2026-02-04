@@ -101,7 +101,7 @@ class _SearchCardState extends State<SearchCard> {
   decoration: BoxDecoration(
     color: Theme.of(context).colorScheme.surface,
     borderRadius: BorderRadius.circular(26),
-  boxShadow: [BoxShadow(color: const Color.fromRGBO(0, 0, 0, 0.08), blurRadius: 22, offset: const Offset(0, 12))],
+  boxShadow: const [BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.08), blurRadius: 22, offset: Offset(0, 12))],
   ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Padding(padding: const EdgeInsets.only(bottom: 6), child: Text('Location', style: labelStyle)),
@@ -150,7 +150,7 @@ class _SearchCardState extends State<SearchCard> {
       padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(border: Border.all(color: active ? AppColors.primary : AppColors.border(context)), borderRadius: BorderRadius.circular(16)),
       child: Row(children: [
-        Icon(Icons.location_on_outlined, color: AppColors.iconGrey, size: 22),
+        const Icon(Icons.location_on_outlined, color: AppColors.iconGrey, size: 22),
         const SizedBox(width: 10),
         Expanded(
             child: TextFormField(
@@ -173,7 +173,7 @@ class _SearchCardState extends State<SearchCard> {
         height: 54,
         padding: const EdgeInsets.symmetric(horizontal: 14),
         decoration: BoxDecoration(border: Border.all(color: active ? AppColors.primary : AppColors.border(context)), borderRadius: BorderRadius.circular(16)),
-        child: Row(children: [Icon(Icons.calendar_today_outlined, color: AppColors.iconGrey, size: 22), const SizedBox(width: 10), Expanded(child: Text(dateText, style: TextStyle(color: AppColors.textMuted(context), fontSize: active ? 16 : 15)))]),
+        child: Row(children: [const Icon(Icons.calendar_today_outlined, color: AppColors.iconGrey, size: 22), const SizedBox(width: 10), Expanded(child: Text(dateText, style: TextStyle(color: AppColors.textMuted(context), fontSize: active ? 16 : 15)))]),
       ),
     );
   }
@@ -186,7 +186,7 @@ class _SearchCardState extends State<SearchCard> {
         height: 54,
         padding: const EdgeInsets.symmetric(horizontal: 14),
         decoration: BoxDecoration(border: Border.all(color: active ? AppColors.primary : AppColors.border(context)), borderRadius: BorderRadius.circular(16)),
-        child: Row(children: [Icon(Icons.people_outline, color: AppColors.iconGrey, size: 22), const SizedBox(width: 10), Expanded(child: Text(_guestsLabel(), style: TextStyle(color: AppColors.textMuted(context), fontSize: active ? 16 : 15)))]),
+        child: Row(children: [const Icon(Icons.people_outline, color: AppColors.iconGrey, size: 22), const SizedBox(width: 10), Expanded(child: Text(_guestsLabel(), style: TextStyle(color: AppColors.textMuted(context), fontSize: active ? 16 : 15)))]),
       ),
     );
   }

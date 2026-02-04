@@ -29,7 +29,7 @@ class BookingsController extends GetxController {
 
       final List<Map<String, dynamic>> results = [];
       for (final doc in snap.docs) {
-        final data = Map<String, dynamic>.from(doc.data() as Map<String, dynamic>);
+        final data = Map<String, dynamic>.from(doc.data());
         data['id'] = doc.id;
         results.add(data);
       }

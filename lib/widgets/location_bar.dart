@@ -14,7 +14,7 @@ class LocationBar extends StatelessWidget {
           // LEFT: Your Location text
           Row(
             children: [
-              Icon(Icons.near_me_outlined, size: 18, color: AppColors.iconGrey),
+              const Icon(Icons.near_me_outlined, size: 18, color: AppColors.iconGrey),
               const SizedBox(width: 6),
               Text(
                 "Your Location",
@@ -36,8 +36,8 @@ class LocationBar extends StatelessWidget {
             ),
             child: Row(
               children:  [
-                Icon(Icons.location_on, size: 16, color: AppColors.primary),
-                SizedBox(width: 4),
+                const Icon(Icons.location_on, size: 16, color: AppColors.primary),
+                const SizedBox(width: 4),
                 Text(
                   "All India",
                   style: TextStyle(
@@ -46,8 +46,8 @@ class LocationBar extends StatelessWidget {
                     color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
-                SizedBox(width: 4),
-                Icon(Icons.keyboard_arrow_down, color: AppColors.iconGrey),
+                const SizedBox(width: 4),
+                const Icon(Icons.keyboard_arrow_down, color: AppColors.iconGrey),
               ],
             ),
           ),

@@ -82,7 +82,10 @@ class _MainScaffoldState extends State<MainScaffold> {
     final children = BottomTab.values.map((t) => widget.tabs[t]!).toList();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('')),
+      appBar: AppBar(
+        title: const Text(''),
+        leadingWidth: 70,
+      ),
       drawer: AppDrawer(
         activeItem: AppRoutes.routeToLabel(_bottomTabRoute[_selectedTab]),
         onItemSelected: _onDrawerItemSelected,

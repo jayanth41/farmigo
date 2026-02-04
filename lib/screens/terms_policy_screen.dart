@@ -37,7 +37,7 @@ class _TermsPolicyScreenState extends State<TermsPolicyScreen>
           indicatorColor: colorScheme.primary,
           indicatorWeight: 3,
           labelColor: colorScheme.primary,
-          unselectedLabelColor: onSurface.withOpacity(0.6),
+          unselectedLabelColor: onSurface.withValues(alpha: 0.6),
           labelStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
           unselectedLabelStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
           tabs: const [

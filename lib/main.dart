@@ -30,32 +30,33 @@ import 'settings/theme_provider.dart';
 import 'services/firebase_helper.dart';
 import 'firebase_options.dart';
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // App uses Firebase for authentication and Firestore for user profiles.
-  // Any external database-backed services should be migrated separately.
+  debugPrint("🚨🚨🚨 MAIN() STARTED — CHECKING APP CHECK 🚨🚨🚨");
 
-  if (!kIsWeb) {
-    try {
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
-      );
-      // mark firebase available for guarded services
-      FirebaseHelper.setAvailable(true);
-    } catch (e, st) {
-      debugPrint('⚠️ Firebase.initializeApp failed: $e');
-      debugPrint('$st');
-      FirebaseHelper.setAvailable(false);
-    }
-  
-  }
+  await Firebase.initializeApp();
 
-  Get.put(FavoritesController());
-  Get.put(BookingsController());
+  // ❌ REMOVE App Check activation in debug
+// We'll enable it properly later for release builds only
 
-  runApp(
-    MultiProvider(
+
+  runApp(const MyApp());
+}
+
+
+
+
+
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    // Move Providers inside MyApp so `main()` can remain the exact minimal
+    // Firebase initializer requested while preserving the app-wide providers.
+    return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => SettingsController()..initialize()),
@@ -63,47 +64,39 @@ void main() async {
         ChangeNotifierProvider(create: (_) => FiltersProvider()),
         ChangeNotifierProvider(create: (_) => AppLocationController()..initialize()),
       ],
-      child: const MyApp(),
-    ),
-  );
-}
+      child: Builder(builder: (context) {
+        final themeProvider = Provider.of<ThemeProvider>(context);
+        return GetMaterialApp(
+          debugShowCheckedModeBanner: false,
+          title: 'Farmigo',
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+          theme: AppTheme.lightTheme(),
+          darkTheme: AppTheme.darkTheme(),
+          themeMode: themeProvider.themeMode,
 
-  @override
-  Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
+          // Use a one-time splash check instead of switching the app root on
+          // every authStateChanges event. This prevents auth state events from
+          // unexpectedly replacing the entire app (and re-triggering login)
+          // while preserving FirebaseAuth as the canonical auth source.
+          home: const SplashScreen(),
 
-    return GetMaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Farmigo',
-
-      theme: AppTheme.lightTheme(),
-      darkTheme: AppTheme.darkTheme(),
-      themeMode: themeProvider.themeMode,
-
-      // Use a one-time splash check instead of switching the app root on
-      // every authStateChanges event. This prevents auth state events from
-      // unexpectedly replacing the entire app (and re-triggering login)
-      // while preserving FirebaseAuth as the canonical auth source.
-      home: const SplashScreen(),
-
-      getPages: [
-        GetPage(name: '/login', page: () => const LoginScreen()),
-        GetPage(name: '/signup', page: () => const SignupPage()),
-        GetPage(name: AppRoutes.home, page: () => const HomeScreen()),
-        GetPage(name: AppRoutes.favorites, page: () => const FavoritesScreen()),
-        GetPage(name: AppRoutes.bookings, page: () => const BookingsScreen()),
-        GetPage(name: AppRoutes.profile, page: () => const ProfileScreen()),
-  GetPage(name: AppRoutes.bookingHistory, page: () => const BookingHistoryScreen()),
-  // Location selector is used as a modal bottom sheet (LocationSelectorScreen)
-        GetPage(name: AppRoutes.settings, page: () => const SettingsScreen()),
-        GetPage(name: AppRoutes.offers, page: () => const OffersScreen()),
-        GetPage(name: AppRoutes.helpSupport, page: () => const HelpSupportScreen()),
-        GetPage(name: AppRoutes.farmhouses, page: () => const FarmhousesScreen()),
-        GetPage(name: AppRoutes.carRentals, page: () => const CarRentalsScreen()),
-      ],
+          getPages: [
+            GetPage(name: '/login', page: () => const LoginScreen()),
+            GetPage(name: '/signup', page: () => const SignupPage()),
+            GetPage(name: AppRoutes.home, page: () => const HomeScreen()),
+            GetPage(name: AppRoutes.favorites, page: () => const FavoritesScreen()),
+            GetPage(name: AppRoutes.bookings, page: () => const BookingsScreen()),
+            GetPage(name: AppRoutes.profile, page: () => const ProfileScreen()),
+            GetPage(name: AppRoutes.bookingHistory, page: () => const BookingHistoryScreen()),
+            // Location selector is used as a modal bottom sheet (LocationSelectorScreen)
+            GetPage(name: AppRoutes.settings, page: () => const SettingsScreen()),
+            GetPage(name: AppRoutes.offers, page: () => const OffersScreen()),
+            GetPage(name: AppRoutes.helpSupport, page: () => const HelpSupportScreen()),
+            GetPage(name: AppRoutes.farmhouses, page: () => const FarmhousesScreen()),
+            GetPage(name: AppRoutes.carRentals, page: () => const CarRentalsScreen()),
+          ],
+        );
+      }),
     );
   }
 }

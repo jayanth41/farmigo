@@ -12,7 +12,20 @@
           "package_name": "com.example.flutter_application_1"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "520560089620-364afkimqqbdefbod9cm1jl1f4mkiot9.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.flutter_application_1",
+            "certificate_hash": "f3e1b6aac7d39f5aed8e5fcd12a04d3be28109e4"
+          }
+        },
+        {
+          "client_id": "520560089620-rgtda3bghq7r2ld249l5b7n3pdrdq8ln.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyAaNXzlIaKWzvR7w9688Zjnawm7fvr4_h0"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "520560089620-rgtda3bghq7r2ld249l5b7n3pdrdq8ln.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "520560089620-sd75vi6fjcto0h5vlsr61ol4djkjg2mg.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.flutterApplication1"
+              }
+            }
+          ]
         }
       }
     }

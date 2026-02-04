@@ -53,22 +53,90 @@ service cloud.firestore {
       allow read: if request.auth != null && request.auth.uid == userId;
 
       // Allow updates by the document owner only. The existence of `resource` ensures this is not a create.
+      // Additional constraints:
+      // - If the request attempts to set `ownerDetails.ownerStatus`, the new value must be exactly
+      //   "pending" (so owners can submit for verification). Only callers with an admin claim may
+      //   set ownerStatus to other values (for example, "approved").
+      // - If rewardPoints is present, it must be numeric.
       allow update: if request.auth != null
                     && request.auth.uid == userId
-                    // If updating rewardPoints ensure it is numeric (optional validation)
                     && (
+                      // rewardPoints validation (unchanged)
                       !request.resource.data.keys().hasAny(['rewardPoints'])
                       || request.resource.data.rewardPoints is number
+                    )
+                    && (
+                      // If the client is attempting to include ownerDetails.ownerStatus in the update,
+                      // permit it only when either:
+                      //  - the caller has an admin claim (server-side), or
+                      //  - the owner is setting the status to the special value "pending" when
+                      //    submitting their details.
+                      // If ownerDetails.ownerStatus is not present in the request, this check passes.
+                      !(
+                        request.resource.data.keys().hasAny(['ownerDetails'])
+                        && request.resource.data.ownerDetails is map
+                        && request.resource.data.ownerDetails.keys().hasAny(['ownerStatus'])
+                      )
+                      || (
+                        request.auth.token.admin == true
+                        || (request.resource.data.ownerDetails.ownerStatus == 'pending')
+                      )
                     );
 
       // Disallow client-side creation and deletion of user documents to avoid spoofing.
       allow create: if false;
       allow delete: if false;
     }
+    // ------------------ Owner Verification ------------------
+    // Documents stored at owner_verification/{userId}
+    // - A user may create or update only their own document
+    // - On create the client must set `isOwnerDetailsSubmitted` = true and
+    //   `ownerStatus` = "pending" (owner cannot mark themselves approved)
+    // - Clients must not be able to escalate ownerStatus to approved/rejected
+    match /owner_verification/{userId} {
+      // Only the owner may read their verification document
+      allow read: if request.auth != null && request.auth.uid == userId;
+
+      // Create allowed only for the authenticated owner and only when the
+      // ownerStatus is set to 'pending' and isOwnerDetailsSubmitted is true.
+      allow create: if request.auth != null
+                    && request.auth.uid == userId
+                    && request.resource.data.isOwnerDetailsSubmitted == true
+                    && request.resource.data.ownerStatus == 'pending'
+                    // Basic type checks for required fields
+                    && request.resource.data.propertyName is string
+                    && request.resource.data.propertyAddress is string
+                    && request.resource.data.city is string;
+
+      // Allow updates by the owner, but prevent clients from changing the
+      // ownerStatus to any value other than the existing value or 'pending'.
+      // This prevents owners from marking themselves as 'approved'. Admins
+      // (server-side) may update ownerStatus using the Firebase Admin SDK.
+      allow update: if request.auth != null
+                    && request.auth.uid == userId
+                    && (
+                      // Either ownerStatus remains unchanged, or the client keeps it 'pending'
+                      (request.resource.data.keys().hasAny(['ownerStatus']) == false)
+                      || (request.resource.data.ownerStatus == resource.data.ownerStatus)
+                      || (request.resource.data.ownerStatus == 'pending')
+                    );
+
+      // Disallow client-side deletion of verification documents
+      allow delete: if false;
+    }
 
     // Default deny everything else
+    // ------------------ Owner Profiles ------------------
+    // Owner profile documents stored at owner_profiles/{userId}
+    // Allow read and write only for the authenticated user who owns the document.
+    match /owner_profiles/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
   }
 }
+
+firebase deploy --only firestore:rules

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../widgets/properties_grid.dart';
 import '../widgets/app_drawer.dart';
 import '../theme/app_colors.dart';
+import '../models/category.dart';
 
 /// Screen that shows a list of farmhouses (dummy data copied from Home).
 class FarmhousesScreen extends StatelessWidget {
@@ -76,11 +77,11 @@ class FarmhousesScreen extends StatelessWidget {
         title: const Text('Farmhouses'),
         backgroundColor: AppColors.primary,
       ),
-      body: Padding(
+        body: Padding(
         padding: const EdgeInsets.symmetric(vertical: 12.0),
         child: ListView(
-          children: [
-            PropertiesGrid(properties: _farmhouses),
+          children: const [
+            PropertiesGrid(properties: _farmhouses, category: Category.farmhouse),
           ],
         ),
       ),

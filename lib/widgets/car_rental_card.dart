@@ -38,7 +38,7 @@ class _CarRentalCardState extends State<CarRentalCard> {
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
+            color: Colors.black.withValues(alpha: 0.08),
             blurRadius: 18,
             offset: const Offset(0, 10),
           ),
@@ -95,7 +95,7 @@ class _CarRentalCardState extends State<CarRentalCard> {
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.15),
+                          color: Colors.black.withValues(alpha: 0.15),
                           blurRadius: 8,
                         )
                       ],
@@ -166,7 +166,7 @@ class _CarRentalCardState extends State<CarRentalCard> {
                         color: Theme.of(context)
                             .colorScheme
                             .onSurface
-                            .withOpacity(0.6)),
+                            .withValues(alpha: 0.6)),
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
@@ -176,7 +176,7 @@ class _CarRentalCardState extends State<CarRentalCard> {
                           color: Theme.of(context)
                               .colorScheme
                               .onSurface
-                              .withOpacity(0.6),
+                              .withValues(alpha: 0.6),
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -214,7 +214,7 @@ class _CarRentalCardState extends State<CarRentalCard> {
                         color: Theme.of(context)
                             .colorScheme
                             .onSurface
-                            .withOpacity(0.6),
+                            .withValues(alpha: 0.6),
                       ),
                     ),
                   ],
@@ -274,7 +274,7 @@ class _CarRentalCardState extends State<CarRentalCard> {
                             color: Theme.of(context)
                                 .colorScheme
                                 .onSurface
-                                .withOpacity(0.6),
+                                .withValues(alpha: 0.6),
                           ),
                         ),
                       ],

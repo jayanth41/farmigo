@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import '../theme/app_colors.dart';
 import '../controllers/auth_controller.dart';
@@ -9,14 +10,12 @@ import '../widgets/snackbar_helper.dart';
 import '../navigation/app_routes.dart';
 import 'home_screen.dart';
 
-enum AuthType { email, phone }
-
-/// Unified OTP screen for phone-based verification using Firebase Auth.
+/// OTP screen for phone-based verification using Firebase Auth.
 class OTPScreen extends StatefulWidget {
   final String value;
-  final AuthType authType;
+  final String? verificationId;
 
-  const OTPScreen({super.key, required this.value, required this.authType});
+  const OTPScreen({super.key, required this.value, this.verificationId});
 
   @override
   State<OTPScreen> createState() => _OTPScreenState();
@@ -43,105 +42,42 @@ class _OTPScreenState extends State<OTPScreen> {
     if (_isSending) return; // prevent duplicate sends
     _isSending = true;
     setState(() {});
-
-    if (widget.authType == AuthType.email) {
-      final ok = await auth.sendEmailOTP(widget.value);
-      if (!mounted) return;
-      if (ok) {
-        showAppSnack(context, 'OTP sent to ${widget.value}', isSuccess: true);
-        _startResendCooldown();
-      } else {
-        showAppSnack(context, auth.errorMessage ?? 'Failed to send email OTP', isError: true);
-      }
+    // Only phone OTP flows are supported. If a verificationId was already
+    // provided (from the previous screen), treat the OTP as sent and start
+    // the cooldown. Otherwise attempt a fallback send using the controller.
+    if (widget.verificationId != null && widget.verificationId!.isNotEmpty) {
+      showAppSnack(context, 'OTP sent to ${widget.value}', isSuccess: true);
+      _startResendCooldown();
       _isSending = false;
       setState(() {});
-    } else {
-      // Try sending the phone OTP. If Play Integrity / reCAPTCHA errors occur
-      // (common message: "This request is missing a valid app identifier"),
-      // attempt a safe testing fallback by disabling app verification for this
-      // runtime and retrying once. This keeps existing Firebase logic intact
-      // but provides a fallback when native Play Integrity isn't configured.
-      var ok = false;
-      String? caughtError;
-      try {
-        ok = await auth.sendPhoneOTP(widget.value);
-      } catch (e) {
-        // Capture unexpected exceptions from the controller
-        caughtError = e.toString();
-        debugPrint('sendPhoneOTP threw: $e');
-      }
-
-      if (!mounted) return;
-      if (ok) {
-        showAppSnack(context, 'OTP sent to ${widget.value}', isSuccess: true);
-        _startResendCooldown();
-        _isSending = false;
-        setState(() {});
-        return;
-      }
-
-      final err = caughtError ?? auth.errorMessage ?? '';
-      // Detect common Play Integrity / reCAPTCHA error messages
-      final lower = err.toLowerCase();
-  if (lower.contains('missing a valid app identifier') || lower.contains('play integrity') || lower.contains('recaptcha') || lower.contains('app identifier')) {
-        // Play Integrity / reCAPTCHA appears to be failing. Do not automatically
-        // retry. Instead, show a friendly dialog explaining the issue and give
-        // an option to enable a developer-only testing fallback (debug builds
-        // only). This prevents silent retries in production and follows your
-        // instruction to handle failures gracefully.
-        if (!mounted) return;
-        await showDialog<void>(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            title: const Text('Verification blocked'),
-            content: const Text(
-                'Play Integrity / reCAPTCHA validation failed for this device.\n\nIf you are developing, you can enable a testing fallback to bypass device verification (debug builds only). For production, configure Play Integrity and add your app SHA-256 in the Firebase Console and Play Console.'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(),
-                child: const Text('Close'),
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.of(ctx).pop();
-                },
-                child: const Text('How to fix'),
-              ),
-              if (kDebugMode)
-                TextButton(
-                  onPressed: () async {
-                    Navigator.of(ctx).pop();
-                    try {
-                      await FirebaseAuth.instance.setSettings(appVerificationDisabledForTesting: true);
-                      showAppSnack(context, 'Test fallback enabled — retrying OTP send', isError: false);
-                      final retry = await auth.sendPhoneOTP(widget.value);
-                      if (!mounted) return;
-                      if (retry) {
-                        showAppSnack(context, 'OTP sent to ${widget.value}', isSuccess: true);
-                        _startResendCooldown();
-                      } else {
-                        showAppSnack(context, auth.errorMessage ?? 'Retry failed', isError: true);
-                      }
-                    } catch (e) {
-                      debugPrint('Test fallback failed: $e');
-                      showAppSnack(context, 'Test fallback failed: $e', isError: true);
-                    }
-                  },
-                  child: const Text('Use test fallback'),
-                ),
-            ],
-          ),
-        );
-        _isSending = false;
-        setState(() {});
-        return;
-      }
-
-      // final fallback: show the original error
-      showAppSnack(context, err.isNotEmpty ? err : 'Failed to send phone OTP', isError: true);
-      _isSending = false;
-      setState(() {});
+      return;
     }
+
+    // Fallback: trigger a send using the AuthController when verificationId
+    // wasn't passed. This keeps backward compatibility for callers that rely
+    // on the controller.
+    var ok = false;
+    String? caughtError;
+    try {
+      ok = await auth.sendPhoneOTP(widget.value);
+    } catch (e) {
+      caughtError = e.toString();
+      debugPrint('sendPhoneOTP threw: $e');
+    }
+
+    if (!mounted) return;
+    if (ok) {
+      showAppSnack(context, 'OTP sent to ${widget.value}', isSuccess: true);
+      _startResendCooldown();
+      _isSending = false;
+      setState(() {});
+      return;
+    }
+
+    final err = caughtError ?? auth.errorMessage ?? '';
+    showAppSnack(context, err.isNotEmpty ? err : 'Failed to send phone OTP', isError: true);
+    _isSending = false;
+    setState(() {});
   }
 
   void _startResendCooldown() {
@@ -194,9 +130,38 @@ class _OTPScreenState extends State<OTPScreen> {
 
     bool ok = false;
     try {
-      if (widget.authType == AuthType.email) {
-        ok = await auth.verifyEmailOTP(widget.value, otp);
+      // Only phone verification is supported here. If a verificationId was
+      // supplied by the caller, use it to build the credential and sign in.
+      if (widget.verificationId != null && widget.verificationId!.isNotEmpty) {
+        final cred = PhoneAuthProvider.credential(verificationId: widget.verificationId!, smsCode: otp.trim());
+        final userCred = await FirebaseAuth.instance.signInWithCredential(cred);
+        final user = userCred.user;
+        if (user == null) {
+          _isVerifying = false;
+          setState(() {});
+          showAppSnack(context, 'Phone sign-in failed', isError: true);
+          ok = false;
+        } else {
+          // Ensure user doc exists
+          try {
+            final doc = FirebaseFirestore.instance.collection('users').doc(user.uid);
+            final snap = await doc.get();
+            if (!snap.exists) {
+              await doc.set({
+                'uid': user.uid,
+                'name': user.displayName ?? '',
+                'phone': user.phoneNumber ?? '',
+                'provider': 'phone',
+                'createdAt': FieldValue.serverTimestamp(),
+              });
+            }
+          } catch (e) {
+            debugPrint('Failed to create user doc after sign-in: $e');
+          }
+          ok = true;
+        }
       } else {
+        // Fallback: use controller if verificationId wasn't provided
         ok = await auth.verifyPhoneOTP(otp);
       }
     } on FirebaseAuthException catch (e) {
@@ -247,7 +212,7 @@ class _OTPScreenState extends State<OTPScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: IconThemeData(color: cs.onBackground),
+        iconTheme: IconThemeData(color: cs.onSurface),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -258,7 +223,7 @@ class _OTPScreenState extends State<OTPScreen> {
               const SizedBox(height: 6),
               Text('Welcome Back', style: txt.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
               const SizedBox(height: 6),
-              Text('Enter OTP sent to your email/phone', style: txt.bodyMedium?.copyWith(color: cs.onSurface.withOpacity(0.7))),
+              Text('Enter OTP sent to your phone', style: txt.bodyMedium?.copyWith(color: cs.onSurface.withValues(alpha: 0.7))),
               const SizedBox(height: 20),
 
               // Row: Change Number / Resend
@@ -283,8 +248,8 @@ class _OTPScreenState extends State<OTPScreen> {
               // OTP boxes (responsive width)
               LayoutBuilder(builder: (context, constraints) {
                 final screenW = constraints.maxWidth;
-                final horizontalSpacing = 12.0;
-                final totalSpacing = horizontalSpacing * 5;
+                const horizontalSpacing = 12.0;
+                const totalSpacing = horizontalSpacing * 5;
                 final available = screenW - totalSpacing;
                 double boxW = (available / 6).clamp(40.0, 56.0);
 
@@ -342,7 +307,7 @@ class _OTPScreenState extends State<OTPScreen> {
                     },
                     child: Ink(
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(colors: [cs.primary, cs.primary.withOpacity(0.9)], begin: Alignment.centerLeft, end: Alignment.centerRight),
+                        gradient: LinearGradient(colors: [cs.primary, cs.primary.withValues(alpha: 0.9)], begin: Alignment.centerLeft, end: Alignment.centerRight),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Center(child: _isVerifying ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : Text('Verify OTP', style: txt.titleMedium?.copyWith(color: Colors.white, fontWeight: FontWeight.bold))),

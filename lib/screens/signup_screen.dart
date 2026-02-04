@@ -42,7 +42,7 @@ class _SignupPageState extends State<SignupPage> {
 
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => OTPScreen(value: phone, authType: AuthType.phone)),
+      MaterialPageRoute(builder: (_) => OTPScreen(value: phone)),
     );
   }
 
@@ -70,16 +70,16 @@ class _SignupPageState extends State<SignupPage> {
                   height: 100,
                   width: 100,
                   decoration: BoxDecoration(
-                    color: cs.primary.withOpacity(0.12),
+                    color: cs.primary.withValues(alpha: 0.12),
                     shape: BoxShape.circle,
-                    boxShadow: [BoxShadow(color: cs.onBackground.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 4))],
+                    boxShadow: [BoxShadow(color: cs.onSurface.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 4))],
                   ),
                   child: Center(child: Icon(Icons.person_add, size: 48, color: cs.primary)),
                 ),
                 const SizedBox(height: 20),
                 Text('Create Account', style: txt.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
-                Text('Sign up to get started', style: txt.bodyMedium?.copyWith(color: cs.onSurface.withOpacity(0.7))),
+                Text('Sign up to get started', style: txt.bodyMedium?.copyWith(color: cs.onSurface.withValues(alpha: 0.7))),
                 const SizedBox(height: 24),
 
                 TextField(
@@ -93,7 +93,7 @@ class _SignupPageState extends State<SignupPage> {
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(14),
-                      borderSide: BorderSide(color: Theme.of(context).dividerColor.withOpacity(0.9)),
+                      borderSide: BorderSide(color: Theme.of(context).dividerColor.withValues(alpha: 0.9)),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(14),
@@ -113,7 +113,7 @@ class _SignupPageState extends State<SignupPage> {
                       onTap: _sendOtp,
                       child: Ink(
                         decoration: BoxDecoration(
-                          gradient: LinearGradient(colors: [cs.primary, cs.primary.withOpacity(0.9)], begin: Alignment.centerLeft, end: Alignment.centerRight),
+                          gradient: LinearGradient(colors: [cs.primary, cs.primary.withValues(alpha: 0.9)], begin: Alignment.centerLeft, end: Alignment.centerRight),
                         ),
                         child: Center(child: Text('Send OTP', style: txt.titleMedium?.copyWith(color: cs.onPrimary, fontWeight: FontWeight.bold))),
                       ),

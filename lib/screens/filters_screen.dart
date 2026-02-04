@@ -37,6 +37,11 @@ class _FiltersScreenState extends State<FiltersScreen> {
   late String _locationText;
   late TextEditingController _locationController;
 
+  // Price dropdown options (for farmhouse filter)
+  late List<RangeValues> _priceOptions;
+  late List<String> _priceOptionLabels;
+  late String _selectedPriceLabel;
+
   // Farmhouse / Villa
   late int _guestsCount;
   late int _bedroomsCount;
@@ -105,6 +110,31 @@ class _FiltersScreenState extends State<FiltersScreen> {
     _locationOptions = List<String>.from(widget.initialFilters['locationOptions'] ?? ['Hyderabad', 'Bengaluru', 'Mumbai', 'Chennai']);
     _locationText = widget.initialFilters['location'] ?? _locationOptions.first;
     _locationController = TextEditingController(text: _locationText);
+
+    // Define fixed price buckets for farmhouse filter dropdown
+    _priceOptions = const [
+      RangeValues(0, 10000),
+      RangeValues(10000, 20000),
+      RangeValues(20000, 30000),
+      RangeValues(30000, 40000),
+      RangeValues(40000, 50000),
+      RangeValues(50000, 75000),
+      RangeValues(75000, 100000),
+    ];
+    _priceOptionLabels = const [
+      '0 - 10,000',
+      '10,000 - 20,000',
+      '20,000 - 30,000',
+      '30,000 - 40,000',
+      '40,000 - 50,000',
+      '50,000 - 75,000',
+      '75,000 - 1,00,000',
+    ];
+
+    // Pick initial dropdown label by matching initial range to one of the options
+    int match = _priceOptions.indexWhere((r) => r.start == _priceRange.start && r.end == _priceRange.end);
+    if (match == -1) match = 0;
+    _selectedPriceLabel = _priceOptionLabels[match];
 
     // Farmhouse/Villa
     _guestsCount = widget.initialFilters['guestsCount'] ?? 2;
@@ -337,6 +367,10 @@ class _FiltersScreenState extends State<FiltersScreen> {
       _timeSlot = 'Morning';
       _capacity = 2;
       _hourlyDurationHours = 2;
+      // Reset dropdown selection to first (0 - 10,000)
+      try {
+        _selectedPriceLabel = _priceOptionLabels.first;
+      } catch (_) {}
     });
   }
 
@@ -392,7 +426,30 @@ class _FiltersScreenState extends State<FiltersScreen> {
               const SizedBox(height: 12),
               const Text('Price Range', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
               const SizedBox(height: 8),
-              RangeSlider(values: _priceRange, min: 0, max: 10000, divisions: 100, labels: RangeLabels('₹${_priceRange.start.toInt()}', '₹${_priceRange.end.toInt()}'), onChanged: (r) => setState(() => _priceRange = r)),
+              // Price dropdown replaces the previous RangeSlider for farmhouses
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(border: Border.all(color: Colors.grey[300]!), borderRadius: BorderRadius.circular(8)),
+                child: DropdownButton<String>(
+                  value: _selectedPriceLabel,
+                  isExpanded: true,
+                  underline: Container(),
+                  items: _priceOptionLabels.map((lbl) => DropdownMenuItem(value: lbl, child: Text(lbl))).toList(),
+                  onChanged: (v) {
+                    if (v == null) return;
+                    final idx = _priceOptionLabels.indexOf(v);
+                    if (idx < 0 || idx >= _priceOptions.length) return;
+                    setState(() {
+                      _selectedPriceLabel = v;
+                      _priceRange = _priceOptions[idx];
+                    });
+                  },
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text('Max Distance (km)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              Slider(value: _maxDistance, min: 0, max: 500, divisions: 100, label: '${_maxDistance.toInt()} km', onChanged: (v) => setState(() => _maxDistance = v)),
               const SizedBox(height: 12),
               Row(children: [
                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text('Guests', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)), const SizedBox(height: 8), Row(children: [IconButton(icon: const Icon(Icons.remove_circle_outline), onPressed: () => setState(() => _guestsCount = (_guestsCount - 1).clamp(1, 50))), Text('$_guestsCount'), IconButton(icon: const Icon(Icons.add_circle_outline), onPressed: () => setState(() => _guestsCount = (_guestsCount + 1).clamp(1, 50)))])])),
@@ -402,6 +459,21 @@ class _FiltersScreenState extends State<FiltersScreen> {
                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text('Bathrooms', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)), const SizedBox(height: 8), Row(children: [IconButton(icon: const Icon(Icons.remove_circle_outline), onPressed: () => setState(() => _bathroomsCount = (_bathroomsCount - 1).clamp(1, 20))), Text('$_bathroomsCount'), IconButton(icon: const Icon(Icons.add_circle_outline), onPressed: () => setState(() => _bathroomsCount = (_bathroomsCount + 1).clamp(1, 20)))])])),
               ]),
               const SizedBox(height: 12),
+              const Text('Amenities', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              Wrap(spacing: 8, runSpacing: 8, children: _amenities.keys.map((k) => FilterChip(label: Text(k), selected: _amenities[k] ?? false, onSelected: (v) => setState(() => _amenities[k] = v))).toList()),
+              const SizedBox(height: 12),
+              const Text('Special options', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              Wrap(spacing: 8, runSpacing: 8, children: _specialOptions.keys.map((k) => FilterChip(label: Text(k), selected: _specialOptions[k] ?? false, onSelected: (v) => setState(() => _specialOptions[k] = v))).toList()),
+              const SizedBox(height: 12),
+              const Text('Minimum rating', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              Slider(value: _minRating, min: 0, max: 5, divisions: 5, label: _minRating.toStringAsFixed(1), onChanged: (v) => setState(() => _minRating = v)),
+              const SizedBox(height: 12),
+              const Text('Property Type', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              Wrap(spacing: 8, runSpacing: 8, children: _propertyTypes.keys.map((k) => FilterChip(label: Text(k), selected: _propertyTypes[k] ?? false, onSelected: (v) => setState(() => _propertyTypes[k] = v))).toList()),
               const Text('Amenities', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
               const SizedBox(height: 8),
               Wrap(spacing: 8, runSpacing: 8, children: _houseAmenities.keys.map((k) => FilterChip(label: Text(k), selected: _houseAmenities[k] ?? false, onSelected: (v) => setState(() => _houseAmenities[k] = v))).toList()),
@@ -422,12 +494,13 @@ Container(
   padding: const EdgeInsets.symmetric(horizontal: 12),
   decoration: BoxDecoration(border: Border.all(color: Colors.grey[300]!), borderRadius: BorderRadius.circular(8)),
   child: DropdownButton<String>(
-  value: safeVal(_sortOption, ['Relevance', 'Price', 'Rating', 'Distance']),
+  value: safeVal(_sortOption, ['Relevance', 'Price: Low to High', 'Price: High to Low', 'Rating', 'Distance']),
     isExpanded: true,
     underline: Container(),
     items: const [
       DropdownMenuItem(value: 'Relevance', child: Text('Relevance')),
-      DropdownMenuItem(value: 'Price', child: Text('Price')),
+      DropdownMenuItem(value: 'Price: Low to High', child: Text('Price: Low to High')),
+      DropdownMenuItem(value: 'Price: High to Low', child: Text('Price: High to Low')),
       DropdownMenuItem(value: 'Rating', child: Text('Rating')),
       DropdownMenuItem(value: 'Distance', child: Text('Distance')),
     ],
