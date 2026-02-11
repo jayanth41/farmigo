@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  static const Color primaryGreen = Color(0xFF43A047);
-  static const Color darkGreen = Color(0xFF1B5E20);
+  static const Color primaryBlue = Color(0xFF1E5FA8);
+  static const Color darkBlue = Color(0xFF0D47A1);
 
   // Backwards-compatible theme tokens used by older widgets.
   // These provide safe defaults so UI widgets that reference AppTheme.*
@@ -29,8 +29,8 @@ class AppTheme {
 
   static ThemeData lightTheme() {
     final colorScheme = const ColorScheme.light().copyWith(
-      primary: primaryGreen,
-      primaryContainer: darkGreen,
+      primary: primaryBlue,
+      primaryContainer: darkBlue,
       surface: Colors.white,
       onPrimary: Colors.white,
       onSurface: Colors.black87,
@@ -53,7 +53,7 @@ class AppTheme {
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: colorScheme.surface,
         selectedItemColor: colorScheme.primary,
-        unselectedItemColor: colorScheme.onSurface.withValues(alpha:0.6),
+        unselectedItemColor: colorScheme.onSurface.withOpacity(0.6),
       ),
 
       cardColor: colorScheme.surface,
@@ -62,14 +62,14 @@ class AppTheme {
 
       textTheme: TextTheme(
         bodyLarge: TextStyle(color: colorScheme.onSurface),
-        bodyMedium: TextStyle(color: colorScheme.onSurface.withValues(alpha:0.9)),
-        bodySmall: TextStyle(color: colorScheme.onSurface.withValues(alpha:0.7)),
+  bodyMedium: TextStyle(color: colorScheme.onSurface.withOpacity(0.9)),
+  bodySmall: TextStyle(color: colorScheme.onSurface.withOpacity(0.7)),
       ),
 
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: colorScheme.surface,
-        hintStyle: TextStyle(color: colorScheme.onSurface.withValues(alpha:0.6)),
+  hintStyle: TextStyle(color: colorScheme.onSurface.withOpacity(0.6)),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide.none,
@@ -80,8 +80,8 @@ class AppTheme {
 
   static ThemeData darkTheme() {
     final colorScheme = const ColorScheme.dark().copyWith(
-      primary: primaryGreen,
-      primaryContainer: darkGreen,
+      primary: primaryBlue,
+      primaryContainer: darkBlue,
       surface: const Color(0xFF1E1E1E),
       onPrimary: Colors.white,
       onSurface: Colors.white70,
@@ -104,7 +104,7 @@ class AppTheme {
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: colorScheme.surface,
         selectedItemColor: colorScheme.primary,
-        unselectedItemColor: colorScheme.onSurface.withValues(alpha:0.6),
+        unselectedItemColor: colorScheme.onSurface.withOpacity(0.6),
       ),
 
       cardColor: colorScheme.surface,
@@ -113,14 +113,14 @@ class AppTheme {
 
       textTheme: TextTheme(
         bodyLarge: TextStyle(color: colorScheme.onSurface),
-        bodyMedium: TextStyle(color: colorScheme.onSurface.withValues(alpha:0.9)),
-        bodySmall: TextStyle(color: colorScheme.onSurface.withValues(alpha:0.7)),
+  bodyMedium: TextStyle(color: colorScheme.onSurface.withOpacity(0.9)),
+  bodySmall: TextStyle(color: colorScheme.onSurface.withOpacity(0.7)),
       ),
 
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: colorScheme.surface,
-        hintStyle: TextStyle(color: colorScheme.onSurface.withValues(alpha:0.6)),
+  hintStyle: TextStyle(color: colorScheme.onSurface.withOpacity(0.6)),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide.none,

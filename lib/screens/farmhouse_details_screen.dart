@@ -176,7 +176,7 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
   var options = {
     'key': _razorpayKey,
     'amount': (amount * 100).toInt(), // PAISA
-    'name': "Farmigo",
+    'name': "Skybase",
     'description': widget.name,
     'prefill': {
       'contact': user?.phoneNumber ?? '9999999999',

@@ -26,7 +26,7 @@ class _OwnerVerificationScreenState extends State<OwnerVerificationScreen> {
   XFile? _idProofFile;
   final List<XFile?> _photoFiles = [null, null, null];
 
-  bool _isSubmitting = false;
+  final bool _isSubmitting = false;
 
   final List<String> _cities = const [
     'Hyderabad', 'Bengaluru', 'Mumbai', 'Chennai', 'Pune', 'Kolkata', 'Delhi'

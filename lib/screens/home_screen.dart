@@ -9,6 +9,7 @@ import 'favorites_screen.dart';
 import 'bookings_screen.dart';
 import 'profile_screen.dart';
 import 'all_properties_screen.dart';
+import 'owner_dashboard.dart';
 import '../navigation/app_routes.dart';
 import '../widgets/category_tabs.dart';
 import '../widgets/offers_carousel.dart';
@@ -161,6 +162,18 @@ class _HomeScreenState extends State<HomeScreen> {
         debugPrint('Failed to open profile: $e');
       }
       await loadProfile();
+      return;
+    }
+
+    // Handle Owner Dashboard explicitly
+    if (label == 'Owner Dashboard' || label == 'Owner Panel') {
+      if (!mounted) return;
+      Future.microtask(() {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const OwnerDashboard()),
+        );
+      });
       return;
     }
 
@@ -546,7 +559,7 @@ class _HomeScreenState extends State<HomeScreen> {
           backgroundColor: Theme.of(context).scaffoldBackgroundColor,
 
           selectedItemColor: Theme.of(context).colorScheme.primary,
-          unselectedItemColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+          unselectedItemColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
           items: const [
             BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
             BottomNavigationBarItem(icon: Icon(Icons.favorite), label: 'Favorites'),
@@ -620,7 +633,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       borderRadius: BorderRadius.circular(8),
                       boxShadow: [
                         BoxShadow(
-                          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.25),
+                          color: Theme.of(context).colorScheme.primary.withOpacity(0.25),
                           blurRadius: 4,
                           offset: const Offset(0, 2),
                         ),
@@ -630,9 +643,13 @@ class _HomeScreenState extends State<HomeScreen> {
                       width: 60,
                       height: 60,
                       child: Center(
-                        child: Image.asset(
-                          'assets/images/farmigo_logo.png',
-                          fit: BoxFit.contain,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.asset(
+                            'assets/images/skybase_logo.png',
+                            fit: BoxFit.cover,
+                            alignment: Alignment.center,
+                          ),
                         ),
                       ),
                     ),
@@ -644,9 +661,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Farmigo title (bigger, bold, white)
+                        // Skybase title (bigger, bold, white)
                         Text(
-                          'Farmigo',
+                          'Skybase',
                           style: Theme.of(context).textTheme.displaySmall?.copyWith(
                                 fontSize: 26,
                                 fontWeight: FontWeight.w900,
@@ -666,7 +683,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 Icon(
                                   Icons.location_on_outlined,
                                   size: 14,
-                                  color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.95),
+                                  color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.95),
                                 ),
                                 const SizedBox(width: 6),
                                 // Preserve existing logic for retrieving/displaying location (unchanged)
@@ -676,11 +693,11 @@ class _HomeScreenState extends State<HomeScreen> {
                                     final name = appLoc.locationName;
                                     return Text(
                                       name,
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.92),
-                                        fontWeight: FontWeight.w600,
-                                      ),
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.92),
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                     );
                                   } catch (_) {
                                     // fallback to LocationController & FutureBuilder combo (exact same logic as before)
@@ -689,11 +706,11 @@ class _HomeScreenState extends State<HomeScreen> {
                                       if (locationController.selectedCity.value.isNotEmpty) {
                                         return Text(
                                           name,
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.92),
-                                            fontWeight: FontWeight.w600,
-                                          ),
+                                              style: TextStyle(
+                                              fontSize: 13,
+                                              color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.92),
+                                              fontWeight: FontWeight.w600,
+                                            ),
                                         );
                                       }
                                       return FutureBuilder<String?>(
@@ -705,7 +722,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                             val ?? 'Location unavailable',
                                             style: TextStyle(
                                               fontSize: 13,
-                                              color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.92),
+                                              color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.92),
                                               fontWeight: FontWeight.w600,
                                             ),
                                           );
@@ -787,7 +804,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     style: TextStyle(color: cs.onSurface),
                     decoration: InputDecoration(
                       hintText: 'Search farmhouses, villas...',
-                      hintStyle: TextStyle(color: cs.onSurface.withValues(alpha: 0.65)),
+                      hintStyle: TextStyle(color: cs.onSurface.withOpacity(0.65)),
                       filled: true,
                       fillColor: cs.surface,
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -943,7 +960,7 @@ class _GuestProfileView extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.person_outline, size: 72, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
+            Icon(Icons.person_outline, size: 72, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
             const SizedBox(height: 12),
             Text('You are browsing as a guest', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 8),

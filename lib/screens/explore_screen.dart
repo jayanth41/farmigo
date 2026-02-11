@@ -185,9 +185,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
           SnackBar(content: Text('Selected $label')),
         );
       },
-      child: Container(
+        child: Container(
         decoration: BoxDecoration(
-          color: selected ? Theme.of(context).primaryColor.withValues(alpha:0.08) : Colors.grey[100],
+          color: selected ? Theme.of(context).primaryColor.withOpacity(0.08) : Colors.grey[100],
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: selected ? Theme.of(context).primaryColor : Colors.grey[300]!),
         ),

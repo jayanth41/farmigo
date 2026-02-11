@@ -105,21 +105,21 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                   Icon(
                     Icons.favorite_border,
                     size: 80,
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha:0.35),
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.35),
                   ),
                   const SizedBox(height: 16),
                       Text(
                         'No Favorites Yet',
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.bold,
-                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha:0.8),
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
                         ),
                       ),
                   const SizedBox(height: 8),
                       Text(
                         'Add farmhouses to your favorites to see them here',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha:0.65),
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.65),
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -172,7 +172,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                       'Saved: ${favoritesController.favorites.length}',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.w600,
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha:0.75),
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.75),
                       ),
                     ),
                   ],
@@ -186,7 +186,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                         child: Text(
                           'No favorites in this category',
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha:0.7),
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                           ),
                         ),
                       )
@@ -238,7 +238,7 @@ class FavoriteCard extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Theme.of(context).colorScheme.onSurface.withValues(alpha:0.06),
+          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.06),
           width: 1,
         ),
         boxShadow: const [
@@ -297,7 +297,7 @@ class FavoriteCard extends StatelessWidget {
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha:0.12),
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.12),
                             blurRadius: 8,
                           ),
                         ],
@@ -343,7 +343,7 @@ class FavoriteCard extends StatelessWidget {
                         child: Text(
                           farmhouse.location,
                           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha:0.7),
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                             fontSize: 12,
                           ),
                           maxLines: 1,
@@ -360,7 +360,7 @@ class FavoriteCard extends StatelessWidget {
                       Text(
                         farmhouse.distance,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha:0.65),
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.65),
                           fontSize: 12,
                         ),
                       ),

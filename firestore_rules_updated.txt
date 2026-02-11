@@ -1,0 +1,164 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+     // Allow read/write only for authenticated users (safe default)
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+
+    // ==================== CAR BOOKINGS (NEW) ====================
+    // Car booking documents are owned by the user who created them (field: userId).
+    // Owners can also read bookings where they are the ownerId (car owner).
+    // - Create: allowed only if the authenticated user is the guest (userId)
+    // - Read: allowed for the guest (userId) or the car owner (ownerId)
+    // - Update: allowed only for the car owner (ownerId) to update status
+    // - Delete: disallowed for all clients (server-side only)
+    match /car_bookings/{bookingId} {
+      allow create: if request.auth != null
+                    && request.resource.data.userId == request.auth.uid
+                    && request.resource.data.ownerId is string
+                    && request.resource.data.carId is string
+                    && request.resource.data.startDate is timestamp
+                    && request.resource.data.endDate is timestamp
+                    && request.resource.data.finalTotal is number;
+
+      allow read: if request.auth != null
+                  && (resource.data.userId == request.auth.uid
+                      || resource.data.ownerId == request.auth.uid);
+
+      allow update: if request.auth != null
+                    && resource.data.ownerId == request.auth.uid
+                    && (request.resource.data.status == 'confirmed'
+                        || request.resource.data.status == 'cancelled'
+                        || request.resource.data.status == 'pending');
+
+      allow delete: if false;
+    }
+
+    // User's car bookings subcollection
+    // Mirror of main car_bookings for quick access
+    match /users/{userId}/car_bookings/{bookingId} {
+      allow create, read, write: if request.auth != null 
+                                 && request.auth.uid == userId;
+      allow delete: if false;
+    }
+
+    // ==================== OWNER NOTIFICATIONS (NEW) ====================
+    // Notification documents for car owners
+    // - Create: allowed for authenticated users (will be created by Cloud Function)
+    // - Read: only the notification owner (ownerId) can read
+    // - Update: only the notification owner can mark as read
+    // - Delete: disallowed for clients
+    match /owner_notifications/{notificationId} {
+      allow create: if request.auth != null;
+
+      allow read: if request.auth != null
+                  && resource.data.ownerId == request.auth.uid;
+
+      allow update: if request.auth != null
+                    && resource.data.ownerId == request.auth.uid
+                    && (request.resource.data.isRead == true
+                        || request.resource.data.isRead == false);
+
+      allow delete: if false;
+    }
+
+    // ==================== EXISTING RULES (UNCHANGED) ====================
+
+    // Favorites
+    // Users may create, read and delete only their own favorite documents.
+    match /favorites/{favoriteId} {
+      allow create: if request.auth != null
+                    && request.resource.data.userId == request.auth.uid
+                    && request.resource.data.listingId is string
+                    && request.resource.data.createdAt is timestamp
+                    && request.resource.data.keys().hasAll(['userId', 'listingId', 'createdAt']);
+
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+
+      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+
+      allow update: if false;
+    }
+
+    // Bookings (Farmhouse/Property bookings)
+    // Booking documents are owned by the user who created them (field: userId).
+    match /bookings/{bookingId} {
+      allow create: if request.auth != null
+                    && request.resource.data.userId == request.auth.uid
+                    && request.resource.data.userId is string;
+
+      allow read: if request.auth != null;
+
+      allow update: if request.auth != null
+                    && resource.data.userId == request.auth.uid
+                    && (request.resource.data.userId == resource.data.userId || !request.resource.data.keys().hasAll(['userId']));
+
+      allow delete: if false;
+    }
+
+    // Users / Rewards
+    // Users collection contains the profile; rewardPoints is stored inside users/{uid}.rewardPoints.
+    match /users/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+
+      allow update: if request.auth != null
+                    && request.auth.uid == userId
+                    && (
+                      !request.resource.data.keys().hasAny(['rewardPoints'])
+                      || request.resource.data.rewardPoints is number
+                    )
+                    && (
+                      !(
+                        request.resource.data.keys().hasAny(['ownerDetails'])
+                        && request.resource.data.ownerDetails is map
+                        && request.resource.data.ownerDetails.keys().hasAny(['ownerStatus'])
+                      )
+                      || (
+                        request.auth.token.admin == true
+                        || (request.resource.data.ownerDetails.ownerStatus == 'pending')
+                      )
+                    );
+
+      allow create: if false;
+      allow delete: if false;
+    }
+
+    // Owner Verification
+    match /owner_verification/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+
+      allow create: if request.auth != null
+                    && request.auth.uid == userId
+                    && request.resource.data.isOwnerDetailsSubmitted == true
+                    && request.resource.data.ownerStatus == 'pending'
+                    && request.resource.data.propertyName is string
+                    && request.resource.data.propertyAddress is string
+                    && request.resource.data.city is string;
+
+      allow update: if request.auth != null
+                    && request.auth.uid == userId
+                    && (
+                      (request.resource.data.keys().hasAny(['ownerStatus']) == false)
+                      || (request.resource.data.ownerStatus == resource.data.ownerStatus)
+                      || (request.resource.data.ownerStatus == 'pending')
+                    );
+
+      allow delete: if false;
+    }
+
+    // Owner Profiles
+    match /owner_profiles/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Default deny everything else
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+// Deploy with:
+// firebase deploy --only firestore:rules

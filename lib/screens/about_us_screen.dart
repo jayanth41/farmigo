@@ -19,9 +19,9 @@ class AboutUsScreen extends StatelessWidget {
               const SizedBox(height: 8),
               // Company Info Section
               _buildSection(
-                title: 'About Farmigo',
+                title: 'About Skybase',
                 content:
-                    'Farmigo is a leading platform for discovering and booking premium farmhouses, villas, and rural getaways. We connect travelers with authentic countryside experiences.',
+                    'Skybase is a leading platform for discovering and booking premium farmhouses, villas, and rural getaways. We connect travelers with authentic countryside experiences.',
               ),
               const SizedBox(height: 28),
               // Mission Section

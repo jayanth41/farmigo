@@ -9,8 +9,8 @@ import 'package:cross_file/cross_file.dart';
 import 'owner_dashboard.dart';
 
 class AddPropertyScreen extends StatefulWidget {
-  const AddPropertyScreen({super.key});
-
+  const AddPropertyScreen({super.key, this.propertyId});
+  final String? propertyId; // Optional: if provided, we can load existing data for editing (not implemented in this snippet)
   @override
   State<AddPropertyScreen> createState() => _AddPropertyScreenState();
 }
@@ -34,8 +34,18 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
   final TextEditingController _bedroomsController = TextEditingController();
   final TextEditingController _bathroomsController = TextEditingController();
   final TextEditingController _guestsController = TextEditingController();
+  // Car-specific fields (extended)
+final TextEditingController _seatsController = TextEditingController();
+final TextEditingController _plateController = TextEditingController();
+final TextEditingController _kmController = TextEditingController();
+String _fuelType = 'Petrol';
+String _transmission = 'Automatic';
+bool _driverAvailable = false;
+// Car category
+String _carCategory = 'SUV';
   final TextEditingController _minStayController = TextEditingController();
-
+  // Car booking
+final TextEditingController _hourlyPriceController = TextEditingController();
   // Amenities
   final Map<String, bool> _amenities = {
     'WiFi': false,
@@ -75,6 +85,10 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
     _bathroomsController.dispose();
     _guestsController.dispose();
     _minStayController.dispose();
+    _seatsController.dispose();
+    _plateController.dispose();
+    _kmController.dispose();
+    _hourlyPriceController.dispose();
     super.dispose();
   }
 
@@ -177,75 +191,125 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
       await docRef.set({
         'ownerId': uid,
         'propertyName': _nameController.text.trim(),
+        'description': _descriptionController.text.trim(),
         'street': _streetController.text.trim(),
         'city': _cityController.text.trim(),
         'state': _stateController.text.trim(),
         'zip': _zipController.text.trim(),
-        'pricePerNight': _priceController.text.trim(),
-        'bedrooms': _bedroomsController.text.trim(),
-        'bathrooms': _bathroomsController.text.trim(),
-        'maxGuests': _guestsController.text.trim(),
-        'minStay': _minStayController.text.trim(),
+
+        // Location placeholders (can be updated later from a map picker)
+        'lat': 0.0,
+        'lng': 0.0,
+
+        // Pricing & capacity as numbers (not strings)
+        'pricePerNight': int.tryParse(_priceController.text.trim()) ?? 0,
+        'bedrooms': int.tryParse(_bedroomsController.text.trim()) ?? 0,
+        'bathrooms': int.tryParse(_bathroomsController.text.trim()) ?? 0,
+        'maxGuests': int.tryParse(_guestsController.text.trim()) ?? 0,
+        'minStay': int.tryParse(_minStayController.text.trim()) ?? 0,
+
         'propertyType': _propertyType,
+        'carCategory': _propertyType == 'car' ? _carCategory : null,
+        'hourlyPrice': _propertyType == 'car'
+    ? int.tryParse(_hourlyPriceController.text.trim())
+    : null,
+
+        // Car-specific saved fields
+'carSeats': _propertyType == 'car'
+    ? int.tryParse(_seatsController.text.trim()) ?? 0
+    : null,
+'fuelType': _propertyType == 'car' ? _fuelType : null,
+'transmission': _propertyType == 'car' ? _transmission : null,
+'driverAvailable': _propertyType == 'car' ? _driverAvailable : null,
+'numberPlate': _propertyType == 'car'
+    ? _plateController.text.trim()
+    : null,
+'kmDriven': _propertyType == 'car'
+    ? int.tryParse(_kmController.text.trim()) ?? 0
+    : null,
         'amenities': _amenities,
         'instantBooking': _instantBooking,
         'activeListing': _activeListing,
+
+        // Start as draft; will become active after images upload
         'status': 'draft',
+
+        // Dashboard analytics defaults (VERY IMPORTANT)
+        'rating': 0.0,
+        'reviewCount': 0,
+        'views': 0,
+        'totalBookings': 0,
+
+        // Timestamps
         'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
       });
 
-      // Upload picked images
+      // Upload picked images (robust: track uploaded refs so we can cleanup on failure)
       final List<String> finalImageUrls = [];
+      final List<fb_storage.Reference> uploadedRefs = [];
 
-for (int i = 0; i < _pickedFiles.length; i++) {
-  final file = File(_pickedFiles[i].path);
+      try {
+        for (int i = 0; i < _pickedFiles.length; i++) {
+          final file = File(_pickedFiles[i].path);
+          final filename = '${DateTime.now().millisecondsSinceEpoch}_$i.jpg';
+          final ref = storage.ref().child('properties/$uid/$propertyId/$filename');
 
-  final filename =
-      '${DateTime.now().millisecondsSinceEpoch}_$i.jpg';
+          final uploadTask = await ref.putFile(file);
+          // keep reference for cleanup if needed
+          uploadedRefs.add(uploadTask.ref);
 
-  final ref = storage
-      .ref()
-      .child('properties/$uid/$propertyId/$filename');
+          final url = await uploadTask.ref.getDownloadURL();
+          finalImageUrls.add(url);
+        }
 
-  await ref.putFile(file);
-  final url = await ref.getDownloadURL();
+        // Add manually entered URLs too
+        finalImageUrls.addAll(_photos);
 
-  finalImageUrls.add(url);
-}
+        // Upload document if provided
+        String? documentUrl;
+        if (_documentFile != null) {
+          final docRefStorage = storage.ref('properties/$propertyId/document/property_doc.jpg');
+          final snap = await docRefStorage.putFile(File(_documentFile!.path));
+          uploadedRefs.add(snap.ref);
+          documentUrl = await snap.ref.getDownloadURL();
+        }
 
+        // Final update — make property ACTIVE
+        await docRef.update({
+          'photoUrls': finalImageUrls,
+          'documentUrl': documentUrl,
+          'status': 'active',
+          'publishedAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      } catch (uploadError) {
+        // Attempt cleanup of uploaded files to avoid orphaned storage items
+        try {
+          for (final r in uploadedRefs) {
+            try {
+              await r.delete();
+            } catch (_) {
+              // ignore deletion errors
+            }
+          }
+        } catch (_) {}
 
-      // Add manually entered URLs too
-      finalImageUrls.addAll(_photos);
+        // Delete the draft document to avoid partial documents
+        try {
+          await docRef.delete();
+        } catch (_) {}
 
-      // Upload document if provided
-      String? documentUrl;
-      if (_documentFile != null) {
-        final docRefStorage = storage.ref('properties/$propertyId/document/property_doc.jpg');
-
-        final snap = await docRefStorage.putFile(File(_documentFile!.path));
-
-        documentUrl = await snap.ref.getDownloadURL();
+        rethrow;
       }
-
-      // Final update — make property ACTIVE
-      await docRef.update({
-        'photoUrls': finalImageUrls,
-        'documentUrl': documentUrl,
-        'status': 'active',
-        'publishedAt': FieldValue.serverTimestamp(),
-      });
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Property published successfully')),
       );
 
       if (!mounted) return;
-      // After successful publish, navigate to Owner Dashboard.
-      try {
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const OwnerDashboard()));
-      } catch (_) {
-        Navigator.of(context).pop();
-      }
+      // Return to the previous screen and signal success
+      Navigator.of(context).pop(true);
     } catch (e, st) {
       debugPrint('Publish error: $e');
       debugPrint('STACKTRACE: $st');
@@ -296,7 +360,7 @@ for (int i = 0; i < _pickedFiles.length; i++) {
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: _propertyType,
-                  items: ['Farmhouse', 'Villa', 'Resort', 'Cottage', 'Room'].map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+                  items: ['Farmhouse', 'Villa', 'Resort', 'Cottage', 'Room','car'].map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
                   onChanged: (v) => setState(() => _propertyType = v ?? _propertyType),
                   decoration: const InputDecoration(labelText: 'Property Type'),
                 ),
@@ -323,37 +387,149 @@ for (int i = 0; i < _pickedFiles.length; i++) {
 
                 const SizedBox(height: 18),
 
-                // 3) Pricing & Capacity
-                _sectionTitle('Pricing & Capacity', ''),
-                Row(children: [
-                  Expanded(child: TextFormField(controller: _priceController, decoration: const InputDecoration(labelText: 'Price per Night'), keyboardType: TextInputType.number)),
-                  const SizedBox(width: 12),
-                  Expanded(child: TextFormField(controller: _bedroomsController, decoration: const InputDecoration(labelText: 'Bedrooms'), keyboardType: TextInputType.number)),
-                ]),
-                const SizedBox(height: 8),
-                Row(children: [
-                  Expanded(child: TextFormField(controller: _bathroomsController, decoration: const InputDecoration(labelText: 'Bathrooms'), keyboardType: TextInputType.number)),
-                  const SizedBox(width: 12),
-                  Expanded(child: TextFormField(controller: _guestsController, decoration: const InputDecoration(labelText: 'Max Guests'), keyboardType: TextInputType.number)),
-                ]),
-                const SizedBox(height: 8),
-                TextFormField(controller: _minStayController, decoration: const InputDecoration(labelText: 'Minimum Stay (nights)'), keyboardType: TextInputType.number),
+               // 3) Pricing & Capacity (dynamic by property type)
+_sectionTitle('Pricing & Capacity', ''),
 
-                const SizedBox(height: 18),
+// --- NORMAL PROPERTIES (not car) ---
+if (_propertyType != 'car') ...[
+  Row(children: [
+    Expanded(child: TextFormField(
+      controller: _priceController,
+      decoration: const InputDecoration(labelText: 'Price per Night'),
+      keyboardType: TextInputType.number)),
+    const SizedBox(width: 12),
+    Expanded(child: TextFormField(
+      controller: _hourlyPriceController,
+      decoration: const InputDecoration(labelText: 'Price per Hour (optional)'),
+      keyboardType: TextInputType.number)),
+  ]),
+  const SizedBox(height: 8),
+  Row(children: [
+    Expanded(child: TextFormField(
+      controller: _bedroomsController,
+      decoration: const InputDecoration(labelText: 'Bedrooms'),
+      keyboardType: TextInputType.number)),
+    const SizedBox(width: 12),
+    Expanded(child: TextFormField(
+      controller: _bathroomsController,
+      decoration: const InputDecoration(labelText: 'Bathrooms'),
+      keyboardType: TextInputType.number)),
+  ]),
+  const SizedBox(height: 8),
+  Row(children: [
+    Expanded(child: TextFormField(
+      controller: _guestsController,
+      decoration: const InputDecoration(labelText: 'Max Guests'),
+      keyboardType: TextInputType.number)),
+    const SizedBox(width: 12),
+    Expanded(child: TextFormField(
+      controller: _minStayController,
+      decoration: const InputDecoration(labelText: 'Min Stay (nights)'),
+      keyboardType: TextInputType.number)),
+  ]),
+],
 
-                // 4) Amenities
-                _sectionTitle('Amenities', 'Select available amenities'),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 6,
-                  children: _amenities.keys.map((k) {
-                    return FilterChip(
-                      label: Text(k),
-                      selected: _amenities[k]!,
-                      onSelected: (s) => setState(() => _amenities[k] = s),
-                    );
-                  }).toList(),
-                ),
+// --- CAR ONLY ---
+if (_propertyType == 'car') ...[
+  DropdownButtonFormField<String>(
+  initialValue: _carCategory,
+  items: const ['SUV','Sedan','Hatchback','EV','MUV','Luxury']
+      .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+      .toList(),
+  onChanged: (v) => setState(() => _carCategory = v ?? _carCategory),
+  decoration: const InputDecoration(labelText: 'Car Category'),
+),
+const SizedBox(height: 8),
+  TextFormField(
+    controller: _priceController,
+    decoration: const InputDecoration(labelText: 'Price per Day'),
+    keyboardType: TextInputType.number,
+  ),
+  const SizedBox(height: 8),
+  TextFormField(
+    controller: _seatsController,
+    decoration: const InputDecoration(labelText: 'Number of Seats'),
+    keyboardType: TextInputType.number,
+  ),
+  const SizedBox(height: 8),
+  TextFormField(
+    controller: _plateController,
+    decoration: const InputDecoration(labelText: 'Vehicle Number Plate'),
+  ),
+  const SizedBox(height: 8),
+  // Required photo slots for cars (labels only)
+Row(
+  children: const [
+    Expanded(child: Text('Front Photo *',
+        style: TextStyle(fontWeight: FontWeight.w600))),
+    Expanded(child: Text('Side Photo *',
+        style: TextStyle(fontWeight: FontWeight.w600))),
+    Expanded(child: Text('Interior Photo *',
+        style: TextStyle(fontWeight: FontWeight.w600))),
+  ],
+),
+const SizedBox(height: 8),
+  TextFormField(
+    controller: _kmController,
+    decoration: const InputDecoration(labelText: 'Kilometers Driven'),
+    keyboardType: TextInputType.number,
+  ),
+  const SizedBox(height: 8),
+  DropdownButtonFormField<String>(
+    initialValue: _fuelType,
+    items: ['Petrol','Diesel','Electric','Hybrid']
+        .map((f) => DropdownMenuItem(value: f, child: Text(f)))
+        .toList(),
+    onChanged: (v) => setState(() => _fuelType = v ?? _fuelType),
+    decoration: const InputDecoration(labelText: 'Fuel Type'),
+  ),
+  const SizedBox(height: 8),
+  DropdownButtonFormField<String>(
+    initialValue: _transmission,
+    items: ['Automatic','Manual']
+        .map((t) => DropdownMenuItem(value: t, child: Text(t)))
+        .toList(),
+    onChanged: (v) => setState(() => _transmission = v ?? _transmission),
+    decoration: const InputDecoration(labelText: 'Transmission'),
+  ),
+  const SizedBox(height: 8),
+  SwitchListTile.adaptive(
+    title: const Text('Driver Available'),
+    value: _driverAvailable,
+    onChanged: (v) => setState(() => _driverAvailable = v),
+  ),
+],
+const SizedBox(height: 12),
+
+// --- 4) Amenities (no calendar or pricing in Add Property) ---
+_sectionTitle('Amenities', 'Select available amenities'),
+if (_propertyType != 'car')
+  Wrap(
+    spacing: 8,
+    runSpacing: 6,
+    children: _amenities.keys.map((k) {
+      return FilterChip(
+        label: Text(k),
+        selected: _amenities[k]!,
+        onSelected: (s) => setState(() => _amenities[k] = s),
+      );
+    }).toList(),
+  )
+else
+  Wrap(
+    spacing: 8,
+    runSpacing: 6,
+    children: const [
+      'Air Conditioning',
+      'GPS',
+      'Bluetooth',
+      'Reverse Camera',
+      'Insurance Included',
+      'Sunroof',
+      'ABS Brakes'
+    ].map((k) => FilterChip(label: Text(k), selected: false, onSelected: (_) {}))
+      .toList(),
+  ),
 
                 const SizedBox(height: 18),
 

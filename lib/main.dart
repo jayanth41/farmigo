@@ -1,9 +1,11 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'filters/filters_provider.dart';
 import 'navigation/app_routes.dart';
@@ -21,6 +23,8 @@ import 'screens/offers_screen.dart';
 import 'screens/help_support_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/booking_history_screen.dart';
+import 'screens/owner_dashboard.dart';
+import 'screens/car_owner_dashboard_new.dart';
 import 'controllers/favorites_controller.dart';
 import 'controllers/bookings_controller.dart';
 import 'controllers/app_location_controller.dart';
@@ -30,18 +34,72 @@ import 'settings/theme_provider.dart';
 import 'services/firebase_helper.dart';
 import 'firebase_options.dart';
 
+final GlobalKey<NavigatorState> rootNavKey = GlobalKey<NavigatorState>();
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Load environment variables from .env (optional). Keep silent if missing.
+  try {
+    await dotenv.load();
+    debugPrint('[Main] Loaded .env');
+  } catch (e) {
+    debugPrint('[Main] .env load failed or not present: $e');
+  }
+
   debugPrint("🚨🚨🚨 MAIN() STARTED — CHECKING APP CHECK 🚨🚨🚨");
 
-  await Firebase.initializeApp();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  // Request notification permission from FirebaseMessaging
+  await _requestNotificationPermission();
 
   // ❌ REMOVE App Check activation in debug
 // We'll enable it properly later for release builds only
 
 
   runApp(const MyApp());
+}
+
+Future<void> _requestNotificationPermission() async {
+  try {
+    final settings = await FirebaseMessaging.instance.requestPermission(
+      alert: true,
+      announcement: false,
+      badge: true,
+      carPlay: false,
+      criticalAlert: false,
+      provisional: false,
+      sound: true,
+    );
+    debugPrint('Notification permission status: ${settings.authorizationStatus}');
+  } catch (e) {
+    debugPrint('Error requesting notification permission: $e');
+  }
+}
+
+Future<void> saveFcmTokenToFirestore(String userId) async {
+  try {
+    final token = await FirebaseMessaging.instance.getToken();
+    if (token == null) {
+      debugPrint('Failed to get FCM token');
+      return;
+    }
+
+    await FirebaseFirestore.instance.collection('users').doc(userId).set(
+      {
+        'fcmToken': token,
+        'lastUpdated': FieldValue.serverTimestamp(),
+      },
+      SetOptions(merge: true),
+    );
+
+    debugPrint('FCM token saved for user $userId: $token');
+  } catch (e) {
+    debugPrint('Error saving FCM token: $e');
+  }
 }
 
 
@@ -67,8 +125,9 @@ class MyApp extends StatelessWidget {
       child: Builder(builder: (context) {
         final themeProvider = Provider.of<ThemeProvider>(context);
         return GetMaterialApp(
+          navigatorKey: rootNavKey,
           debugShowCheckedModeBanner: false,
-          title: 'Farmigo',
+          title: 'Skybase',
 
           theme: AppTheme.lightTheme(),
           darkTheme: AppTheme.darkTheme(),
@@ -94,6 +153,11 @@ class MyApp extends StatelessWidget {
             GetPage(name: AppRoutes.helpSupport, page: () => const HelpSupportScreen()),
             GetPage(name: AppRoutes.farmhouses, page: () => const FarmhousesScreen()),
             GetPage(name: AppRoutes.carRentals, page: () => const CarRentalsScreen()),
+            GetPage(
+              name: '/owner',
+              page: () => const CarOwnerDashboard(),
+              transition: Transition.rightToLeft,
+            ),
           ],
         );
       }),

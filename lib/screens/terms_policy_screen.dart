@@ -37,7 +37,7 @@ class _TermsPolicyScreenState extends State<TermsPolicyScreen>
           indicatorColor: colorScheme.primary,
           indicatorWeight: 3,
           labelColor: colorScheme.primary,
-          unselectedLabelColor: onSurface.withValues(alpha: 0.6),
+          unselectedLabelColor: onSurface.withOpacity(0.6),
           labelStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
           unselectedLabelStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
           tabs: const [
@@ -67,7 +67,7 @@ class _TermsPolicyScreenState extends State<TermsPolicyScreen>
           const SizedBox(height: 20),
           _buildSectionTitle('Terms of Service'),
           _buildSectionContent(
-            'By using Farmigo, you agree to comply with these terms and conditions. '
+            'By using Skybase, you agree to comply with these terms and conditions. '
             'You must be at least 18 years old to book properties on our platform. '
             'All bookings are subject to property availability and host approval.',
           ),
@@ -83,7 +83,7 @@ class _TermsPolicyScreenState extends State<TermsPolicyScreen>
           _buildSectionContent(
             'Payment must be completed before check-in. We accept various payment methods. '
             'All transactions are final unless cancellation policy applies. '
-            'Farmigo is not responsible for third-party payment failures.',
+            'Skybase is not responsible for third-party payment failures.',
           ),
           const SizedBox(height: 36),
         ],

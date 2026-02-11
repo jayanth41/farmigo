@@ -1,0 +1,98 @@
+{
+  "project_info": {
+    "project_number": "520560089620",
+    "project_id": "farmigo-704ca",
+    "storage_bucket": "farmigo-704ca.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:520560089620:android:6b99e2e96fd93f916aa501",
+        "android_client_info": {
+          "package_name": "com.example.flutter_application_1"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "520560089620-364afkimqqbdefbod9cm1jl1f4mkiot9.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.flutter_application_1",
+            "certificate_hash": "f3e1b6aac7d39f5aed8e5fcd12a04d3be28109e4"
+          }
+        },
+        {
+          "client_id": "520560089620-rgtda3bghq7r2ld249l5b7n3pdrdq8ln.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAaNXzlIaKWzvR7w9688Zjnawm7fvr4_h0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "520560089620-rgtda3bghq7r2ld249l5b7n3pdrdq8ln.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "520560089620-sd75vi6fjcto0h5vlsr61ol4djkjg2mg.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.flutterApplication1"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:520560089620:android:eed6e740d90c73b06aa501",
+        "android_client_info": {
+          "package_name": "com.skybase.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "520560089620-6be58d2vm258grpifmu72oknvvcdkeh4.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.skybase.app",
+            "certificate_hash": "f3e1b6aac7d39f5aed8e5fcd12a04d3be28109e4"
+          }
+        },
+        {
+          "client_id": "520560089620-rgtda3bghq7r2ld249l5b7n3pdrdq8ln.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAaNXzlIaKWzvR7w9688Zjnawm7fvr4_h0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "520560089620-rgtda3bghq7r2ld249l5b7n3pdrdq8ln.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "520560089620-sd75vi6fjcto0h5vlsr61ol4djkjg2mg.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.flutterApplication1"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

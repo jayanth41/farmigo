@@ -36,9 +36,9 @@ class _CarRentalCardState extends State<CarRentalCard> {
       decoration: BoxDecoration(
         color: surfaceColor,
         borderRadius: BorderRadius.circular(18),
-        boxShadow: [
+          boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
+            color: Colors.black.withOpacity(0.08),
             blurRadius: 18,
             offset: const Offset(0, 10),
           ),
@@ -93,9 +93,9 @@ class _CarRentalCardState extends State<CarRentalCard> {
                     decoration: BoxDecoration(
                       color: surfaceColor,
                       shape: BoxShape.circle,
-                      boxShadow: [
+                        boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.15),
+                          color: Colors.black.withOpacity(0.15),
                           blurRadius: 8,
                         )
                       ],
@@ -161,22 +161,22 @@ class _CarRentalCardState extends State<CarRentalCard> {
                 // Location
                 Row(
                   children: [
-                    Icon(Icons.location_on,
-                        size: 14,
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withValues(alpha: 0.6)),
+          Icon(Icons.location_on,
+            size: 14,
+            color: Theme.of(context)
+              .colorScheme
+              .onSurface
+              .withOpacity(0.6)),
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
                         car.location,
                         style: TextStyle(
                           fontSize: 13,
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onSurface
-                              .withValues(alpha: 0.6),
+              color: Theme.of(context)
+                .colorScheme
+                .onSurface
+                .withOpacity(0.6),
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -211,10 +211,10 @@ class _CarRentalCardState extends State<CarRentalCard> {
                       '(${car.reviews})',
                       style: TextStyle(
                         fontSize: 11,
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withValues(alpha: 0.6),
+      color: Theme.of(context)
+        .colorScheme
+        .onSurface
+        .withOpacity(0.6),
                       ),
                     ),
                   ],
@@ -270,11 +270,11 @@ class _CarRentalCardState extends State<CarRentalCard> {
                         Text(
                           '/ day',
                           style: TextStyle(
-                            fontSize: 11,
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurface
-                                .withValues(alpha: 0.6),
+              fontSize: 11,
+              color: Theme.of(context)
+                .colorScheme
+                .onSurface
+                .withOpacity(0.6),
                           ),
                         ),
                       ],
