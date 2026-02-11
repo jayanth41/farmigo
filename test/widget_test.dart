@@ -17,7 +17,7 @@ void main() {
   await tester.pumpAndSettle();
 
   // Verify that main header is present
-  expect(find.text('FARMIGO'), findsOneWidget);
+  expect(find.text('SKYBASE'), findsOneWidget);
   expect(find.textContaining('Find your perfect'), findsOneWidget);
   });
 }

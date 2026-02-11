@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:get/get.dart';
 import '../widgets/snackbar_helper.dart';
 import '../screens/about_us_screen.dart';
 import '../screens/terms_policy_screen.dart';
@@ -16,7 +17,7 @@ import '../navigation/app_routes.dart';
 /// Returns true if owner verification indicates onboarding was already completed.
 Future<bool> checkOwnerVerificationStatus({
   required BuildContext context,
-  bool replace = true,
+  bool replace = false,
 }) async {
   final uid = fb.FirebaseAuth.instance.currentUser?.uid;
 
@@ -38,13 +39,15 @@ Future<bool> checkOwnerVerificationStatus({
     final verified =
         doc.exists && (doc.data()?['isOwnerDetailsSubmitted'] == true);
 
-    // 🔹 CLOSE DRAWER FIRST
-    if (Navigator.of(context).canPop()) {
-      Navigator.of(context).pop();
-    }
+    // 🔹 Close drawer on ROOT navigator only (prevents losing context)
+    try {
+      if (Navigator.of(context, rootNavigator: true).canPop()) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+    } catch (_) {}
 
-    // 🔹 WAIT for drawer to fully close BEFORE navigating
-    await Future.delayed(const Duration(milliseconds: 350));
+    // Very short wait so animations finish
+    await Future.delayed(const Duration(milliseconds: 120));
 
     if (!context.mounted) return false;
 
@@ -59,25 +62,34 @@ Future<bool> checkOwnerVerificationStatus({
 
       if (hasProperty) {
         if (replace) {
-          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const OwnerDashboard()));
+          Navigator.of(context, rootNavigator: true).pushReplacement(
+            MaterialPageRoute(builder: (_) => const OwnerDashboard()),
+          );
         } else {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const OwnerDashboard()));
+          Navigator.of(context, rootNavigator: true).push(
+            MaterialPageRoute(builder: (_) => const OwnerDashboard()),
+          );
         }
       } else {
         if (replace) {
-          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const AddPropertyScreen()));
+          Navigator.of(context, rootNavigator: true).pushReplacement(
+            MaterialPageRoute(builder: (_) => const AddPropertyScreen()),
+          );
         } else {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const AddPropertyScreen()));
+          Navigator.of(context, rootNavigator: true).push(
+            MaterialPageRoute(builder: (_) => const AddPropertyScreen()),
+          );
         }
       }
     } else {
       if (replace) {
-        Navigator.pushReplacement(
-          context,
+        Navigator.of(context, rootNavigator: true).pushReplacement(
           MaterialPageRoute(builder: (_) => const OwnerOnboardingScreen()),
         );
       } else {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const OwnerOnboardingScreen()));
+        Navigator.of(context, rootNavigator: true).push(
+          MaterialPageRoute(builder: (_) => const OwnerOnboardingScreen()),
+        );
       }
     }
 
@@ -121,7 +133,7 @@ class AppDrawer extends StatelessWidget {
     this.isProfileLoading = false,
   });
 
-    // Owner role checks removed - app no longer exposes owner onboarding
+  // Owner role checks removed - app no longer exposes owner onboarding
 
   void _logout(BuildContext context) {
     showDialog(
@@ -173,7 +185,7 @@ class AppDrawer extends StatelessWidget {
     final colorScheme = theme.colorScheme;
     final surface = colorScheme.surface;
     final onSurface = colorScheme.onSurface;
-    final muted = onSurface.withValues(alpha: 0.6);
+  final muted = onSurface.withOpacity(0.6);
 
     return Drawer(
       width: MediaQuery.of(context).size.width * 0.82,
@@ -217,15 +229,19 @@ class AppDrawer extends StatelessWidget {
                         SizedBox(
                           width: 60,
                           height: 60,
-                          child: Image.asset(
-                            'assets/images/farmigo_logo.png',
-                            fit: BoxFit.contain,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.asset(
+                              'assets/images/skybase_logo.png',
+                              fit: BoxFit.cover,
+                              alignment: Alignment.center,
+                            ),
                           ),
                         ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            'Farmigo',
+                            'Skybase',
                             style: TextStyle(
                               fontSize: 22,
                               fontWeight: FontWeight.bold,
@@ -239,7 +255,7 @@ class AppDrawer extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: colorScheme.primary.withValues(alpha: 0.12),
+                        color: colorScheme.primary.withOpacity(0.12),
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Row(
@@ -305,7 +321,7 @@ class AppDrawer extends StatelessWidget {
                             child: isProfileLoading
                                 ? Text(
                                     'Loading...',
-                                    style: TextStyle(color: theme.colorScheme.onPrimary.withValues(alpha: 0.9)),
+                                    style: TextStyle(color: theme.colorScheme.onPrimary.withOpacity(0.9)),
                                   )
                                 : Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -341,7 +357,7 @@ class AppDrawer extends StatelessWidget {
                                                 const SizedBox(height: 4),
                                                 Text(
                                                   'Please login to continue',
-                                                  style: TextStyle(color: theme.colorScheme.onPrimary.withValues(alpha: 0.9), fontSize: 12),
+                                                    style: TextStyle(color: theme.colorScheme.onPrimary.withOpacity(0.9), fontSize: 12),
                                                 ),
                                               ],
                                             );
@@ -353,7 +369,7 @@ class AppDrawer extends StatelessWidget {
                                                 const SizedBox(width: 6),
                                                 const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2)),
                                                 const SizedBox(width: 8),
-                                                Text('Loading...', style: TextStyle(color: theme.colorScheme.onPrimary.withValues(alpha: 0.9))),
+                                                Text('Loading...', style: TextStyle(color: theme.colorScheme.onPrimary.withOpacity(0.9))),
                                               ],
                                             );
                                           }
@@ -373,7 +389,7 @@ class AppDrawer extends StatelessWidget {
                                                 ),
                                               ),
                                               if (email != null && email.isNotEmpty)
-                                                Text(email, style: TextStyle(color: theme.colorScheme.onPrimary.withValues(alpha: 0.9), fontSize: 12)),
+                                                Text(email, style: TextStyle(color: theme.colorScheme.onPrimary.withOpacity(0.9), fontSize: 12)),
                                             ],
                                           );
                                         },
@@ -489,11 +505,17 @@ class AppDrawer extends StatelessWidget {
                     leading: Icon(Icons.dashboard_outlined, color: onSurface),
                     title: Text('Owner Dashboard', style: TextStyle(color: onSurface)),
                     onTap: () async {
+                      // Close drawer first
                       try {
                         Navigator.of(context).pop();
                       } catch (_) {}
 
-                      await checkOwnerVerificationStatus(context: context, replace: true);
+                      // Direct navigation to OwnerDashboard (no extra verification routing)
+                      if (context.mounted) {
+                        Navigator.of(context, rootNavigator: true).push(
+                          MaterialPageRoute(builder: (_) => const OwnerDashboard()),
+                        );
+                      }
                     },
                   ),
 
@@ -528,7 +550,7 @@ class AppDrawer extends StatelessWidget {
                     },
                   ),
                   ListTile(
-                    leading: Icon(Icons.help_outline, color: onSurface),
+                    leading: Icon(Icons.help_outline, color: colorScheme.primary),
                     title: Text('Help & Support', style: TextStyle(color: onSurface)),
                     onTap: () {
                       try {

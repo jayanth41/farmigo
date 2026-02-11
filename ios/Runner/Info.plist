@@ -11,7 +11,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>farmigo</string>
+	<string>Skybase</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -48,24 +48,24 @@
 	
 	<!-- LOCATION PERMISSIONS - ADD THESE -->
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Farmigo needs your location to show nearby properties and provide better recommendations</string>
+	<string>Skybase needs your location to show nearby properties and provide better recommendations</string>
 	
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>Farmigo needs your location to show nearby properties and provide better recommendations</string>
+	<string>Skybase needs your location to show nearby properties and provide better recommendations</string>
 	
 	<key>NSLocationAlwaysUsageDescription</key>
-	<string>Farmigo needs your location to show nearby properties and provide better recommendations</string>
+	<string>Skybase needs your location to show nearby properties and provide better recommendations</string>
 	
 	<!-- OPTIONAL - Add if you need camera/photos -->
 	<key>NSCameraUsageDescription</key>
-	<string>Farmigo needs camera access to take photos for your profile</string>
+	<string>Skybase needs camera access to take photos for your profile</string>
 	
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Farmigo needs photo library access to select images for your profile</string>
+	<string>Skybase needs photo library access to select images for your profile</string>
 	
 	<!-- OPTIONAL - Add if you need microphone -->
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Farmigo needs microphone access for video calls</string>
+	<string>Skybase needs microphone access for video calls</string>
 	
 </dict>
 </plist>

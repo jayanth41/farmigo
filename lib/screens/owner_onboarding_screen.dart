@@ -19,10 +19,11 @@ class _OwnerOnboardingScreenState extends State<OwnerOnboardingScreen> {
 
   String? _selectedCity;
   String? _selectedPropertyType;
+  String? _mappedCategory; // what we will store in owners/{uid}/category
   bool _saving = false;
 
   final List<String> _cities = ['Hyderabad', 'Bengaluru', 'Mumbai', 'Chennai', 'Pune', 'Delhi'];
-  final List<String> _propertyTypes = ['Farmhouse', 'Villa', 'Resort', 'Cottage', 'Room'];
+  final List<String> _propertyTypes = ['Farmhouse', 'Villa', 'Hotel', 'Hourly', 'Car'];
 
   @override
   void initState() {
@@ -51,6 +52,7 @@ class _OwnerOnboardingScreenState extends State<OwnerOnboardingScreen> {
     setState(() => _saving = true);
 
     final docRef = FirebaseFirestore.instance.collection('owner_verification').doc(uid);
+    final ownerRef = FirebaseFirestore.instance.collection('owners').doc(uid);
 
     final data = {
       'ownerName': _ownerNameController.text.trim(),
@@ -63,8 +65,19 @@ class _OwnerOnboardingScreenState extends State<OwnerOnboardingScreen> {
       'createdAt': FieldValue.serverTimestamp(),
     };
 
+    if (_mappedCategory == null) {
+      showAppSnack(context, 'Please select a valid property type', isError: true);
+      setState(() => _saving = false);
+      return;
+    }
+
     try {
       await docRef.set(data, SetOptions(merge: true));
+      // Store category for OwnerDashboard
+      await ownerRef.set({
+        'category': _mappedCategory,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
       if (!mounted) return;
       showAppSnack(context, 'Owner details saved', isSuccess: true);
       // Navigate to AddPropertyScreen replacing current onboarding
@@ -98,14 +111,18 @@ class _OwnerOnboardingScreenState extends State<OwnerOnboardingScreen> {
                   validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
                 ),
                 const SizedBox(height: 12),
-                TextFormField(controller: TextEditingController(text: phone), decoration: const InputDecoration(labelText: 'Phone Number'), readOnly: true),
+                TextFormField(
+                  initialValue: phone,
+                  decoration: const InputDecoration(labelText: 'Phone Number'),
+                  keyboardType: TextInputType.phone,
+                ),
                 const SizedBox(height: 12),
                 TextFormField(controller: _emailController, decoration: const InputDecoration(labelText: 'Email (optional)')),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   decoration: const InputDecoration(labelText: 'City'),
                   items: _cities.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
-                  value: _selectedCity,
+                  initialValue: _selectedCity,
                   onChanged: (v) => setState(() => _selectedCity = v),
                   validator: (v) => v == null || v.isEmpty ? 'Please select a city' : null,
                 ),
@@ -113,8 +130,21 @@ class _OwnerOnboardingScreenState extends State<OwnerOnboardingScreen> {
                 DropdownButtonFormField<String>(
                   decoration: const InputDecoration(labelText: 'Property Type'),
                   items: _propertyTypes.map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
-                  value: _selectedPropertyType,
-                  onChanged: (v) => setState(() => _selectedPropertyType = v),
+                  initialValue: _selectedPropertyType,
+                  onChanged: (v) {
+                    setState(() {
+                      _selectedPropertyType = v;
+                      // Map UI label -> backend category
+                      switch (v) {
+                        case 'Farmhouse': _mappedCategory = 'farmhouse'; break;
+                        case 'Villa': _mappedCategory = 'villa'; break;
+                        case 'Hotel': _mappedCategory = 'hotel'; break;
+                        case 'Hourly': _mappedCategory = 'hourly'; break;
+                        case 'Car': _mappedCategory = 'car'; break;
+                        default: _mappedCategory = null;
+                      }
+                    });
+                  },
                   validator: (v) => v == null || v.isEmpty ? 'Please select a property type' : null,
                 ),
                 const SizedBox(height: 12),

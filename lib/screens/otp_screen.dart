@@ -9,6 +9,7 @@ import '../controllers/auth_controller.dart';
 import '../widgets/snackbar_helper.dart';
 import '../navigation/app_routes.dart';
 import 'home_screen.dart';
+import '../main.dart';
 
 /// OTP screen for phone-based verification using Firebase Auth.
 class OTPScreen extends StatefulWidget {
@@ -158,6 +159,10 @@ class _OTPScreenState extends State<OTPScreen> {
           } catch (e) {
             debugPrint('Failed to create user doc after sign-in: $e');
           }
+          
+          // Save FCM token for push notifications
+          await saveFcmTokenToFirestore(user.uid);
+          
           ok = true;
         }
       } else {
@@ -223,7 +228,7 @@ class _OTPScreenState extends State<OTPScreen> {
               const SizedBox(height: 6),
               Text('Welcome Back', style: txt.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
               const SizedBox(height: 6),
-              Text('Enter OTP sent to your phone', style: txt.bodyMedium?.copyWith(color: cs.onSurface.withValues(alpha: 0.7))),
+              Text('Enter OTP sent to your phone', style: txt.bodyMedium?.copyWith(color: cs.onSurface.withOpacity(0.7))),
               const SizedBox(height: 20),
 
               // Row: Change Number / Resend
@@ -307,7 +312,7 @@ class _OTPScreenState extends State<OTPScreen> {
                     },
                     child: Ink(
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(colors: [cs.primary, cs.primary.withValues(alpha: 0.9)], begin: Alignment.centerLeft, end: Alignment.centerRight),
+                        gradient: LinearGradient(colors: [cs.primary, cs.primary.withOpacity(0.9)], begin: Alignment.centerLeft, end: Alignment.centerRight),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Center(child: _isVerifying ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : Text('Verify OTP', style: txt.titleMedium?.copyWith(color: Colors.white, fontWeight: FontWeight.bold))),

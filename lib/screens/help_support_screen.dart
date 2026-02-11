@@ -39,8 +39,8 @@ class HelpSupportScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF1565C0), Color(0xFF42A5F5)],
+        gradient: LinearGradient(
+          colors: [AppColors.primary, AppColors.primary],
         ),
         borderRadius: BorderRadius.circular(16),
       ),
@@ -92,8 +92,8 @@ class HelpSupportScreen extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: Colors.green.shade50,
-          child: Icon(icon, color: Colors.green),
+          backgroundColor: AppColors.primary,
+          child: Icon(icon, color: AppColors.primary),
         ),
         title: Text(title),
         subtitle: Text(subtitle),
@@ -167,7 +167,7 @@ class HelpSupportScreen extends StatelessWidget {
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
-        leading: Icon(icon, color: Colors.orange),
+        leading: Icon(icon, color: AppColors.primary),
         title: Text(title),
         subtitle: Text(subtitle),
         trailing: const Icon(Icons.arrow_forward_ios, size: 16),
@@ -200,7 +200,7 @@ class HelpSupportScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.blue.shade50,
+        color: AppColors.primary,
         borderRadius: BorderRadius.circular(12),
       ),
       child: const Column(

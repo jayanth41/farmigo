@@ -1,10 +1,12 @@
-
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
+import '../services/user_bootstrap_service.dart';
+
 import 'otp_screen.dart';
 import 'home_screen.dart';
+import '../main.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -41,7 +43,10 @@ class _LoginScreenState extends State<LoginScreen> {
       await FirebaseAuth.instance.verifyPhoneNumber(
         phoneNumber: "+91$phone",
         verificationCompleted: (credential) async {
-          await FirebaseAuth.instance.signInWithCredential(credential);
+          final cred = await FirebaseAuth.instance.signInWithCredential(credential);
+          if (cred.user != null) {
+            await UserBootstrapService.ensureUserDoc();
+          }
           if (!mounted) return;
           Navigator.pushReplacement(
             context,
@@ -79,40 +84,64 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
 Future<void> signInWithGoogle(BuildContext context) async {
+  setState(() {
+    isLoading = true;
+  });
+
   try {
-    final GoogleSignIn googleSignIn = GoogleSignIn(
-      scopes: ['email'],
+    // google_sign_in v7.x uses singleton instance with initialize() + authenticate()
+    // First, ensure the instance is initialized
+    await GoogleSignIn.instance.initialize();
+
+    // Optional: sign out to force account chooser
+    try {
+      await GoogleSignIn.instance.signOut();
+    } catch (_) {}
+
+    // Trigger interactive authentication
+    final account = await GoogleSignIn.instance.authenticate(
+      scopeHint: ['email', 'profile'],
     );
+    if (account == null) return; // user cancelled
 
-    // This line makes Google show all accounts every time 👇
-    await googleSignIn.signOut();
+    // Get idToken from authentication (v7.x API)
+    final idToken = account.authentication.idToken;
+    if (idToken == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Google Sign-In failed: no idToken')),
+      );
+      return;
+    }
 
-    final GoogleSignInAccount? googleUser =
-        await googleSignIn.signIn();
+    // Create Firebase credential with idToken only
+    final credential = GoogleAuthProvider.credential(idToken: idToken);
+    final userCred = await FirebaseAuth.instance.signInWithCredential(credential);
+    final user = userCred.user;
 
-    if (googleUser == null) return; // user cancelled
-
-    final GoogleSignInAuthentication googleAuth =
-        await googleUser.authentication;
-
-    final credential = GoogleAuthProvider.credential(
-      accessToken: googleAuth.accessToken,
-      idToken: googleAuth.idToken,
-    );
-
-    await FirebaseAuth.instance.signInWithCredential(credential);
+    if (user != null) {
+      await UserBootstrapService.ensureUserDoc();
+    }
 
     if (!context.mounted) return;
-
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (_) => const HomeScreen()),
     );
-  } catch (e) {
-    debugPrint("Google Sign-In Error: $e");
+  } catch (e, st) {
+    debugPrint('Google Sign-In error: $e\n$st');
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Google Sign-In failed: $e')),
+      );
+    }
+  } finally {
+    if (mounted) {
+      setState(() {
+        isLoading = false;
+      });
+    }
   }
 }
-
 
   @override
   Widget build(BuildContext context) {

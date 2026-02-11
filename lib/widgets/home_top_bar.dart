@@ -11,7 +11,7 @@ class HomeTopBar extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Left group: menu, breadcrumb, logo and 'Farmigo' text
+          // Left group: menu, breadcrumb, logo and 'Skybase' text
           Row(
             children: [
               GestureDetector(
@@ -35,7 +35,7 @@ class HomeTopBar extends StatelessWidget {
                 child: const Icon(Icons.park, color: Colors.white, size: 20),
               ),
               const SizedBox(width: 8),
-              const Text('Farmigo', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primary)),
+              const Text('Skybase', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primary)),
 
               // Right-side actions: filter and profile (profile visible in green)
             ],

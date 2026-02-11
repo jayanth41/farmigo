@@ -1,6 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'role_selection_screen.dart';
+import 'farmhouse_owner_dashboard.dart';
+import 'car_owner_dashboard_new.dart';
+import 'login_screen.dart';
+import 'home_screen.dart';
 // Note: keep imports minimal for the splash's one-shot auth check.
 // splash uses named navigation; don't import HomeScreen directly to avoid
 // accidental direct widget pushes.
@@ -36,35 +42,42 @@ class _SplashScreenState extends State<SplashScreen>
     _goNext();
   }
 
-  /// One-time navigation decision after the splash. If the user is already
-  /// signed in, navigate to Home using pushAndRemoveUntil so that the
-  /// app isn't replaced reactively by auth state changes; otherwise go to
-  /// the login screen.
+  /// One-time navigation decision after the splash.
+  /// RULE: Always go to HOME after splash.
+  /// All owner/role decisions now happen ONLY when the user taps "Owner Dashboard".
   Future<void> _goNext() async {
     await Future.delayed(const Duration(seconds: 2));
     if (!mounted) return;
 
     final fb.User? user = fb.FirebaseAuth.instance.currentUser;
 
-    if (user != null) {
-      // Replace the splash with '/home' using pushReplacementNamed so the
-      // splash screen is never on the back stack and navigation points to
-      // the explicit '/home' route.
-      try {
-        Navigator.pushReplacementNamed(context, '/home');
-      } catch (e) {
-        debugPrint('Splash -> Home navigation failed: $e');
+    try {
+      if (user == null) {
+        // Not signed in -> go to Login
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+        );
+        return;
       }
-    } else {
-      // Not signed in: go to login screen. Use pushReplacement so the
-      // splash is removed from the stack.
-      try {
-        Navigator.pushReplacementNamed(context, '/login');
-      } catch (e) {
-        debugPrint('Splash -> Login navigation failed: $e');
+
+      // Signed in -> ALWAYS go to Home first (correct behavior)
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+      );
+    } catch (e) {
+      debugPrint('[SplashScreen] Navigation error: $e');
+      if (mounted) {
+        // Safe fallback: still go to Home
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
+        );
       }
     }
   }
+
 
   @override
   void dispose() {
@@ -79,8 +92,8 @@ class _SplashScreenState extends State<SplashScreen>
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              Color.fromARGB(255, 29, 163, 85),
-              Color(0xFF2ECC71),
+              Color(0xFF1E5FA8),
+              Color(0xFF0D47A1),
             ],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -96,17 +109,21 @@ class _SplashScreenState extends State<SplashScreen>
                 // LOGO
                 Padding(
                   padding: const EdgeInsets.all(12.0),
-                  child: Image.asset(
-                    'assets/images/farmigo_logo.png',
-                    width: 150, height: 150,
-                    fit: BoxFit.contain,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(30),
+                    child: Image.asset(
+                      'assets/images/skybase_logo.png',
+                      width: 250, height: 250,
+                      fit: BoxFit.cover,
+                      alignment: Alignment.center,
+                    ),
                   ),
                 ),
 
                 const SizedBox(height: 20),
 
                 const Text(
-                  "Farmigo",
+                  "Skybase",
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 34,
@@ -176,7 +193,7 @@ class _SplashIcon extends StatelessWidget {
       children: [
         CircleAvatar(
           radius: 20,
-          backgroundColor: Colors.white.withValues(alpha: 0.2),
+          backgroundColor: Colors.white.withOpacity(0.2),
           child: Icon(icon, color: Colors.white, size: 18),
         ),
         const SizedBox(height: 6),

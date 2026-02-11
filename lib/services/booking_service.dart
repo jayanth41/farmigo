@@ -33,6 +33,15 @@ class BookingService {
       final bookingDoc = bookingsColl.doc();
       final bookingId = bookingDoc.id;
 
+      // Get guest's FCM token from user document
+      String? guestFcmToken;
+      try {
+        final userDoc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+        guestFcmToken = userDoc.data()?['fcmToken'] as String?;
+      } catch (e) {
+        debugPrint('Failed to fetch FCM token for user $uid: $e');
+      }
+
       // Prepare booking document data
       final Map<String, dynamic> bookingData = {
         'userId': uid,
@@ -47,6 +56,7 @@ class BookingService {
         'propertyName': propertyName ?? '',
         'location': location ?? '',
         'imageUrl': imageUrl ?? '',
+        if (guestFcmToken != null) 'guestFcmToken': guestFcmToken,
       };
 
       // Prepare minimal user booking entry

@@ -7,7 +7,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.flutter_application_1"
+    namespace = "com.skybase.app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -24,7 +24,7 @@ android {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-    applicationId = "com.example.flutter_application_1"
+    applicationId = "com.skybase.app"
         // Ensure minSdk is at least 21 for multidex support required by some Firebase
         minSdk = flutter.minSdkVersion
         // Enable multidex to avoid 64K method limit issues
