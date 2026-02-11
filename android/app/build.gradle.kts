@@ -46,6 +46,9 @@ android {
 dependencies {
     // Required when your app exceeds the 64K method limit (multidex)
     implementation("androidx.multidex:multidex:2.0.1")
+    
+    // Play Integrity API for Firebase App Check
+    implementation("com.google.android.play:integrity:1.2.0")
 }
 
 flutter {
