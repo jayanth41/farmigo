@@ -4,7 +4,6 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
@@ -49,7 +48,6 @@ Future<void> main() async {
   }
 
   debugPrint("🚨🚨🚨 MAIN() STARTED — CHECKING APP CHECK 🚨🚨🚨");
-  debugPrint("🚨🚨🚨 MAIN() STARTED — INITIALIZING FIREBASE 🚨🚨🚨");
 
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
@@ -61,17 +59,6 @@ Future<void> main() async {
   // ❌ REMOVE App Check activation in debug
 // We'll enable it properly later for release builds only
 
-  // ✅ Initialize App Check with Play Integrity (Android) or DeviceCheck (iOS)
-  debugPrint("⏳ Initializing Firebase App Check...");
-  try {
-    await FirebaseAppCheck.instance.activate(
-      androidProvider: AndroidProvider.playIntegrity,
-      appleProvider: AppleProvider.deviceCheck,
-    );
-    debugPrint("✅ Firebase App Check activated successfully");
-  } catch (e) {
-    debugPrint("⚠️ App Check activation error: $e");
-  }
 
   runApp(const MyApp());
 }
