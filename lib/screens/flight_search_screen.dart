@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:skybase/services/duffel_service.dart';
+import 'order_creation_screen.dart';
 
 class FlightSearchScreen extends StatefulWidget {
   const FlightSearchScreen({super.key});
@@ -27,6 +28,10 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
   void initState() {
     super.initState();
     _duffelService = DuffelService();
+    // Check token early so user knows why flights may not load
+    if (_duffelService.accessToken.isEmpty) {
+      _errorMessage = 'Duffel token missing. Run app with --dart-define=DUFFEL_ACCESS_TOKEN=YOUR_TOKEN';
+    }
   }
 
   @override
@@ -53,6 +58,8 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
   }
 
   Future<void> _searchFlights() async {
+    debugPrint('🔎 Search button pressed');
+    debugPrint('Token empty? ${_duffelService.accessToken.isEmpty}');
     if (_departureController.text.isEmpty ||
         _arrivalController.text.isEmpty ||
         _departureDateController.text.isEmpty) {
@@ -69,19 +76,41 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
     });
 
     try {
-      // Step 1: Create search session
-      final searchResponse = await _duffelService.searchFlights(
-        departureAirportIata: _departureController.text.toUpperCase(),
-        arrivalAirportIata: _arrivalController.text.toUpperCase(),
+      if (_duffelService.accessToken.isEmpty) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'Duffel token missing. Flights cannot be loaded.';
+        });
+        return;
+      }
+      // Call Duffel offers API directly (new service API)
+      final response = await _duffelService.searchOffers(
+        origin: _departureController.text.toUpperCase(),
+        destination: _arrivalController.text.toUpperCase(),
         departureDate: _departureDateController.text,
-        returnDate: _returnDateController.text,
-        passengers: int.parse(_passengersController.text),
+        adults: int.parse(_passengersController.text),
       );
 
-      _sessionId = searchResponse.id;
+      debugPrint('Duffel response: $response');
 
-      // Step 2: Get offers (with polling for results)
-      await _pollForOffers(_sessionId!);
+      // Extract offers from Duffel response
+      final data = response['data'];
+      final offersJson = data != null ? data['offers'] as List<dynamic>? : null;
+
+      if (offersJson != null && offersJson.isNotEmpty) {
+        setState(() {
+          _offers = offersJson
+              .map((o) => Offer.fromJson(o as Map<String, dynamic>))
+              .toList();
+        });
+      } else {
+        setState(() {
+          _offers = [];
+          _errorMessage = 'No flights returned by Duffel';
+        });
+      }
+
+      _sessionId = 'done';
     } catch (e) {
       setState(() {
         _errorMessage = 'Error: ${e.toString()}';

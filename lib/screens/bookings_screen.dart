@@ -43,7 +43,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (route) => false),
         ),
-        backgroundColor: AppColors.primary,
+        backgroundColor:  Color.fromARGB(255, 41, 70, 92),
         iconTheme: const IconThemeData(color: Colors.white),
         title: const Text('My Bookings', style: TextStyle(color: Colors.white)),
         elevation: 0,
@@ -153,7 +153,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
         onPressed: () => setState(() => _filterStatus = value),
         style: ElevatedButton.styleFrom(
           backgroundColor:
-              active ? AppColors.primary : Colors.grey[100],
+              active ?  Color.fromARGB(255, 41, 70, 92) : Colors.grey[100],
           foregroundColor: active ? Colors.white : Colors.grey[700],
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -297,7 +297,7 @@ class BookingItemCard extends StatelessWidget {
                     if (booking['totalAmount'] != null && (booking['totalAmount'] is num ? (booking['totalAmount'] as num) > 0 : booking['totalAmount'].toString().isNotEmpty))
                       Text(
                         '₹${booking['totalAmount'].toString()}',
-                        style: theme.textTheme.titleSmall?.copyWith(color: const Color(0xFF1E5FA8), fontWeight: FontWeight.bold),
+                        style: theme.textTheme.titleSmall?.copyWith(color:  Color.fromARGB(255, 41, 70, 92), fontWeight: FontWeight.bold),
                       ),
                     const SizedBox(width: 8),
                   ],
@@ -336,7 +336,7 @@ class BookingItemCard extends StatelessWidget {
       case 'upcoming':
         return Colors.blue;
       case 'completed':
-        return const Color(0xFF1E5FA8);
+        return  Color.fromARGB(255, 41, 70, 92);
       case 'cancelled':
       case 'canceled':
         return Colors.red;

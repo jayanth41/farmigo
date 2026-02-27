@@ -1,5 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:async';
+import 'package:get/get.dart';
+import '../services/user_service.dart';
+import '../controllers/favorites_controller.dart';
+import '../controllers/location_controller.dart';
+import '../data/farmhouses_data.dart';
+import 'favorites_screen.dart';
+import 'bookings_screen.dart';
+import 'profile_screen.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'dart:async';
 import 'package:get/get.dart';
 import '../services/user_service.dart';
 import '../controllers/favorites_controller.dart';
@@ -26,6 +38,7 @@ import 'package:geocoding/geocoding.dart';
 import '../models/category.dart';
 import 'location_selector_screen.dart';
 import 'category_results_screen.dart';
+import 'flight_search_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -38,6 +51,22 @@ class _HomeScreenState extends State<HomeScreen> {
   late LocationController locationController = Get.put(LocationController());
   int _selectedIndex = 0;
   final TextEditingController _searchController = TextEditingController();
+  // Animated placeholder state
+  final List<String> _searchPlaceholders = [
+    'Search farmhouses',
+    'Search villas',
+    'Search hotels',
+    'Search flights',
+    'Search car rentals',
+    'Search hourly rentals',
+  ];
+  int _placeholderIndex = 0;
+  String _searchPlaceholder = 'Search farmhouses';
+  Timer? _placeholderTimer;
+
+  // Bottom nav temporary border visibility
+  bool _showBottomBorder = false;
+  Timer? _bottomBorderTimer;
   late FavoritesController favoritesController;
   Map<String, dynamic>? _profile;
   bool _isProfileLoading = true;
@@ -46,10 +75,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Async location fetch state to avoid calling location APIs in build()
   Future<String?>? _locationFuture;
-  
 
   // Location & Category selectors
- final String _selectedState = 'Telangana';
+  final String _selectedState = 'Telangana';
   final String _selectedCategory = 'All';
 
   // Advanced filter state (shared with filters screen)
@@ -84,20 +112,20 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _filteredFarmhouses = List.from(farmhouses);
     _searchController.addListener(_onSearchChanged);
-    
+
     // Initialize FavoritesController
     if (!Get.isRegistered<FavoritesController>()) {
       Get.put(FavoritesController());
     }
     favoritesController = Get.find<FavoritesController>();
-    
+
     // Initialize LocationController
     if (!Get.isRegistered<LocationController>()) {
       Get.put(LocationController());
     }
     locationController = Get.find<LocationController>();
-    
-  // Load user profile from the app's user service (Firestore) if available
+
+    // Load user profile from the app's user service (Firestore) if available
     loadProfile();
 
     // Subscribe to global filters provider updates after first frame
@@ -109,6 +137,15 @@ class _HomeScreenState extends State<HomeScreen> {
       } catch (_) {
         // Provider might not be available in some contexts; ignore.
       }
+    });
+
+    // Start animated placeholder cycling — show one phrase at a time
+    _searchPlaceholder = _searchPlaceholders.first;
+    _placeholderTimer = Timer.periodic(const Duration(seconds: 3), (t) {
+      _placeholderIndex = (_placeholderIndex + 1) % _searchPlaceholders.length;
+      setState(() {
+        _searchPlaceholder = _searchPlaceholders[_placeholderIndex];
+      });
     });
   }
 
@@ -123,21 +160,14 @@ class _HomeScreenState extends State<HomeScreen> {
       _isProfileLoading = false;
     });
 
-  // If user is authenticated but no profile exists, do not auto-navigate.
-  // Earlier behavior auto-pushed the Edit Profile page which caused
-  // unexpected navigation flows. Keep a one-time flag to avoid repeated
-  // checks but do not change UI automatically; callers may choose to
-  // navigate manually if desired.
-  final user = FirebaseAuth.instance.currentUser;
-  if (user != null && (_profile == null || _profile!['profile_completed'] == false) && !_didPromptForProfile) {
-    _didPromptForProfile = true;
-    debugPrint('[HomeScreen] profile incomplete for user ${user.uid}; not auto-navigating to EditProfile.');
-  }
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null && (_profile == null || _profile!['profile_completed'] == false) && !_didPromptForProfile) {
+      _didPromptForProfile = true;
+      debugPrint('[HomeScreen] profile incomplete for user ${user.uid}; not auto-navigating to EditProfile.');
+    }
   }
 
   void _onDrawerItemSelected(String label) async {
-    // Drawer is already closed by the drawer widget; avoid popping again.
-    // Schedule navigation to avoid using context immediately after drawer close.
     if (label.toLowerCase() == 'logout') {
       try {
         await FirebaseAuth.instance.signOut();
@@ -165,7 +195,6 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
 
-    // Handle Owner Dashboard explicitly
     if (label == 'Owner Dashboard' || label == 'Owner Panel') {
       if (!mounted) return;
       Future.microtask(() {
@@ -185,8 +214,6 @@ class _HomeScreenState extends State<HomeScreen> {
         if (!mounted) return;
         if (route == AppRoutes.home) {
           try {
-            // Use Navigator API to clear stack and navigate to home so the
-            // back stack is reset.
             Navigator.of(context).pushNamedAndRemoveUntil(route, (r) => false);
           } catch (e) {
             debugPrint('Fallback home navigation error: $e');
@@ -217,18 +244,20 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       _filtersProvider?.removeListener(_onGlobalFiltersChanged);
     } catch (_) {}
+    _placeholderTimer?.cancel();
+    _bottomBorderTimer?.cancel();
     super.dispose();
   }
 
   Category _currentCategory() {
-                        final s = _selectedCategory.toLowerCase();
-                          if (s.contains('farm')) return Category.farmhouse;
-                          if (s.contains('villa')) return Category.villa;
-                          if (s.contains('hotel')) return Category.hotel;
-                          if (s.contains('flight') || s.contains('flights')) return Category.flights;
-                          if (s.contains('car')) return Category.car;
-                          if (s.contains('hour')) return Category.hourly;
-                          return Category.all;
+    final s = _selectedCategory.toLowerCase();
+    if (s.contains('farm')) return Category.farmhouse;
+    if (s.contains('villa')) return Category.villa;
+    if (s.contains('hotel')) return Category.hotel;
+    if (s.contains('flight') || s.contains('flights')) return Category.flights;
+    if (s.contains('car')) return Category.car;
+    if (s.contains('hour')) return Category.hourly;
+    return Category.all;
   }
 
   void _onGlobalFiltersChanged() {
@@ -239,7 +268,6 @@ class _HomeScreenState extends State<HomeScreen> {
     if (raw == null) return;
 
     setState(() {
-      // Merge known keys into local filter state if present
       if (raw.containsKey('priceRange') && raw['priceRange'] is RangeValues) {
         _priceRange = raw['priceRange'] as RangeValues;
       }
@@ -267,32 +295,22 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     });
 
-    // Re-apply filters to update UI
     _applyFilters();
   }
 
   void _onSearchChanged() => _applyFilters();
 
-  // Fetch location asynchronously once (cached) and avoid calling Geolocator in build()
   Future<String?> _fetchLocationOnce() async {
     if (_locationFuture != null) return _locationFuture!;
     _locationFuture = () async {
       try {
-        // Prefer the Provider-based AppLocationController which already
-        // performs reverse-geocoding to a readable location name.
         try {
           final appLoc = Provider.of<AppLocationController>(context, listen: false);
-
-          // Ensure service/permissions and listener are started
           await appLoc.initialize();
-
-          // If a human-readable name is available, return it
           final name = appLoc.locationName;
           if (name.isNotEmpty && name != 'Fetching location...' && name != 'Location unavailable') {
             return name;
           }
-
-          // Otherwise perform a one-shot position fetch which also triggers reverse geocode
           final p = await appLoc.getCurrentPosition();
           if (p != null) {
             return appLoc.locationName;
@@ -301,7 +319,6 @@ class _HomeScreenState extends State<HomeScreen> {
           debugPrint('AppLocationController not available or failed: $e');
         }
 
-        // Fallback: use the older GetX LocationController + direct reverse geocoding
         await locationController.checkLocationStatus();
         if (!locationController.isLocationEnabled.value) {
           await locationController.requestLocationPermission();
@@ -334,7 +351,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return _locationFuture!;
   }
 
-  // Show bottom sheet that runs _fetchLocationOnce and allows manual edit/save
   void _showLocationSheet(BuildContext ctx) {
     showModalBottomSheet(
       context: ctx,
@@ -353,7 +369,6 @@ class _HomeScreenState extends State<HomeScreen> {
               builder: (context, snap) {
                 final loading = snap.connectionState == ConnectionState.waiting;
                 final detected = snap.data;
-                // If detected is a readable address, populate the field for editing
                 if (detected != null && detected.isNotEmpty) ctl.text = detected;
                 return Column(
                   mainAxisSize: MainAxisSize.min,
@@ -381,7 +396,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         const SizedBox(width: 8),
                         ElevatedButton(
                           onPressed: () {
-                            // Persist manual override to AppLocationController if available
                             try {
                               final locCtrl = Provider.of<AppLocationController>(ctx, listen: false);
                               locCtrl.setLocationName(ctl.text.trim());
@@ -403,7 +417,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Open the new Location Selector bottom sheet (BookMyShow-style)
   void _openLocationSelector(BuildContext ctx) {
     showModalBottomSheet(
       context: ctx,
@@ -436,7 +449,7 @@ class _HomeScreenState extends State<HomeScreen> {
         }
         if (distance > _maxDistance) return false;
         if (_luxuryOnly && price < 3500) return false;
-        
+
         final rating = (farm['rating'] is double) ? (farm['rating'] as double) : 0.0;
         if (rating < _minRating) return false;
 
@@ -447,11 +460,10 @@ class _HomeScreenState extends State<HomeScreen> {
           }
         }
 
-        // Check property type filtering
         final farmPropertyType = (farm['property_type'] as String?)?.toLowerCase() ?? '';
         bool propertyTypeMatches = true;
         bool anyPropertyTypeSelected = _propertyTypes.values.any((v) => v);
-        
+
         if (anyPropertyTypeSelected) {
           propertyTypeMatches = _propertyTypes.entries.any((entry) =>
               entry.value && farmPropertyType.contains(entry.key.toLowerCase()));
@@ -475,7 +487,6 @@ class _HomeScreenState extends State<HomeScreen> {
         return matchesSearch;
       }).toList();
 
-      // Apply sorting
       switch (_sortOption) {
         case 'Price: Low to High':
           _filteredFarmhouses.sort((a, b) =>
@@ -504,20 +515,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // If we're already inside a parent Scaffold (e.g. MainScaffold's
-    // IndexedStack), avoid creating a nested Scaffold to prevent UI issues
-    // such as black screens or duplicated drawers. Return only the body
-    // content in that case. Otherwise provide a full Scaffold with AppBar
-    // and drawer.
     final hasAncestorScaffold = Scaffold.maybeOf(context) != null;
 
     if (hasAncestorScaffold) {
-      // Return only the page body when embedded in another Scaffold.
       return _buildBody();
     }
 
-    // Top-level presentation: provide Scaffold with an AppBar. HomeScreen
-    // must not show a back button, so we disable automatic leading.
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -538,40 +541,56 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
 
-  body: _buildBody(),
-      bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          boxShadow: [
-            BoxShadow(
-              color: Color.fromRGBO(0, 0, 0, 0.1),
-              blurRadius: 12,
+      body: _buildBody(),
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 250),
+            height: _showBottomBorder ? 3 : 0,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+          Container(
+            decoration: const BoxDecoration(
+              boxShadow: [
+                BoxShadow(
+                  color: Color.fromRGBO(0, 0, 0, 0.1),
+                  blurRadius: 12,
+                ),
+              ],
             ),
-          ],
-        ),
-        child: BottomNavigationBar(
-          currentIndex: _selectedIndex,
-          onTap: (index) {
-            if (!mounted) return;
-            if (_selectedIndex == index) return;
-            setState(() => _selectedIndex = index);
-          },
-          type: BottomNavigationBarType.fixed,
-          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+            child: BottomNavigationBar(
+              currentIndex: _selectedIndex,
+              onTap: (index) {
+                if (!mounted) return;
+                if (_selectedIndex == index) return;
+                setState(() {
+                  _selectedIndex = index;
+                  _showBottomBorder = true;
+                });
+                _bottomBorderTimer?.cancel();
+                _bottomBorderTimer = Timer(const Duration(milliseconds: 700), () {
+                  if (!mounted) return;
+                  setState(() => _showBottomBorder = false);
+                });
+              },
+              type: BottomNavigationBarType.fixed,
+              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
 
-          selectedItemColor: Theme.of(context).colorScheme.primary,
-          unselectedItemColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-          items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-            BottomNavigationBarItem(icon: Icon(Icons.favorite), label: 'Favorites'),
-            BottomNavigationBarItem(icon: Icon(Icons.calendar_today), label: 'Bookings'),
-            BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
-          ],
-        ),
+              selectedItemColor: Theme.of(context).colorScheme.primary,
+              unselectedItemColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+              items: [
+                BottomNavigationBarItem(icon: _navIcon(Icons.home, 0), label: 'Home'),
+                BottomNavigationBarItem(icon: _navIcon(Icons.favorite, 1), label: 'Favorites'),
+                BottomNavigationBarItem(icon: _navIcon(Icons.calendar_today, 2), label: 'Bookings'),
+                BottomNavigationBarItem(icon: _navIcon(Icons.person, 3), label: 'Profile'),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
-
-  
 
   Widget _buildBody() {
     switch (_selectedIndex) {
@@ -582,9 +601,6 @@ class _HomeScreenState extends State<HomeScreen> {
       case 2:
         return const BookingsScreen();
       case 3:
-        // If no profile is available (likely a guest session), show a
-        // limited guest profile view that encourages login. This prevents
-        // guests from accessing edit/profile functionality.
         if (_profile == null) {
           return const _GuestProfileView();
         }
@@ -597,9 +613,10 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _homePage() {
     return Column(
       children: [
-        // ---------- HEADER (redesigned widget only) ----------
         Container(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16), // slightly increased vertical space
+          // reduced vertical padding to make header more compact while still
+          // covering the status bar area
+          padding: EdgeInsets.fromLTRB(16, MediaQuery.of(context).padding.top + 8, 16, 12),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
@@ -614,7 +631,6 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Top row: menu, logo, title+location stacked, filter
               Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
@@ -625,53 +641,25 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   const SizedBox(width: 6),
-                  // App logo
-                  Container(
-                    decoration: BoxDecoration(
-                      // Make the logo container transparent so the header gradient shows through
-                      color: Colors.transparent,
-                      borderRadius: BorderRadius.circular(8),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Theme.of(context).colorScheme.primary.withOpacity(0.25),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: SizedBox(
-                      width: 60,
-                      height: 60,
-                      child: Center(
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Image.asset(
-                            'assets/images/skybase_logo.png',
-                            fit: BoxFit.cover,
-                            alignment: Alignment.center,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  // Title + location stacked so location sits directly under title (left aligned)
+                  const SizedBox(width: 4),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Skybase title (bigger, bold, white)
-                        Text(
-                          'Skybase',
-                          style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                                fontSize: 26,
-                                fontWeight: FontWeight.w900,
-                                color: Theme.of(context).colorScheme.onPrimary,
-                              ),
+                        RichText(
+                          text: TextSpan(
+                            style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                            children: [
+                              TextSpan(text: 'SKY', style: TextStyle(color: Theme.of(context).colorScheme.onPrimary)),
+                              TextSpan(text: 'BASE', style: TextStyle(color: const Color(0xFFB9C5CC))),
+                            ],
+                          ),
                         ),
                         const SizedBox(height: 4),
-                        // Location row (pin icon + text) - clickable; logic unchanged
                         InkWell(
                           onTap: () => _openLocationSelector(context),
                           borderRadius: BorderRadius.circular(6),
@@ -686,31 +674,29 @@ class _HomeScreenState extends State<HomeScreen> {
                                   color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.95),
                                 ),
                                 const SizedBox(width: 6),
-                                // Preserve existing logic for retrieving/displaying location (unchanged)
                                 Builder(builder: (ctx) {
                                   try {
                                     final appLoc = Provider.of<AppLocationController>(ctx);
                                     final name = appLoc.locationName;
                                     return Text(
                                       name,
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.92),
-                                          fontWeight: FontWeight.w600,
-                                        ),
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.92),
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     );
                                   } catch (_) {
-                                    // fallback to LocationController & FutureBuilder combo (exact same logic as before)
                                     return Obx(() {
                                       final name = locationController.selectedLocationName;
                                       if (locationController.selectedCity.value.isNotEmpty) {
                                         return Text(
                                           name,
-                                              style: TextStyle(
-                                              fontSize: 13,
-                                              color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.92),
-                                              fontWeight: FontWeight.w600,
-                                            ),
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.92),
+                                            fontWeight: FontWeight.w600,
+                                          ),
                                         );
                                       }
                                       return FutureBuilder<String?>(
@@ -731,6 +717,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                     });
                                   }
                                 }),
+                                const SizedBox(width: 6),
+                                Icon(Icons.keyboard_arrow_down, size: 16, color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.95)),
                               ],
                             ),
                           ),
@@ -738,62 +726,18 @@ class _HomeScreenState extends State<HomeScreen> {
                       ],
                     ),
                   ),
-                  // Filter icon (kept logic intact)
                   IconButton(
-                    icon: Icon(Icons.tune, color: Theme.of(context).colorScheme.onPrimary),
-                    onPressed: () {
-                      final cat = () {
-                        final s = _selectedCategory.toLowerCase();
-                        if (s.contains('farm')) return Category.farmhouse;
-                        if (s.contains('villa')) return Category.villa;
-                        if (s.contains('hotel')) return Category.hotel;
-                        if (s.contains('flight') || s.contains('flights')) return Category.flights;
-                        if (s.contains('car')) return Category.car;
-                        if (s.contains('hour')) return Category.hourly;
-                        return Category.all;
-                      }();
-
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => FiltersScreen(
-                            category: cat,
-                            onFiltersApplied: (filters) {
-                              setState(() {
-                                _priceRange = filters['priceRange'] ?? _priceRange;
-                                _maxDistance = filters['maxDistance'] ?? _maxDistance;
-                                _luxuryOnly = filters['luxuryOnly'] ?? _luxuryOnly;
-                                _minRating = filters['minRating'] ?? _minRating;
-                                _amenities.addAll(filters['amenities'] ?? {});
-                                _propertyTypes.addAll(filters['propertyTypes'] ?? {});
-                                _sortOption = filters['sortOption'] ?? _sortOption;
-
-                                // map back some category-specific values if present
-                                if (cat == Category.farmhouse || cat == Category.villa) {
-                                  // optional: read guests/location
-                                }
-                              });
-                              _applyFilters();
-                            },
-                            initialFilters: {
-                              'priceRange': _priceRange,
-                              'maxDistance': _maxDistance,
-                              'luxuryOnly': _luxuryOnly,
-                              'minRating': _minRating,
-                              'amenities': _amenities,
-                              'propertyTypes': _propertyTypes,
-                              'sortOption': _sortOption,
-                            },
-                          ),
-                        ),
-                      );
-                    },
+                    icon: Icon(Icons.chat_bubble_outline, color: Theme.of(context).colorScheme.onPrimary),
+                    onPressed: () {},
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.notifications_none, color: Theme.of(context).colorScheme.onPrimary),
+                    onPressed: () {},
                   ),
                 ],
               ),
 
-              const SizedBox(height: 10), // small gap before search bar (search bar unchanged)
-              // SEARCH BAR (exact same behavior; alignment preserved)
+              const SizedBox(height: 10),
               Builder(builder: (ctx) {
                 final cs = Theme.of(ctx).colorScheme;
                 return Padding(
@@ -803,11 +747,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     cursorColor: cs.primary,
                     style: TextStyle(color: cs.onSurface),
                     decoration: InputDecoration(
-                      hintText: 'Search farmhouses, villas...',
+                      hintText: _searchPlaceholder,
                       hintStyle: TextStyle(color: cs.onSurface.withOpacity(0.65)),
                       filled: true,
                       fillColor: cs.surface,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                       prefixIcon: Icon(Icons.search, color: cs.primary),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(14),
@@ -821,25 +765,25 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
 
-        // ---------- BODY ----------
         Expanded(
           child: ListView(
             padding: const EdgeInsets.only(bottom: 120),
             children: [
               const SizedBox(height: 16),
-              // GREETING
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Hello 👋', style: Theme.of(context).textTheme.bodyLarge),
+                    Text(
+                      'Hello 👋 ${_profile != null && _profile!['name'] != null ? _profile!['name'] : 'Guest'}',
+                      style: Theme.of(context).textTheme.bodyLarge,
+                    ),
                     const SizedBox(height: 4),
                     Text(
-                      'Where would you like to go?',
+                      'Where would you like to go...?',
                       style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        color: Theme.of(context).colorScheme.primary,
-
+                        color: const Color.fromARGB(255, 41, 70, 92),
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -847,63 +791,75 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              // CATEGORIES
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16),
-                child: Text(
-                  "Categories",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
-                ),
-              ),
+
               const SizedBox(height: 8.5),
               CategoryGrid(
                 selectedCategory: _selectedCategory,
                 onTap: (c) {
-                  // Navigate to dedicated Category Results screen instead of
-                  // keeping tabs visible on Home. Do not change filtering logic.
                   final cat = CategoryExt.fromLabel(c);
+
+                  // If Flights tapped → open real flight search screen (force navigation)
+                  if (cat == Category.flights) {
+                    debugPrint('[HomeScreen] Flights tapped → opening FlightSearchScreen');
+                    Get.to(() => const FlightSearchScreen());
+                    return;
+                  }
+
+                  // Otherwise open normal category results
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => CategoryResultsScreen(category: cat, allProperties: farmhouses),
+                      builder: (_) => CategoryResultsScreen(
+                        category: cat,
+                        allProperties: farmhouses,
+                      ),
                     ),
                   );
                 },
               ),
               const SizedBox(height: 20),
-              // OFFERS
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16),
-                child: Text(
-                  "Best Offers",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
-                ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text('Last minute deals', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color:  Color.fromARGB(255, 41, 70, 92))),
               ),
               const SizedBox(height: 8),
-              const OffersCarousel(
-                offers: [
-                  OfferItem(
-                    title: 'Weekend Deals',
-                    subtitle: 'Up to 40% off',
-                    icon: Icons.local_fire_department,
-                    color: Color.fromARGB(255, 62, 179, 132),
-                  ),
-                  OfferItem(
-                    title: 'Early Bird',
-                    subtitle: 'Save 15%',
-                    icon: Icons.percent,
-                    color: Color.fromARGB(255, 108, 162, 207),
-                  ),
-                  OfferItem(
-                    title: 'First Booking',
-                    subtitle: '20% off',
-                    icon: Icons.star_border,
-                    color: Color.fromARGB(255, 58, 196, 67),
-                  ),
-                ],
+              SizedBox(
+                height: 140,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  itemCount: _filteredFarmhouses.length > 6 ? 6 : _filteredFarmhouses.length,
+                  itemBuilder: (context, index) {
+                    final item = _filteredFarmhouses[index];
+                    return Container(
+                      width: 260,
+                      margin: const EdgeInsets.only(right: 12),
+                      child: Card(
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        child: Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(child: Text(item['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold))),
+                              const SizedBox(height: 6),
+                              Text(item['location'] ?? ''),
+                              const SizedBox(height: 6),
+                              Text('₹${(item['price'] ?? 0).toString()}', style: const TextStyle(fontWeight: FontWeight.w700)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
               ),
-              const SizedBox(height: 20),
-              // FEATURED
+              const SizedBox(height: 16),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text('Recommended', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color.fromARGB(255, 41, 70, 92))),
+              ),
+              const SizedBox(height: 8),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                 child: Row(
@@ -916,6 +872,51 @@ class _HomeScreenState extends State<HomeScreen> {
                           fontWeight: FontWeight.w500,
                         ),
                       ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.filter_alt, size: 20, color: Color.fromARGB(255, 41, 70, 92)),
+                      onPressed: () {
+                        final cat = () {
+                          final s = _selectedCategory.toLowerCase();
+                          if (s.contains('farm')) return Category.farmhouse;
+                          if (s.contains('villa')) return Category.villa;
+                          if (s.contains('hotel')) return Category.hotel;
+                          if (s.contains('flight') || s.contains('flights')) return Category.flights;
+                          if (s.contains('car')) return Category.car;
+                          if (s.contains('hour')) return Category.hourly;
+                          return Category.all;
+                        }();
+
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => FiltersScreen(
+                              category: cat,
+                              onFiltersApplied: (filters) {
+                                setState(() {
+                                  _priceRange = filters['priceRange'] ?? _priceRange;
+                                  _maxDistance = filters['maxDistance'] ?? _maxDistance;
+                                  _luxuryOnly = filters['luxuryOnly'] ?? _luxuryOnly;
+                                  _minRating = filters['minRating'] ?? _minRating;
+                                  _amenities.addAll(filters['amenities'] ?? {});
+                                  _propertyTypes.addAll(filters['propertyTypes'] ?? {});
+                                  _sortOption = filters['sortOption'] ?? _sortOption;
+                                });
+                                _applyFilters();
+                              },
+                              initialFilters: {
+                                'priceRange': _priceRange,
+                                'maxDistance': _maxDistance,
+                                'luxuryOnly': _luxuryOnly,
+                                'minRating': _minRating,
+                                'amenities': _amenities,
+                                'propertyTypes': _propertyTypes,
+                                'sortOption': _sortOption,
+                              },
+                            ),
+                          ),
+                        );
+                      },
                     ),
                     TextButton(
                       onPressed: () {
@@ -941,10 +942,121 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               PropertiesGrid(properties: _filteredFarmhouses),
+
+              const SizedBox(height: 12),
+              // Additional horizontal property cards to appear below Recommended
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text('Explore more properties', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color:  Color.fromARGB(255, 41, 70, 92))),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 200,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  itemCount: _filteredFarmhouses.isNotEmpty ? (_filteredFarmhouses.length > 6 ? 6 : _filteredFarmhouses.length) : 0,
+                  itemBuilder: (context, index) {
+                    final item = _filteredFarmhouses[index];
+                    return Container(
+                      width: 260,
+                      margin: const EdgeInsets.only(right: 12),
+                      child: Card(
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              height: 110,
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade300,
+                                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                                image: item['image'] != null ? DecorationImage(image: NetworkImage(item['image']), fit: BoxFit.cover) : null,
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.all(10.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(item['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold)),
+                                  const SizedBox(height: 6),
+                                  Text(item['location'] ?? ''),
+                                  const SizedBox(height: 6),
+                                  Text('₹${(item['price'] ?? 0).toString()}', style: const TextStyle(fontWeight: FontWeight.w700)),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+
+              const SizedBox(height: 16),
+              // Small dummy cards below Recommended
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text('You might also like', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 120,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  itemCount: _filteredFarmhouses.isNotEmpty ? (_filteredFarmhouses.length > 3 ? 3 : _filteredFarmhouses.length) : 3,
+                  itemBuilder: (context, index) {
+                    final item = _filteredFarmhouses.isNotEmpty ? _filteredFarmhouses[index] : {
+                      'name': 'Cozy Retreat',
+                      'location': 'Nearby',
+                      'price': 2500,
+                    };
+                    return Container(
+                      width: 200,
+                      margin: const EdgeInsets.only(right: 12),
+                      child: Card(
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        child: Padding(
+                          padding: const EdgeInsets.all(10.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(item['name'] ?? 'Cozy Retreat', style: const TextStyle(fontWeight: FontWeight.bold)),
+                              const SizedBox(height: 6),
+                              Text(item['location'] ?? 'Nearby'),
+                              const Spacer(),
+                              Text('₹${(item['price'] ?? 0).toString()}', style: const TextStyle(fontWeight: FontWeight.w700)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+
             ],
           ),
         ),
       ],
+    );
+  }
+
+  Widget _navIcon(IconData iconData, int index) {
+    final selected = _selectedIndex == index;
+    final bgColor = selected ? Theme.of(context).colorScheme.primary : Colors.transparent;
+    final iconColor = selected ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.onSurface.withOpacity(0.7);
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: bgColor,
+        shape: BoxShape.circle,
+      ),
+      child: Icon(iconData, size: 20, color: iconColor),
     );
   }
 }
@@ -1074,7 +1186,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 : const Text('Save'),
             ),
             const SizedBox(height: 12),
-            // Owner Dashboard navigation removed from Edit Profile; moved to App Drawer for owners only.
           ],
         ),
       ),

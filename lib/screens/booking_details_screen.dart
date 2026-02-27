@@ -51,7 +51,7 @@ class BookingDetailsScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(category, style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600)),
+                  Text(category, style: const TextStyle(color:Color.fromARGB(255, 41, 70, 92), fontWeight: FontWeight.w600)),
                   const SizedBox(height: 8),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -78,7 +78,7 @@ class BookingDetailsScreen extends StatelessWidget {
                   const SizedBox(height: 12),
                   Row(
                     children: [
-                      Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: AppColors.ratingBg, borderRadius: BorderRadius.circular(8)), child: Row(children: [const Icon(Icons.star, color: Colors.white, size: 16), const SizedBox(width: 6), Text(rating.toStringAsFixed(1), style: const TextStyle(color: Colors.white))])),
+                      Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color:  Color.fromARGB(255, 41, 70, 92), borderRadius: BorderRadius.circular(8)), child: Row(children: [const Icon(Icons.star, color: Colors.white, size: 16), const SizedBox(width: 6), Text(rating.toStringAsFixed(1), style: const TextStyle(color: Colors.white))])),
                       const SizedBox(width: 12),
                       Text('$reviews reviews', style: const TextStyle(color: Colors.grey)),
                     ],

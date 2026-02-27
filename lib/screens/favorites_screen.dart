@@ -37,7 +37,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (route) => false),
         ),
-        backgroundColor: AppColors.primary,
+        backgroundColor: const Color.fromARGB(255, 41, 70, 92),
         iconTheme: const IconThemeData(color: Colors.white),
         elevation: 0,
         title: const Text(

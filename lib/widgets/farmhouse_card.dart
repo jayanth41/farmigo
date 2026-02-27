@@ -194,26 +194,37 @@ class _FarmhouseCardState extends State<FarmhouseCard> {
               ],
             ),
 
-            // DETAILS
-            Padding(
+            // DETAILS (moved into a primary-colored footer for better contrast)
+            Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary,
+                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(18)),
+              ),
               padding: const EdgeInsets.all(12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(widget.name,
-                      style: const TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.w700)),
+                  Text(
+                    widget.name,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: Theme.of(context).colorScheme.onPrimary,
+                    ),
+                  ),
 
                   const SizedBox(height: 4),
 
                   Row(
                     children: [
-                      const Icon(Icons.location_on,
-                          size: 14, color: Colors.grey),
+                      Icon(Icons.location_on, size: 14, color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.9)),
                       const SizedBox(width: 4),
                       Expanded(
-                        child: Text(widget.location,
-                            style: const TextStyle(fontSize: 13)),
+                        child: Text(
+                          widget.location,
+                          style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.95)),
+                        ),
                       ),
                     ],
                   ),
@@ -222,24 +233,26 @@ class _FarmhouseCardState extends State<FarmhouseCard> {
 
                   Row(
                     children: [
-                      const Icon(Icons.star,
-                          size: 14, color: Colors.orange),
+                      Icon(Icons.star, size: 14, color: Colors.orange.shade200),
                       const SizedBox(width: 4),
                       Text(
                         "${widget.rating} (${widget.reviews})",
-                        style: const TextStyle(fontSize: 13),
+                        style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.95)),
                       ),
                       const Spacer(),
                       Text(
                         "₹${widget.price.toInt()}",
                         style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Theme.of(context).colorScheme.primary),
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.onPrimary,
+                        ),
                       ),
                       const SizedBox(width: 4),
-                      const Text("/night",
-                          style: TextStyle(fontSize: 12)),
+                      Text(
+                        "/night",
+                        style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.95)),
+                      ),
                     ],
                   ),
                 ],

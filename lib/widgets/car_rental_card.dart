@@ -68,7 +68,7 @@ class _CarRentalCardState extends State<CarRentalCard> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
-                      color: AppColors.primary,
+                      color:const Color.fromARGB(255, 41, 70, 92),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(

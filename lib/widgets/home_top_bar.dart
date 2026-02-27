@@ -35,7 +35,21 @@ class HomeTopBar extends StatelessWidget {
                 child: const Icon(Icons.park, color: Colors.white, size: 20),
               ),
               const SizedBox(width: 8),
-              const Text('Skybase', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primary)),
+              // SKYBASE rich mark (SKY + BASE) with slight letter spacing
+              RichText(
+                text: TextSpan(
+                  children: [
+                    TextSpan(
+                      text: 'SKY',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary, letterSpacing: 1.2),
+                    ),
+                    TextSpan(
+                      text: 'BASE',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary.withOpacity(0.8), letterSpacing: 1.2),
+                    ),
+                  ],
+                ),
+              ),
 
               // Right-side actions: filter and profile (profile visible in green)
             ],

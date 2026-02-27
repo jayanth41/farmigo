@@ -923,12 +923,12 @@ Container(
               const Text('Amenities', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
               const SizedBox(height: 8),
               Wrap(spacing: 8, runSpacing: 8, children: List.generate(amenitiesKeys.length, (i) { final key = amenitiesKeys[i]; return FilterChip(label: Text(key), selected: _amenities[key] ?? false, onSelected: (v) => setState(() => _amenities[key] = v), backgroundColor: Theme.of(context).scaffoldBackgroundColor,
- selectedColor: AppColors.primary.withAlpha(50)); })),
+ selectedColor: const Color.fromARGB(255, 41, 70, 92).withAlpha(50)); })),
               const SizedBox(height: 12),
               const Text('Property Type', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
               const SizedBox(height: 8),
               Wrap(spacing: 8, runSpacing: 8, children: _propertyTypes.keys.map((k) { return FilterChip(label: Text(k), selected: _propertyTypes[k] ?? false, onSelected: (v) => setState(() => _propertyTypes[k] = v), backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-selectedColor: AppColors.primary.withAlpha(50)); }).toList()),
+selectedColor: const Color.fromARGB(255, 41, 70, 92).withAlpha(50)); }).toList()),
             ],
           );
       }
@@ -937,7 +937,7 @@ selectedColor: AppColors.primary.withAlpha(50)); }).toList()),
     return Scaffold(
       appBar: AppBar(
         title: const Text('Filters'),
-        backgroundColor: AppColors.primary,
+        backgroundColor: const Color.fromARGB(255, 41, 70, 92),
         foregroundColor: Colors.white,
       ),
       body: SafeArea(
@@ -994,7 +994,7 @@ child: DropdownButton<String>(
                       onPressed: _resetFilters,
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 12),
-                        side: const BorderSide(color: AppColors.primary),
+                        side: const BorderSide(color:  Color.fromARGB(255, 41, 70, 92)),
                       ),
                       child: const Text('Reset', style: TextStyle(color: AppColors.primary)),
                     ),
@@ -1004,7 +1004,7 @@ child: DropdownButton<String>(
                     child: ElevatedButton(
                       onPressed: _applyFilters,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
+                        backgroundColor: const Color.fromARGB(255, 41, 70, 92),
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                       child: const Text('Apply Filters', style: TextStyle(color: Colors.white)),

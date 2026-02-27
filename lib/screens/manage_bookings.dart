@@ -734,7 +734,7 @@ class _StatusTab extends StatelessWidget {
           borderRadius: BorderRadius.circular(22),
           boxShadow: const [BoxShadow(color: Color(0x08000000), blurRadius: 8)],
         ),
-        child: Text(label, style: TextStyle(color: active ? Colors.white : const Color(0xFF334155), fontWeight: FontWeight.w600)),
+        child: Text(label, style: TextStyle(color: active ? Colors.white : const Color.fromARGB(255, 41, 70, 92), fontWeight: FontWeight.w600)),
       ),
     );
   }
@@ -761,7 +761,7 @@ class _BookingCard extends StatelessWidget {
       case 'confirmed': return const Color(0xFF16A34A);
       case 'pending': return const Color(0xFFF59E0B);
       case 'cancelled': return const Color(0xFFEF4444);
-      default: return const Color(0xFF2563EB);
+      default: return const Color.fromARGB(255, 41, 70, 92);
     }
   }
 

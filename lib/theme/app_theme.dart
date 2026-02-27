@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  static const Color primaryBlue = Color(0xFF1E5FA8);
-  static const Color darkBlue = Color(0xFF0D47A1);
+  // Updated to match the attached SKYBASE background (deep navy)
+  static const Color primaryBlue = Color(0xFF173A46);
+  static const Color darkBlue = Color(0xFF0F2C33);
 
   // Backwards-compatible theme tokens used by older widgets.
   // These provide safe defaults so UI widgets that reference AppTheme.*

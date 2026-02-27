@@ -25,8 +25,7 @@ class CategoryTabs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bgColor = Theme.of(context).scaffoldBackgroundColor;
-    final textColor = Theme.of(context).colorScheme.onSurface;
+    // Colors are taken directly from AppColors.primary for the filled style.
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -34,19 +33,18 @@ class CategoryTabs extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         child: Row(
           children: categories.map((c) {
-            final selected = c == activeCategory;
+            // Make category tiles filled with app-blue and white text/icons
             return Padding(
               padding: const EdgeInsets.only(right: 8.0),
               child: GestureDetector(
                 onTap: () => onCategoryChange(c),
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
-                    color: selected ? AppColors.primary : bgColor,
+                    color: AppColors.primary,
                     borderRadius: BorderRadius.circular(18),
                     border: Border.all(
-                      color: Theme.of(context).dividerColor,
+                      color: AppColors.primary,
                     ),
                   ),
                   child: Row(
@@ -54,18 +52,23 @@ class CategoryTabs extends StatelessWidget {
                     children: [
                       Padding(
                         padding: const EdgeInsets.only(right: 8.0),
-                        child: Icon(
-                          _iconForCategory(c),
-                          color: selected
-                              ? Colors.white
-                              : AppColors.primary,
-                          size: 18,
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.white24,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            _iconForCategory(c),
+                            color: Colors.white,
+                            size: 18,
+                          ),
                         ),
                       ),
                       Text(
                         c,
-                        style: TextStyle(
-                          color: selected ? Colors.white : textColor,
+                        style: const TextStyle(
+                          color: Colors.white,
                           fontWeight: FontWeight.w600,
                         ),
                       ),

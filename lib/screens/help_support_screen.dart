@@ -12,7 +12,7 @@ class HelpSupportScreen extends StatelessWidget {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        backgroundColor: AppColors.primary,
+        backgroundColor: const Color.fromARGB(255, 41, 70, 92),
         iconTheme: const IconThemeData(color: Colors.white),
         title: const Text('Help & Support', style: TextStyle(color: Colors.white)),
         elevation: 0,
@@ -40,7 +40,7 @@ class HelpSupportScreen extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [AppColors.primary, AppColors.primary],
+          colors: [const Color.fromARGB(255, 41, 70, 92), const Color.fromARGB(255, 41, 70, 92)],
         ),
         borderRadius: BorderRadius.circular(16),
       ),
@@ -92,8 +92,8 @@ class HelpSupportScreen extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: AppColors.primary,
-          child: Icon(icon, color: AppColors.primary),
+          backgroundColor: const Color.fromARGB(255, 41, 70, 92),
+          child: Icon(icon, color: const Color.fromARGB(255, 41, 70, 92)),
         ),
         title: Text(title),
         subtitle: Text(subtitle),
@@ -167,7 +167,7 @@ class HelpSupportScreen extends StatelessWidget {
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
-        leading: Icon(icon, color: AppColors.primary),
+        leading: Icon(icon, color: const Color.fromARGB(255, 41, 70, 92)),
         title: Text(title),
         subtitle: Text(subtitle),
         trailing: const Icon(Icons.arrow_forward_ios, size: 16),
@@ -200,7 +200,7 @@ class HelpSupportScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.primary,
+        color: const Color.fromARGB(255, 41, 70, 92),
         borderRadius: BorderRadius.circular(12),
       ),
       child: const Column(

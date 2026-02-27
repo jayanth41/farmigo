@@ -462,7 +462,7 @@ class _CarOwnerDashboardState extends State<CarOwnerDashboard> {
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color: Colors.blue.shade700,
+                      color:  Color.fromARGB(255, 41, 70, 92),
                     ),
                   ),
                 ),

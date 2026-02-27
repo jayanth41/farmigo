@@ -288,7 +288,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
                     const SizedBox(width: 8),
                     const Text('Skybase',
                         style: TextStyle(
-                          color: Color(0xFF1E5FA8),
+                          color:  Color.fromARGB(255, 41, 70, 92),
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                         )),
@@ -518,7 +518,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
                         width: double.infinity,
                         child: ElevatedButton.icon(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF1E5FA8),
+                            backgroundColor: const Color.fromARGB(255, 41, 70, 92),
                             padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                           ),
@@ -597,9 +597,9 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
                                     decoration: BoxDecoration(
                                       color: const Color(0xFFE3F2FD),
                                       borderRadius: BorderRadius.circular(20),
-                                      border: Border.all(color: const Color(0xFF1E5FA8)),
+                                      border: Border.all(color: const Color.fromARGB(255, 41, 70, 92)),
                                     ),
-                                    child: Text(p['propertyType'] ?? '', style: const TextStyle(fontSize: 12, color: Color(0xFF1E5FA8), fontWeight: FontWeight.w600,)),
+                                    child: Text(p['propertyType'] ?? '', style: const TextStyle(fontSize: 12, color: const Color.fromARGB(255, 41, 70, 92), fontWeight: FontWeight.w600,)),
                                   ),
                                   const SizedBox(height: 6),
                                   Text(p['propertyName'] ?? 'Unnamed property', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, ), maxLines: 2, overflow: TextOverflow.ellipsis),
@@ -657,7 +657,7 @@ class _StatCard extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: highlight
             ? const LinearGradient(
-                colors: [Color(0xFF1E5FA8), Color(0xFF0D47A1)],
+                colors: [const Color.fromARGB(255, 41, 70, 92), const Color.fromARGB(255, 41, 70, 92)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               )
@@ -699,7 +699,7 @@ class _QuickActionsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(color: const Color(0xFF1E5FA8), borderRadius: BorderRadius.circular(16)),
+      decoration: BoxDecoration(color: const Color.fromARGB(255, 41, 70, 92), borderRadius: BorderRadius.circular(16)),
       padding: const EdgeInsets.all(10),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         const Text('Quick Actions', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
@@ -774,14 +774,14 @@ class _DrawerTile extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(
             children: [
-              Icon(icon, color: selected ? const Color(0xFF1E5FA8) : Colors.black54),
+              Icon(icon, color: selected ? const Color.fromARGB(255, 41, 70, 92) : Colors.black54),
               const SizedBox(width: 12),
               Text(
                 label,
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                  color: selected ? const Color(0xFF1E5FA8) : Colors.black87,
+                  color: selected ? const Color.fromARGB(255, 41, 70, 92) : Colors.black87,
                 ),
               ),
             ],
@@ -963,9 +963,9 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
         foregroundColor: Colors.black87,
         title: Row(
           children: const [
-            Icon(Icons.home_work, color: Color(0xFF1E5FA8)),
+            Icon(Icons.home_work, color: const Color.fromARGB(255, 41, 70, 92)),
             SizedBox(width: 8),
-            Text('Skybase', style: TextStyle(color: Color(0xFF1E5FA8), fontWeight: FontWeight.bold)),
+            Text('Skybase', style: TextStyle(color: const Color.fromARGB(255, 41, 70, 92), fontWeight: FontWeight.bold)),
           ],
         ),
         actions: const [
@@ -984,7 +984,7 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
               style: const TextStyle(
                 fontSize: 28,
                 fontWeight: FontWeight.w800,
-                color: Color(0xFF1E5FA8),
+                color: const Color.fromARGB(255, 41, 70, 92),
                 letterSpacing: 0.1,
               ),
             ),
@@ -1000,7 +1000,7 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
               width: double.infinity,
               child: ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1E5FA8),
+                  backgroundColor: const Color.fromARGB(255, 41, 70, 92),
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
@@ -1078,7 +1078,7 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
             left: 10,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(color: const Color(0xFF1E5FA8), borderRadius: BorderRadius.circular(20)),
+              decoration: BoxDecoration(color:const Color.fromARGB(255, 41, 70, 92), borderRadius: BorderRadius.circular(20)),
               child: Text(isActive ? 'active' : 'inactive', style: const TextStyle(color: Colors.white, fontSize: 12)),
             ),
           ),
@@ -1100,13 +1100,13 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(color: const Color(0xFFE3F2FD), borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xFF1E5FA8))),
-              child: Text(p['propertyType'] ?? '', style: const TextStyle(fontSize: 12, color: Color(0xFF1E5FA8), fontWeight: FontWeight.w600)),
+              decoration: BoxDecoration(color: const Color(0xFFE3F2FD), borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color.fromARGB(255, 41, 70, 92)),
+              child: Text(p['propertyType'] ?? '', style: const TextStyle(fontSize: 12, color: const Color.fromARGB(255, 41, 70, 92), fontWeight: FontWeight.w600)),
             ),
             const SizedBox(height: 6),
             Text(p['propertyName'] ?? 'Unnamed property', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
-            Row(children: [const Icon(Icons.location_on, size: 14, color: Color(0xFF1E5FA8)), const SizedBox(width: 4), Expanded(child: Text(address))]),
+            Row(children: [const Icon(Icons.location_on, size: 14, color: Color.fromARGB(255, 41, 70, 92), const SizedBox(width: 4), Expanded(child: Text(address))]),
             const SizedBox(height: 10),
             Row(children: [const Icon(Icons.star, size: 16, color: Colors.amber), Text(' ${rating.toStringAsFixed(1)} ($reviews)'), const SizedBox(width: 12), const Icon(Icons.remove_red_eye, size: 16, color: Colors.grey), Text(' $views')]),
             const SizedBox(height: 14),
@@ -1114,7 +1114,7 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
             const SizedBox(height: 10),
             Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Row(children: const [Icon(Icons.calendar_today, size: 16, color: Colors.blue), SizedBox(width: 6), Text('Bookings', style: TextStyle(fontWeight: FontWeight.w600))]), Text((p['totalBookings'] ?? 0).toString())]),
             const SizedBox(height: 10),
-            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Row(children: const [Icon(Icons.attach_money, size: 16, color: Color(0xFF1E5FA8)), SizedBox(width: 6), Text('Revenue', style: TextStyle(fontWeight: FontWeight.w600))]), Text('₹${p['revenue'] ?? (p['pricePerNight'] ?? 0) * (p['totalBookings'] ?? 0)}', style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF1E5FA8)))]),
+            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Row(children: const [Icon(Icons.attach_money, size: 16, color: const Color.fromARGB(255, 41, 70, 92)), SizedBox(width: 6), Text('Revenue', style: TextStyle(fontWeight: FontWeight.w600))]), Text('₹${p['revenue'] ?? (p['pricePerNight'] ?? 0) * (p['totalBookings'] ?? 0)}', style: const TextStyle(fontWeight: FontWeight.w600, color: const Color.fromARGB(255, 41, 70, 92)))]),
             const SizedBox(height: 6),
             Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text('Price per night', style: TextStyle(color: Color(0xFF64748B))), Text('₹${p['pricePerNight'] ?? 0}', style: const TextStyle(fontWeight: FontWeight.w500))]),
             const Divider(height: 20),
@@ -1408,7 +1408,7 @@ class _ConversationTile extends StatelessWidget {
               CircleAvatar(
                 radius: 22,
                 backgroundColor: const Color(0xFFE3F2FD),
-                child: const Icon(Icons.person_outline, color: Color(0xFF1E5FA8)),
+                child: const Icon(Icons.person_outline, color: const Color.fromARGB(255, 41, 70, 92)),
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -1431,7 +1431,7 @@ class _ConversationTile extends StatelessWidget {
                           margin: const EdgeInsets.only(right: 6),
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF1E5FA8),
+                            color:const Color.fromARGB(255, 41, 70, 92),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
@@ -1587,7 +1587,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.send, color: Color(0xFF1E5FA8)),
+                  icon: const Icon(Icons.send, color: const Color.fromARGB(255, 41, 70, 92)),
                   onPressed: () async {
                     final text = _controller.text.trim();
                     if (text.isEmpty) return;
@@ -2006,7 +2006,7 @@ class _ReviewReplyScreenState extends State<ReviewReplyScreen> {
                                     }
                                   },
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF1E5FA8),
+                              backgroundColor: const Color.fromARGB(255, 41, 70, 92),
                               padding: const EdgeInsets.symmetric(vertical: 14),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                             ),

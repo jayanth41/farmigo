@@ -44,7 +44,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        backgroundColor: AppColors.primary,
+        backgroundColor: const Color.fromARGB(255, 41, 70, 92),
         iconTheme: const IconThemeData(color: Colors.white),
         titleTextStyle: textTheme.titleLarge?.copyWith(color: Colors.white, fontWeight: FontWeight.w600),
         title: const Text("Settings"),

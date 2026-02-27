@@ -75,7 +75,7 @@ class FarmhousesScreen extends StatelessWidget {
       drawer: const AppDrawer(),
       appBar: AppBar(
         title: const Text('Farmhouses'),
-        backgroundColor: AppColors.primary,
+        backgroundColor: const Color.fromARGB(255, 41, 70, 92),
       ),
         body: Padding(
         padding: const EdgeInsets.symmetric(vertical: 12.0),

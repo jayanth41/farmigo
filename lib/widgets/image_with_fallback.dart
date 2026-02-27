@@ -21,6 +21,23 @@ class ImageWithFallback extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Guard against empty or null-like URLs to avoid runtime type errors
+    if (imageUrl.trim().isEmpty) {
+      return Container(
+        height: height,
+        width: width,
+        color: Theme.of(context).cardColor,
+        alignment: Alignment.center,
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Image.asset(
+            'assets/images/fallback.png',
+            fit: BoxFit.contain,
+          ),
+        ),
+      );
+    }
+
     return Image.network(
       imageUrl,
       height: height,

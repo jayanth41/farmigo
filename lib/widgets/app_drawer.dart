@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:get/get.dart';
 import '../widgets/snackbar_helper.dart';
 import '../screens/about_us_screen.dart';
 import '../screens/terms_policy_screen.dart';
 import '../screens/owner_onboarding_screen.dart';
 import '../screens/owner_dashboard.dart';
 import '../screens/add_property_screen.dart';
+import '../screens/filters_screen.dart';
+import '../models/category.dart';
 // Navigation is performed via named routes (GetX) or delegated to parent
 // `MainScaffold`. Avoid importing screen widgets directly to prevent unused
 // import warnings when using named navigation.
@@ -225,10 +226,11 @@ class AppDrawer extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         SizedBox(
-                          width: 60,
-                          height: 60,
+                          width: 56,
+                          height: 56,
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(12),
                             child: Image.asset(
@@ -240,14 +242,45 @@ class AppDrawer extends StatelessWidget {
                         ),
                         const SizedBox(width: 8),
                         Expanded(
-                          child: Text(
-                            'Skybase',
-                            style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                              color: theme.colorScheme.onPrimary,
+                          child: RichText(
+                            text: TextSpan(
+                              children: [
+                                TextSpan(
+                                  text: 'SKY',
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w900,
+                                    color: theme.colorScheme.onPrimary,
+                                    letterSpacing: 1.4,
+                                  ),
+                                ),
+                                TextSpan(
+                                  text: 'BASE',
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w900,
+                                    color: theme.colorScheme.onPrimary.withOpacity(0.9),
+                                    letterSpacing: 1.4,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
+                        ),
+                        // Small filter icon in header for quick access
+                        IconButton(
+                          icon: Icon(Icons.filter_alt, color: theme.colorScheme.onPrimary),
+                          onPressed: () {
+                            // Close drawer then open filters
+                            try {
+                              Navigator.of(context).pop();
+                            } catch (_) {}
+                            final cat = Category.all;
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => FiltersScreen(category: cat, initialFilters: {}, onFiltersApplied: (_) {})),
+                            );
+                          },
                         ),
                       ],
                     ),

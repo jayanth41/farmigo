@@ -1,10 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'role_selection_screen.dart';
-import 'farmhouse_owner_dashboard.dart';
-import 'car_owner_dashboard_new.dart';
 import 'login_screen.dart';
 import 'home_screen.dart';
 // Note: keep imports minimal for the splash's one-shot auth check.
@@ -28,16 +25,16 @@ class _SplashScreenState extends State<SplashScreen>
   void initState() {
     super.initState();
 
-    _controller =
-        AnimationController(vsync: this, duration: const Duration(seconds: 2));
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1400));
 
-    _fadeAnimation =
-        CurvedAnimation(parent: _controller, curve: Curves.easeIn);
+    _fadeAnimation = CurvedAnimation(parent: _controller, curve: Curves.easeInOut);
 
-    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
+    // Slight zoom-in animation (starts a bit smaller and overshoots slightly)
+    _scaleAnimation = Tween<double>(begin: 0.85, end: 1.03).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeOutBack),
     );
 
+    // Start animation
     _controller.forward();
     _goNext();
   }
@@ -88,17 +85,11 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color.fromARGB(255, 41, 70, 92),
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Color(0xFF1E5FA8),
-              Color(0xFF0D47A1),
-            ],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
+        width: double.infinity,
+        height: double.infinity,
+        color: const Color.fromARGB(255, 41, 70, 92),
         child: FadeTransition(
           opacity: _fadeAnimation,
           child: ScaleTransition(
@@ -106,100 +97,46 @@ class _SplashScreenState extends State<SplashScreen>
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // LOGO
-                Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(30),
-                    child: Image.asset(
-                      'assets/images/skybase_logo.png',
-                      width: 250, height: 250,
-                      fit: BoxFit.cover,
-                      alignment: Alignment.center,
+                FadeTransition(
+                  opacity: _fadeAnimation,
+                  child: RichText(
+                    textAlign: TextAlign.center,
+                    text: const TextSpan(
+                      children: [
+                        TextSpan(
+                          text: 'SKY',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 48,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 3.0,
+                          ),
+                        ),
+                        TextSpan(
+                          text: 'BASE',
+                          style: TextStyle(
+                            color: Color(0xFFD6D6D6),
+                            fontSize: 48,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 3.0,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
 
-                const SizedBox(height: 20),
+                const SizedBox(height: 14),
 
                 const Text(
-                  "Skybase",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 34,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-
-                const SizedBox(height: 6),
-
-                const Text(
-                  "Your Gateway to Perfect Getaways",
-                  style: TextStyle(color: Colors.white70, fontSize: 14),
-                ),
-
-                const SizedBox(height: 24),
-
-                // ICON ROW
-                const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _SplashIcon(icon: Icons.home, label: "Farmhouses"),
-                    SizedBox(width: 20),
-                    _SplashIcon(icon: Icons.hotel, label: "Hotels"),
-                    SizedBox(width: 20),
-                    _SplashIcon(icon: Icons.flight, label: "Flights"),
-                    SizedBox(width: 20),
-                    _SplashIcon(icon: Icons.directions_car, label: "Cars"),
-                  ],
-                ),
-
-                const SizedBox(height: 30),
-
-                const Text(
-                  "Preparing your experience...",
-                  style: TextStyle(color: Colors.white70, fontSize: 12),
-                ),
-
-                const SizedBox(height: 12),
-
-                const SizedBox(
-                  width: 140,
-                  child: LinearProgressIndicator(
-                    color: Colors.white,
-                    backgroundColor: Colors.white24,
-                    minHeight: 4,
-                  ),
+                  'Stay Above Expectations.',
+                  style: TextStyle(color: Color(0xFFB9C5CC), fontSize: 14, fontStyle: FontStyle.italic, fontWeight: FontWeight.w600),
                 ),
               ],
             ),
           ),
         ),
       ),
-    );
-  }
-}
-
-class _SplashIcon extends StatelessWidget {
-  final IconData icon;
-  final String label;
-
-  const _SplashIcon({required this.icon, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        CircleAvatar(
-          radius: 20,
-          backgroundColor: Colors.white.withOpacity(0.2),
-          child: Icon(icon, color: Colors.white, size: 18),
-        ),
-        const SizedBox(height: 6),
-        Text(label,
-            style: const TextStyle(color: Colors.white70, fontSize: 11)),
-      ],
     );
   }
 }

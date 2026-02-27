@@ -16,7 +16,7 @@ class OffersScreen extends StatelessWidget {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        backgroundColor: AppColors.primary,
+        backgroundColor: const Color.fromARGB(255, 41, 70, 92),
         iconTheme: const IconThemeData(color: Colors.white),
         title: const Text('Offers & Coupons', style: TextStyle(color: Colors.white)),
         elevation: 0,
