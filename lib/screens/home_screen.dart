@@ -30,6 +30,9 @@ import '../widgets/app_drawer.dart';
 import '../widgets/properties_grid.dart';
 import 'filters_screen.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:audioplayers/audioplayers.dart';
+import 'notification_screen.dart';
 import '../controllers/auth_controller.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../filters/filters_provider.dart';
@@ -48,7 +51,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
   late LocationController locationController = Get.put(LocationController());
   int _selectedIndex = 0;
   final TextEditingController _searchController = TextEditingController();
@@ -108,6 +111,16 @@ class _HomeScreenState extends State<HomeScreen> {
   // Reference to farmhouses data (defined in data file)
   static const List<Map<String, dynamic>> farmhouses = farmhousesData;
 
+  // Notification / animation state
+  late final AnimationController _bellController;
+  late final Animation<double> _bellAnimation;
+  late final AudioPlayer _audioPlayer;
+  // Local notifications plugin removed temporarily to avoid AGP/plugin
+  // compatibility issues; we fall back to a simple sound alert.
+  int _prevTotalUnread = 0;
+  bool _seenFirstUnreadSnapshot = false;
+  bool _fcmInitialized = false;
+
   @override
   void initState() {
     super.initState();
@@ -148,6 +161,81 @@ class _HomeScreenState extends State<HomeScreen> {
         _searchPlaceholder = _searchPlaceholders[_placeholderIndex];
       });
     });
+    // Init bell animation & notification tools
+    _bellController = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
+    _bellAnimation = Tween<double>(begin: 1.0, end: 1.12).animate(CurvedAnimation(parent: _bellController, curve: Curves.elasticOut));
+    _bellController.addStatusListener((status) {
+      if (status == AnimationStatus.completed) _bellController.reverse();
+    });
+
+    _audioPlayer = AudioPlayer();
+    _initFCM();
+  }
+
+  Future<void> _initFCM() async {
+    try {
+      // Request permissions (iOS)
+      await FirebaseMessaging.instance.requestPermission();
+
+      // Note: flutter_local_notifications plugin removed temporarily.
+      // We still request FCM permission and handle messages below.
+
+      // Save token for current user and log it for diagnostics
+      final user = FirebaseAuth.instance.currentUser;
+      final token = await FirebaseMessaging.instance.getToken();
+      debugPrint('[HomeScreen][FCM] token=$token user=${user?.uid}');
+      if (user != null && token != null) {
+        try {
+          await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+            'fcmToken': token,
+          }, SetOptions(merge: true));
+        } catch (e) {
+          debugPrint('[HomeScreen][FCM] failed to write token to Firestore: $e');
+        }
+      }
+
+      // Foreground message handling: play a short sound and optionally show
+      // an in-app cue (SnackBar) when a notification arrives.
+      FirebaseMessaging.onMessage.listen((message) async {
+        final notif = message.notification;
+        debugPrint('[HomeScreen][FCM] onMessage received: message=${message.messageId} notification=${notif?.title}/${notif?.body} data=${message.data}');
+        if (notif != null) {
+          try {
+            await _playNotificationSound();
+            if (!mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content: Text(notif.title ?? notif.body ?? 'New message'),
+              duration: const Duration(seconds: 2),
+            ));
+          } catch (e) {
+            debugPrint('[HomeScreen][FCM] onMessage handler error: $e');
+          }
+        }
+      });
+
+      FirebaseMessaging.onMessageOpenedApp.listen((message) {
+        debugPrint('[HomeScreen][FCM] onMessageOpenedApp: message=${message.messageId} data=${message.data}');
+        try {
+          if (!mounted) return;
+          Navigator.of(context).push(MaterialPageRoute(builder: (_) => const NotificationScreen()));
+        } catch (e) {
+          debugPrint('[HomeScreen][FCM] onMessageOpenedApp navigation error: $e');
+        }
+      });
+
+      _fcmInitialized = true;
+    } catch (e) {
+      // ignore errors for now
+    }
+  }
+
+  Future<void> _playNotificationSound() async {
+    try {
+      // Try simple system alert first (no extra asset required)
+      SystemSound.play(SystemSoundType.alert);
+    } catch (_) {
+      // ignore
+    }
   }
 
   Future<void> loadProfile() async {
@@ -247,6 +335,10 @@ class _HomeScreenState extends State<HomeScreen> {
     } catch (_) {}
     _placeholderTimer?.cancel();
     _bottomBorderTimer?.cancel();
+    _bellController.dispose();
+    try {
+      _audioPlayer.dispose();
+    } catch (_) {}
     super.dispose();
   }
 
@@ -755,9 +847,88 @@ class _HomeScreenState extends State<HomeScreen> {
                     icon: Icon(Icons.chat_bubble_outline, color: Theme.of(context).colorScheme.onPrimary),
                     onPressed: () {},
                   ),
-                  IconButton(
-                    icon: Icon(Icons.notifications_none, color: Theme.of(context).colorScheme.onPrimary),
-                    onPressed: () {},
+                  StreamBuilder<QuerySnapshot>(
+                    stream: FirebaseAuth.instance.currentUser != null
+                        ? FirebaseFirestore.instance
+                            .collection('chats')
+                            .where('userId', isEqualTo: FirebaseAuth.instance.currentUser!.uid)
+                            .snapshots()
+                        : const Stream.empty(),
+                    builder: (context, snapshot) {
+                      int totalUnread = 0;
+                      if (snapshot.hasData) {
+                        try {
+                          totalUnread = snapshot.data!.docs.fold<int>(0, (sum, doc) {
+                            final v = doc.data();
+                            if (v is Map<String, dynamic>) {
+                              return sum + (v['unreadCountUser'] is int ? v['unreadCountUser'] as int : int.tryParse('${v['unreadCountUser']}') ?? 0);
+                            }
+                            // For QueryDocumentSnapshot without generic type
+                            try {
+                              final map = doc.data() as Map<String, dynamic>;
+                              return sum + (map['unreadCountUser'] is int ? map['unreadCountUser'] as int : int.tryParse('${map['unreadCountUser']}') ?? 0);
+                            } catch (_) {
+                              return sum;
+                            }
+                          });
+                        } catch (_) {
+                          totalUnread = 0;
+                        }
+                      }
+
+                      // Detect increases and trigger animation/sound once per increase
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        try {
+                          if (!_seenFirstUnreadSnapshot) {
+                            _seenFirstUnreadSnapshot = true;
+                            _prevTotalUnread = totalUnread;
+                          } else if (totalUnread > _prevTotalUnread) {
+                            // animate and play sound
+                            try {
+                              _bellController.forward(from: 0);
+                            } catch (_) {}
+                            try {
+                              _playNotificationSound();
+                            } catch (_) {}
+                          }
+                          _prevTotalUnread = totalUnread;
+                        } catch (_) {}
+                      });
+
+                      return IconButton(
+                        onPressed: () {
+                          // Navigate to notifications screen; NotificationScreen will clear unread counts
+                          try {
+                            Navigator.of(context).push(MaterialPageRoute(builder: (_) => const NotificationScreen()));
+                          } catch (_) {}
+                        },
+                        icon: ScaleTransition(
+                          scale: _bellAnimation,
+                          child: Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              Icon(Icons.notifications_none, color: Theme.of(context).colorScheme.onPrimary),
+                              if (totalUnread > 0)
+                                Positioned(
+                                  right: -2,
+                                  top: -6,
+                                  child: CircleAvatar(
+                                    radius: 9,
+                                    backgroundColor: Colors.red,
+                                    child: Padding(
+                                      padding: const EdgeInsets.only(left: 1),
+                                      child: Text(
+                                        totalUnread > 99 ? '99+' : totalUnread.toString(),
+                                        style: const TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),

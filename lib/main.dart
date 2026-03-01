@@ -35,8 +35,22 @@ import 'controllers/settings_controller.dart';
 import 'settings/theme_provider.dart';
 import 'services/firebase_helper.dart';
 import 'firebase_options.dart';
+import 'screens/admin_chat_screen.dart';
 
 final GlobalKey<NavigatorState> rootNavKey = GlobalKey<NavigatorState>();
+
+// Top-level background message handler required by firebase_messaging.
+// This must be a top-level function so the Android background isolate
+// can execute it when the app is in the background.
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  try {
+    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  } catch (_) {}
+  debugPrint('[FCM][background] message=${message.messageId} data=${message.data}');
+
+  // If you want to update Firestore or schedule a local notification from
+  // background, do it here. Keep this handler lightweight.
+}
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -54,6 +68,15 @@ Future<void> main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // Register background message handler for FCM. Handler must be a
+  // top-level function (not a closure) so the Android background isolate
+  // can invoke it.
+  try {
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  } catch (e) {
+    debugPrint('[Main] Failed to register onBackgroundMessage: $e');
+  }
 
   // Create test data for PropertyDetailsScreen
   await TestDataHelper.addTestProperty();
@@ -161,11 +184,8 @@ class MyApp extends StatelessWidget {
             GetPage(name: AppRoutes.helpSupport, page: () => const HelpSupportScreen()),
             GetPage(name: AppRoutes.farmhouses, page: () => const FarmhousesScreen()),
             GetPage(name: AppRoutes.carRentals, page: () => const CarRentalsScreen()),
-            GetPage(
-              name: '/owner',
-              page: () => const CarOwnerDashboard(),
-              transition: Transition.rightToLeft,
-            ),
+            GetPage(name: '/owner',page: () => const CarOwnerDashboard(),transition: Transition.rightToLeft,),
+            GetPage(name:  '/adminChat',page: () => const AdminChatScreen(),),
           ],
         );
       }),

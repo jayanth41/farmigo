@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/users_screen.dart';
 import 'screens/owners_screen.dart';
-
+import 'screens/admin_chat_list_screen.dart';
 void main() async{
   WidgetsFlutterBinding.ensureInitialized();
   try {
@@ -18,6 +19,12 @@ void main() async{
       ),
     );
     debugPrint('[AdminApp] Firebase initialized successfully');
+    if (FirebaseAuth.instance.currentUser == null) {
+      await FirebaseAuth.instance.signInAnonymously();
+      debugPrint('[AdminApp] Signed in anonymously');
+    } else {
+      debugPrint('[AdminApp] Admin already signed in');
+    }
   } catch (e, st) {
     debugPrint('[AdminApp] Firebase initialization FAILED: $e');
     debugPrint('$st');
@@ -51,6 +58,7 @@ class _AdminHomeState extends State<AdminHome> {
     const DashboardScreen(),
     const UsersScreen(),
     const OwnersScreen(),
+    const AdminChatListScreen(),
     const Center(child: Text("Bookings Screen")),
     const Center(child: Text("Payments Screen")),
     const Center(child: Text("Complaints Screen")),
@@ -75,6 +83,8 @@ class _AdminHomeState extends State<AdminHome> {
                   icon: Icon(Icons.people), label: Text("Users")),
               NavigationRailDestination(
                   icon: Icon(Icons.store), label: Text("Owners")),
+        NavigationRailDestination(
+          icon: Icon(Icons.chat), label: Text("Chats")),
               NavigationRailDestination(
                   icon: Icon(Icons.book), label: Text("Bookings")),
               NavigationRailDestination(
