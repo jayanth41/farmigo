@@ -879,7 +879,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       itemCount: deals.length > 6 ? 6 : deals.length,
                       itemBuilder: (context, index) {
-                        final data = deals[index].data() as Map<String, dynamic>;
+                        final data = deals[index].data();
                         final discount = data['lastMinuteDiscount'] ?? 0;
                         final Timestamp? validTillTs = data['lastMinuteValidTill'];
 

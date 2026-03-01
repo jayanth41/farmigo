@@ -23,7 +23,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
 
   String _selectedTransmission = 'Automatic';
   String _selectedFuelType = 'Petrol';
-  List<String> _selectedAmenities = [];
+  final List<String> _selectedAmenities = [];
   File? _vehicleImage;
 
   bool _isSubmitting = false;
@@ -214,7 +214,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                   children: [
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        value: _vehicleTypeController.text.isEmpty
+                        initialValue: _vehicleTypeController.text.isEmpty
                             ? null
                             : _vehicleTypeController.text,
                         items: _vehicleTypes
@@ -295,7 +295,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                   children: [
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        value: _selectedTransmission,
+                        initialValue: _selectedTransmission,
                         items: _transmissionTypes
                             .map((t) => DropdownMenuItem(
                                   value: t,
@@ -314,7 +314,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        value: _selectedFuelType,
+                        initialValue: _selectedFuelType,
                         items: _fuelTypes
                             .map((f) => DropdownMenuItem(
                                   value: f,

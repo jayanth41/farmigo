@@ -23,7 +23,7 @@ class _OwnerOnboardingScreen3State extends State<OwnerOnboardingScreen3> {
   final _areaController = TextEditingController();
 
   bool _loading = false;
-  List<Map<String, dynamic>> _addedProperties = [];
+  final List<Map<String, dynamic>> _addedProperties = [];
   late OwnerOnboardingService _onboardingService;
 
   @override

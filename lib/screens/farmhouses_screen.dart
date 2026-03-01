@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../widgets/properties_grid.dart';
 import '../widgets/app_drawer.dart';
-import '../theme/app_colors.dart';
 import '../models/category.dart';
 
 /// Screen that shows a list of farmhouses (dummy data copied from Home).

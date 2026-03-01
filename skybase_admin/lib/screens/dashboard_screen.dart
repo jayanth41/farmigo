@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'owners_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});

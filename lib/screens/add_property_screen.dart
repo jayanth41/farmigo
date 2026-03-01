@@ -82,11 +82,11 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
 final TextEditingController _seatsController = TextEditingController();
 final TextEditingController _plateController = TextEditingController();
 final TextEditingController _kmController = TextEditingController();
-String _fuelType = 'Petrol';
-String _transmission = 'Automatic';
-bool _driverAvailable = false;
+final String _fuelType = 'Petrol';
+final String _transmission = 'Automatic';
+final bool _driverAvailable = false;
 // Car category
-String _carCategory = 'SUV';
+final String _carCategory = 'SUV';
   final TextEditingController _minStayController = TextEditingController();
   // Car booking
 final TextEditingController _hourlyPriceController = TextEditingController();
@@ -534,7 +534,7 @@ final TextEditingController _hourlyPriceController = TextEditingController();
                       const Text('Property Type *', style: TextStyle(fontWeight: FontWeight.w600)),
                       const SizedBox(height: 8),
                       DropdownButtonFormField<String>(
-                        value: _propertyType,
+                        initialValue: _propertyType,
                         items: ['Farmhouse', 'Villa','Hotels','Hourly Rental']
                             .map((t) => DropdownMenuItem(value: t, child: Text(t)))
                             .toList(),

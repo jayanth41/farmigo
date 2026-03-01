@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../theme/app_colors.dart';
 import '../controllers/favorites_controller.dart';
 // theme colors used via Theme.of(context)
 import 'farmhouse_details_screen.dart';
@@ -37,7 +36,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (route) => false),
         ),
-        backgroundColor: const Color.fromARGB(255, 41, 70, 92),
+        backgroundColor:  Color.fromARGB(255, 41, 70, 92),
         iconTheme: const IconThemeData(color: Colors.white),
         elevation: 0,
         title: const Text(

@@ -22,7 +22,7 @@ class OwnerOnboardingService {
       if (snapshot.exists && snapshot.data() != null) {
         debugPrint('[OnboardingService] Loaded existing onboarding data');
         return OwnerOnboardingModel.fromFirestore(
-          snapshot as DocumentSnapshot<Map<String, dynamic>>,
+          snapshot,
         );
       } else {
         debugPrint('[OnboardingService] Creating new onboarding data');
@@ -177,7 +177,7 @@ class OwnerOnboardingService {
         .map((snapshot) {
       if (snapshot.exists && snapshot.data() != null) {
         return OwnerOnboardingModel.fromFirestore(
-          snapshot as DocumentSnapshot<Map<String, dynamic>>,
+          snapshot,
         );
       }
       return null;

@@ -173,16 +173,21 @@ class DuffelService {
     final url = Uri.parse('$baseUrl/air/offer_requests');
 
     final body = {
-      'slices': [
-        {
-          'origin': origin,
-          'destination': destination,
-          'departure_date': departureDate,
-        }
-      ],
-      'passengers': List.generate(adults, (_) => {'type': 'adult'}),
-      'payment': null,
+      'data': {
+        'slices': [
+          {
+            'origin': origin,
+            'destination': destination,
+            'departure_date': departureDate,
+          }
+        ],
+        'passengers': List.generate(adults, (_) => {'type': 'adult'}),
+        'cabin_class': 'economy',
+      }
     };
+
+    print('🛫 Duffel search request payload: ${jsonEncode(body)}');
+    print('🧾 Duffel headers => $_headers');
 
     final response = await http.post(
       url,
@@ -191,7 +196,9 @@ class DuffelService {
     ).timeout(const Duration(seconds: 30));
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
-      return jsonDecode(response.body) as Map<String, dynamic>;
+      final decoded = jsonDecode(response.body);
+      print('🟢 DUFFEL RESPONSE => $decoded');
+      return decoded as Map<String, dynamic>;
     }
 
     if (response.statusCode == 401) {

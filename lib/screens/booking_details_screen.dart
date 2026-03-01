@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../widgets/image_with_fallback.dart';
 import '../widgets/app_drawer.dart';
-import '../theme/app_colors.dart';
 
 class BookingDetailsScreen extends StatelessWidget {
   final String name;

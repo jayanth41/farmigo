@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../theme/app_colors.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'login_screen.dart';
 import 'home_screen.dart';
