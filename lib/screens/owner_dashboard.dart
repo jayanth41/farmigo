@@ -36,6 +36,8 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
   int get _totalProperties => _properties.length;
   int get _activeProperties => _properties.where((p) => (p['status'] ?? '').toString().toLowerCase() == 'active').length;
   int get _totalBookings => _properties.fold<int>(0, (sum, p) => sum + ((p['totalBookings'] as num?)?.toInt() ?? 0));
+  num get _totalEarnings =>
+      _properties.fold<num>(0, (sum, p) => sum + ((p['revenue'] as num?) ?? 0));
   double get _avgRating {
     final ratings = _properties.map((p) => (p['rating'] as num?)?.toDouble()).whereType<double>().toList();
     if (ratings.isEmpty) return 0.0;
@@ -551,10 +553,98 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
                           _StatCard(title: 'Total Properties', value: _totalProperties.toString()),
                           _StatCard(title: 'Active', value: _activeProperties.toString(), highlight: true),
                           _StatCard(title: 'Total Bookings', value: _totalBookings.toString()),
-                          _StatCard(title: 'Avg Rating', value: _avgRating.toStringAsFixed(1)),
+                          _StatCard(title: 'Total Earnings', value: '₹${_totalEarnings.toStringAsFixed(0)}'),
                         ],
                       ),
                       const SizedBox(height: 20),
+
+                      // ===== ADMIN SUGGESTIONS =====
+                      StreamBuilder<QuerySnapshot>(
+                        stream: FirebaseFirestore.instance
+                            .collection('admin_suggestions')
+                            .where('ownerId', isEqualTo: FirebaseAuth.instance.currentUser?.uid)
+                            .where('isRead', isEqualTo: false)
+                            .orderBy('createdAt', descending: true)
+                            .snapshots(),
+                        builder: (context, snapshot) {
+                          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                            return const SizedBox.shrink();
+                          }
+
+                          final docs = snapshot.data!.docs;
+
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Admin Suggestions',
+                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                              ),
+                              const SizedBox(height: 10),
+                              ...docs.map((doc) {
+                                final data = doc.data() as Map<String, dynamic>;
+                                final type = data['type'] ?? 'info';
+
+                                Color bgColor;
+                                if (type == 'warning') {
+                                  bgColor = const Color(0xFFFFF3E0);
+                                } else if (type == 'tip') {
+                                  bgColor = const Color(0xFFE8F5E9);
+                                } else {
+                                  bgColor = const Color(0xFFE3F2FD);
+                                }
+
+                                return Container(
+                                  margin: const EdgeInsets.only(bottom: 10),
+                                  padding: const EdgeInsets.all(14),
+                                  decoration: BoxDecoration(
+                                    color: bgColor,
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        data['title'] ?? 'Suggestion',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        data['message'] ?? '',
+                                        style: const TextStyle(fontSize: 13),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Align(
+                                        alignment: Alignment.centerRight,
+                                        child: TextButton(
+                                          onPressed: () async {
+                                            await FirebaseFirestore.instance
+                                                .collection('admin_suggestions')
+                                                .doc(doc.id)
+                                                .update({'isRead': true});
+                                          },
+                                          child: const Text(
+                                            'Mark as Read',
+                                            style: TextStyle(
+                                              color: Color.fromARGB(255, 41, 70, 92),
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }).toList(),
+                              const SizedBox(height: 10),
+                            ],
+                          );
+                        },
+                      ),
+
                       const SizedBox(height: 20),
                       _QuickActionsSection(),
                       const SizedBox(height: 20),
@@ -599,7 +689,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
                                       borderRadius: BorderRadius.circular(20),
                                       border: Border.all(color: const Color.fromARGB(255, 41, 70, 92)),
                                     ),
-                                    child: Text(p['propertyType'] ?? '', style: const TextStyle(fontSize: 12, color: const Color.fromARGB(255, 41, 70, 92), fontWeight: FontWeight.w600,)),
+                                    child: Text(p['propertyType'] ?? '', style: const TextStyle(fontSize: 12, color: Color.fromARGB(255, 41, 70, 92), fontWeight: FontWeight.w600,)),
                                   ),
                                   const SizedBox(height: 6),
                                   Text(p['propertyName'] ?? 'Unnamed property', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, ), maxLines: 2, overflow: TextOverflow.ellipsis),
@@ -657,7 +747,7 @@ class _StatCard extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: highlight
             ? const LinearGradient(
-                colors: [const Color.fromARGB(255, 41, 70, 92), const Color.fromARGB(255, 41, 70, 92)],
+                colors: [Color.fromARGB(255, 41, 70, 92), Color.fromARGB(255, 41, 70, 92)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               )
@@ -963,9 +1053,9 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
         foregroundColor: Colors.black87,
         title: Row(
           children: const [
-            Icon(Icons.home_work, color: const Color.fromARGB(255, 41, 70, 92)),
+            Icon(Icons.home_work, color: Color.fromARGB(255, 41, 70, 92)),
             SizedBox(width: 8),
-            Text('Skybase', style: TextStyle(color: const Color.fromARGB(255, 41, 70, 92), fontWeight: FontWeight.bold)),
+            Text('Skybase', style: TextStyle(color: Color.fromARGB(255, 41, 70, 92), fontWeight: FontWeight.bold)),
           ],
         ),
         actions: const [
@@ -984,7 +1074,7 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
               style: const TextStyle(
                 fontSize: 28,
                 fontWeight: FontWeight.w800,
-                color: const Color.fromARGB(255, 41, 70, 92),
+                color: Color.fromARGB(255, 41, 70, 92),
                 letterSpacing: 0.1,
               ),
             ),
@@ -1097,33 +1187,163 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
         ]),
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(color: const Color(0xFFE3F2FD), borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color.fromARGB(255, 41, 70, 92)),
-              child: Text(p['propertyType'] ?? '', style: const TextStyle(fontSize: 12, color: const Color.fromARGB(255, 41, 70, 92), fontWeight: FontWeight.w600)),
-            ),
-            const SizedBox(height: 6),
-            Text(p['propertyName'] ?? 'Unnamed property', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 6),
-            Row(children: [const Icon(Icons.location_on, size: 14, color: Color.fromARGB(255, 41, 70, 92), const SizedBox(width: 4), Expanded(child: Text(address))]),
-            const SizedBox(height: 10),
-            Row(children: [const Icon(Icons.star, size: 16, color: Colors.amber), Text(' ${rating.toStringAsFixed(1)} ($reviews)'), const SizedBox(width: 12), const Icon(Icons.remove_red_eye, size: 16, color: Colors.grey), Text(' $views')]),
-            const SizedBox(height: 14),
-            const Divider(height: 1, thickness: 1),
-            const SizedBox(height: 10),
-            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Row(children: const [Icon(Icons.calendar_today, size: 16, color: Colors.blue), SizedBox(width: 6), Text('Bookings', style: TextStyle(fontWeight: FontWeight.w600))]), Text((p['totalBookings'] ?? 0).toString())]),
-            const SizedBox(height: 10),
-            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Row(children: const [Icon(Icons.attach_money, size: 16, color: const Color.fromARGB(255, 41, 70, 92)), SizedBox(width: 6), Text('Revenue', style: TextStyle(fontWeight: FontWeight.w600))]), Text('₹${p['revenue'] ?? (p['pricePerNight'] ?? 0) * (p['totalBookings'] ?? 0)}', style: const TextStyle(fontWeight: FontWeight.w600, color: const Color.fromARGB(255, 41, 70, 92)))]),
-            const SizedBox(height: 6),
-            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text('Price per night', style: TextStyle(color: Color(0xFF64748B))), Text('₹${p['pricePerNight'] ?? 0}', style: const TextStyle(fontWeight: FontWeight.w500))]),
-            const Divider(height: 20),
-            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text('Active Listing', style: TextStyle(fontWeight: FontWeight.w600)), Switch(value: isActive, onChanged: (v) async {
-              final id = p['id'] as String?; if (id == null) return;
-              setState(() => _activeStates[id] = v);
-              try { await FirebaseFirestore.instance.collection('properties').doc(id).update({'status': v ? 'active' : 'inactive'}); } catch (e) { setState(() => _activeStates[id] = !v); }
-            })]),
-          ]),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE3F2FD),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color.fromARGB(255, 41, 70, 92)),
+                ),
+                child: Text(
+                  p['propertyType'] ?? '',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color.fromARGB(255, 41, 70, 92),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(p['propertyName'] ?? 'Unnamed property', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  const Icon(Icons.location_on, size: 14, color: Color.fromARGB(255, 41, 70, 92)),
+                  const SizedBox(width: 4),
+                  Expanded(child: Text(address)),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Row(children: [const Icon(Icons.star, size: 16, color: Colors.amber), Text(' ${rating.toStringAsFixed(1)} ($reviews)'), const SizedBox(width: 12), const Icon(Icons.remove_red_eye, size: 16, color: Colors.grey), Text(' $views')]),
+              const SizedBox(height: 14),
+              const Divider(height: 1, thickness: 1),
+              const SizedBox(height: 10),
+              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Row(children: const [Icon(Icons.calendar_today, size: 16, color: Colors.blue), SizedBox(width: 6), Text('Bookings', style: TextStyle(fontWeight: FontWeight.w600))]), Text((p['totalBookings'] ?? 0).toString())]),
+              const SizedBox(height: 10),
+              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Row(children: const [Icon(Icons.attach_money, size: 16, color: Color.fromARGB(255, 41, 70, 92)), SizedBox(width: 6), Text('Revenue', style: TextStyle(fontWeight: FontWeight.w600))]), Text('₹${p['revenue'] ?? (p['pricePerNight'] ?? 0) * (p['totalBookings'] ?? 0)}', style: const TextStyle(fontWeight: FontWeight.w600, color: Color.fromARGB(255, 41, 70, 92)))]),
+              const SizedBox(height: 6),
+              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text('Price per night', style: TextStyle(color: Color(0xFF64748B))), Text('₹${p['pricePerNight'] ?? 0}', style: const TextStyle(fontWeight: FontWeight.w500))]),
+              const Divider(height: 20),
+              // --- Active Listing Toggle ---
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Active Listing', style: TextStyle(fontWeight: FontWeight.w600)),
+                  Switch(
+                    value: isActive,
+                    onChanged: (v) async {
+                      final id = p['id'] as String?;
+                      if (id == null) return;
+                      setState(() => _activeStates[id] = v);
+                      try {
+                        await FirebaseFirestore.instance.collection('properties').doc(id).update({'status': v ? 'active' : 'inactive'});
+                      } catch (e) {
+                        setState(() => _activeStates[id] = !v);
+                      }
+                    },
+                  ),
+                ],
+              ),
+              // --- Last Minute Deal Toggle ---
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Last Minute Deal',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  Switch(
+                    value: p['isLastMinuteDeal'] ?? false,
+                    onChanged: (v) async {
+                      final id = p['id'] as String?;
+                      if (id == null) return;
+
+                      final validTill = DateTime.now().add(const Duration(days: 1));
+
+                      await FirebaseFirestore.instance
+                          .collection('properties')
+                          .doc(id)
+                          .update({
+                        'isLastMinuteDeal': v,
+                        if (v) 'lastMinuteDiscount': p['lastMinuteDiscount'] ?? 20,
+                        if (v) 'lastMinuteValidTill': Timestamp.fromDate(validTill),
+                      });
+
+                      setState(() {
+                        p['isLastMinuteDeal'] = v;
+                      });
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              if (p['isLastMinuteDeal'] == true)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton(
+                    onPressed: () async {
+                      final id = p['id'] as String?;
+                      if (id == null) return;
+
+                      final controller = TextEditingController(
+                        text: (p['lastMinuteDiscount'] ?? 20).toString(),
+                      );
+
+                      final result = await showDialog<int>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text('Set Discount %'),
+                          content: TextField(
+                            controller: controller,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(
+                              hintText: 'Enter discount percentage',
+                            ),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx),
+                              child: const Text('Cancel'),
+                            ),
+                            ElevatedButton(
+                              onPressed: () {
+                                final value = int.tryParse(controller.text);
+                                Navigator.pop(ctx, value);
+                              },
+                              child: const Text('Save'),
+                            ),
+                          ],
+                        ),
+                      );
+
+                      if (result != null && result > 0) {
+                        await FirebaseFirestore.instance
+                            .collection('properties')
+                            .doc(id)
+                            .update({
+                          'lastMinuteDiscount': result,
+                        });
+
+                        setState(() {
+                          p['lastMinuteDiscount'] = result;
+                        });
+                      }
+                    },
+                    child: Text(
+                      'Edit Discount (${p['lastMinuteDiscount'] ?? 20}%)',
+                      style: const TextStyle(
+                        color: Color.fromARGB(255, 41, 70, 92),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ]),
     );
@@ -1408,7 +1628,7 @@ class _ConversationTile extends StatelessWidget {
               CircleAvatar(
                 radius: 22,
                 backgroundColor: const Color(0xFFE3F2FD),
-                child: const Icon(Icons.person_outline, color: const Color.fromARGB(255, 41, 70, 92)),
+                child: const Icon(Icons.person_outline, color: Color.fromARGB(255, 41, 70, 92)),
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -1587,7 +1807,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.send, color: const Color.fromARGB(255, 41, 70, 92)),
+                  icon: const Icon(Icons.send, color: Color.fromARGB(255, 41, 70, 92)),
                   onPressed: () async {
                     final text = _controller.text.trim();
                     if (text.isEmpty) return;

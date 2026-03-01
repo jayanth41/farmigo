@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cross_file/cross_file.dart';
 import 'owner_dashboard.dart';
+import 'property_preview_screen.dart';
 
 class AddPropertyScreen extends StatefulWidget {
   const AddPropertyScreen({super.key, this.propertyId});
@@ -16,6 +17,49 @@ class AddPropertyScreen extends StatefulWidget {
 }
 
 class _AddPropertyScreenState extends State<AddPropertyScreen> {
+  // STEP 1️⃣: Sync selected amenities to global "amenities" collection
+  Future<void> _syncAmenitiesToGlobal(List<String> amenities) async {
+    final collection = FirebaseFirestore.instance.collection('amenities');
+
+    for (final amenity in amenities) {
+      final normalized = amenity.trim().toLowerCase();
+      final query = await collection
+          .where('name', isEqualTo: amenity)
+          .limit(1)
+          .get();
+
+      if (query.docs.isEmpty) {
+        await collection.add({
+          'name': amenity,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      }
+    }
+  }
+
+  // STEP 1️⃣: Remove unused amenities from global collection
+  Future<void> _cleanupUnusedAmenities() async {
+    final firestore = FirebaseFirestore.instance;
+
+    // Get all global amenities
+    final amenitiesSnapshot = await firestore.collection('amenities').get();
+
+    for (final amenityDoc in amenitiesSnapshot.docs) {
+      final amenityName = amenityDoc['name'];
+
+      // Check if any property contains this amenity as true
+      final propertiesSnapshot = await firestore
+          .collection('properties')
+          .where('amenities.$amenityName', isEqualTo: true)
+          .limit(1)
+          .get();
+
+      // If no property uses it → delete from global collection
+      if (propertiesSnapshot.docs.isEmpty) {
+        await amenityDoc.reference.delete();
+      }
+    }
+  }
   final _formKey = GlobalKey<FormState>();
 
   // Basic Information
@@ -160,6 +204,38 @@ final TextEditingController _hourlyPriceController = TextEditingController();
     }
   }
 
+  void _openPreview() {
+    if (!_formKey.currentState!.validate()) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PropertyPreviewScreen(
+          propertyName: _nameController.text.trim(),
+          propertyType: _propertyType,
+          description: _descriptionController.text.trim(),
+          street: _streetController.text.trim(),
+          city: _cityController.text.trim(),
+          state: _stateController.text.trim(),
+          zip: _zipController.text.trim(),
+          pricePerNight: _priceController.text.trim(),
+          bedrooms: _bedroomsController.text.trim(),
+          bathrooms: _bathroomsController.text.trim(),
+          guests: _guestsController.text.trim(),
+          minStay: _minStayController.text.trim(),
+          amenities: _amenities.entries
+              .where((e) => e.value)
+              .map((e) => e.key)
+              .toList(),
+          photoCount: _photos.length + _pickedFiles.length,
+          instantBooking: _instantBooking,
+          activeListing: _activeListing,
+          onConfirm: _onPublish,
+        ),
+      ),
+    );
+  }
+
   Future<void> _onPublish() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -244,6 +320,17 @@ final TextEditingController _hourlyPriceController = TextEditingController();
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       });
+
+      // STEP 3️⃣: Sync selected amenities to global collection after property doc creation
+      // Extract selected amenities
+      final selectedAmenities = _amenities.entries
+          .where((e) => e.value == true)
+          .map((e) => e.key)
+          .toList();
+
+      // Sync to global amenities collection
+      await _syncAmenitiesToGlobal(selectedAmenities);
+      await _cleanupUnusedAmenities();
 
       // Upload picked images (robust: track uploaded refs so we can cleanup on failure)
       final List<String> finalImageUrls = [];
@@ -338,6 +425,20 @@ final TextEditingController _hourlyPriceController = TextEditingController();
     return Scaffold(
       appBar: AppBar(
         title: const Text('Add New Property'),
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(28),
+          child: Padding(
+            padding: EdgeInsets.only(bottom: 8.0),
+            child: Text(
+              '“Don’t let your property sit idle — let it earn.”',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ),
       ),
       body: SafeArea(
         child: Form(
@@ -347,309 +448,603 @@ final TextEditingController _hourlyPriceController = TextEditingController();
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Fill in the details to list your property', style: TextStyle(fontSize: 16, color: Colors.black54)),
-                const SizedBox(height: 18),
-
-                // 1) Basic Information
-                _sectionTitle('Basic Information', ''),
-                TextFormField(
-                  controller: _nameController,
-                  decoration: const InputDecoration(labelText: 'Property Name', hintText: 'Luxury Farmhouse with Pool'),
-                  validator: (v) => v == null || v.trim().isEmpty ? 'Enter property name' : null,
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE3EDF7),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: const Color(0xFFB0CBE6)),
+                  ),
+                  child: const Text(
+                    'Fill in the details to list your property',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF2C3E50),
+                    ),
+                  ),
                 ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: _propertyType,
-                  items: ['Farmhouse', 'Villa', 'Resort', 'Cottage', 'Room','car'].map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
-                  onChanged: (v) => setState(() => _propertyType = v ?? _propertyType),
-                  decoration: const InputDecoration(labelText: 'Property Type'),
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _descriptionController,
-                  decoration: const InputDecoration(labelText: 'Description'),
-                  maxLines: 4,
-                ),
+                const SizedBox(height: 24),
 
-                const SizedBox(height: 18),
-
-                // 2) Location
-                _sectionTitle('Location', ''),
-                TextFormField(controller: _streetController, decoration: const InputDecoration(labelText: 'Street Address')),
-                const SizedBox(height: 8),
-                Row(children: [
-                  Expanded(child: TextFormField(controller: _cityController, decoration: const InputDecoration(labelText: 'City'))),
-                  const SizedBox(width: 12),
-                  Expanded(child: TextFormField(controller: _stateController, decoration: const InputDecoration(labelText: 'State'))),
-                ]),
-                const SizedBox(height: 8),
-                TextFormField(controller: _zipController, decoration: const InputDecoration(labelText: 'ZIP Code')),
-
-                const SizedBox(height: 18),
-
-               // 3) Pricing & Capacity (dynamic by property type)
-_sectionTitle('Pricing & Capacity', ''),
-
-// --- NORMAL PROPERTIES (not car) ---
-if (_propertyType != 'car') ...[
-  Row(children: [
-    Expanded(child: TextFormField(
-      controller: _priceController,
-      decoration: const InputDecoration(labelText: 'Price per Night'),
-      keyboardType: TextInputType.number)),
-    const SizedBox(width: 12),
-    Expanded(child: TextFormField(
-      controller: _hourlyPriceController,
-      decoration: const InputDecoration(labelText: 'Price per Hour (optional)'),
-      keyboardType: TextInputType.number)),
-  ]),
-  const SizedBox(height: 8),
-  Row(children: [
-    Expanded(child: TextFormField(
-      controller: _bedroomsController,
-      decoration: const InputDecoration(labelText: 'Bedrooms'),
-      keyboardType: TextInputType.number)),
-    const SizedBox(width: 12),
-    Expanded(child: TextFormField(
-      controller: _bathroomsController,
-      decoration: const InputDecoration(labelText: 'Bathrooms'),
-      keyboardType: TextInputType.number)),
-  ]),
-  const SizedBox(height: 8),
-  Row(children: [
-    Expanded(child: TextFormField(
-      controller: _guestsController,
-      decoration: const InputDecoration(labelText: 'Max Guests'),
-      keyboardType: TextInputType.number)),
-    const SizedBox(width: 12),
-    Expanded(child: TextFormField(
-      controller: _minStayController,
-      decoration: const InputDecoration(labelText: 'Min Stay (nights)'),
-      keyboardType: TextInputType.number)),
-  ]),
-],
-
-// --- CAR ONLY ---
-if (_propertyType == 'car') ...[
-  DropdownButtonFormField<String>(
-  initialValue: _carCategory,
-  items: const ['SUV','Sedan','Hatchback','EV','MUV','Luxury']
-      .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-      .toList(),
-  onChanged: (v) => setState(() => _carCategory = v ?? _carCategory),
-  decoration: const InputDecoration(labelText: 'Car Category'),
-),
-const SizedBox(height: 8),
-  TextFormField(
-    controller: _priceController,
-    decoration: const InputDecoration(labelText: 'Price per Day'),
-    keyboardType: TextInputType.number,
-  ),
-  const SizedBox(height: 8),
-  TextFormField(
-    controller: _seatsController,
-    decoration: const InputDecoration(labelText: 'Number of Seats'),
-    keyboardType: TextInputType.number,
-  ),
-  const SizedBox(height: 8),
-  TextFormField(
-    controller: _plateController,
-    decoration: const InputDecoration(labelText: 'Vehicle Number Plate'),
-  ),
-  const SizedBox(height: 8),
-  // Required photo slots for cars (labels only)
-Row(
-  children: const [
-    Expanded(child: Text('Front Photo *',
-        style: TextStyle(fontWeight: FontWeight.w600))),
-    Expanded(child: Text('Side Photo *',
-        style: TextStyle(fontWeight: FontWeight.w600))),
-    Expanded(child: Text('Interior Photo *',
-        style: TextStyle(fontWeight: FontWeight.w600))),
-  ],
-),
-const SizedBox(height: 8),
-  TextFormField(
-    controller: _kmController,
-    decoration: const InputDecoration(labelText: 'Kilometers Driven'),
-    keyboardType: TextInputType.number,
-  ),
-  const SizedBox(height: 8),
-  DropdownButtonFormField<String>(
-    initialValue: _fuelType,
-    items: ['Petrol','Diesel','Electric','Hybrid']
-        .map((f) => DropdownMenuItem(value: f, child: Text(f)))
-        .toList(),
-    onChanged: (v) => setState(() => _fuelType = v ?? _fuelType),
-    decoration: const InputDecoration(labelText: 'Fuel Type'),
-  ),
-  const SizedBox(height: 8),
-  DropdownButtonFormField<String>(
-    initialValue: _transmission,
-    items: ['Automatic','Manual']
-        .map((t) => DropdownMenuItem(value: t, child: Text(t)))
-        .toList(),
-    onChanged: (v) => setState(() => _transmission = v ?? _transmission),
-    decoration: const InputDecoration(labelText: 'Transmission'),
-  ),
-  const SizedBox(height: 8),
-  SwitchListTile.adaptive(
-    title: const Text('Driver Available'),
-    value: _driverAvailable,
-    onChanged: (v) => setState(() => _driverAvailable = v),
-  ),
-],
-const SizedBox(height: 12),
-
-// --- 4) Amenities (no calendar or pricing in Add Property) ---
-_sectionTitle('Amenities', 'Select available amenities'),
-if (_propertyType != 'car')
-  Wrap(
-    spacing: 8,
-    runSpacing: 6,
-    children: _amenities.keys.map((k) {
-      return FilterChip(
-        label: Text(k),
-        selected: _amenities[k]!,
-        onSelected: (s) => setState(() => _amenities[k] = s),
-      );
-    }).toList(),
-  )
-else
-  Wrap(
-    spacing: 8,
-    runSpacing: 6,
-    children: const [
-      'Air Conditioning',
-      'GPS',
-      'Bluetooth',
-      'Reverse Camera',
-      'Insurance Included',
-      'Sunroof',
-      'ABS Brakes'
-    ].map((k) => FilterChip(label: Text(k), selected: false, onSelected: (_) {}))
-      .toList(),
-  ),
-
-                const SizedBox(height: 18),
-
-                // Document selector (required)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8.0),
-                  child: Row(children: [
-                    ElevatedButton(onPressed: _pickDocument, child: const Text('Select Property Document')),
-                    const SizedBox(width: 12),
-                    Expanded(child: Text(_documentFile == null ? 'No document selected' : _documentFile!.name, overflow: TextOverflow.ellipsis)),
-                  ]),
-                ),
-
-                // 5) Photos Upload
-                _sectionTitle('Photos Upload', 'PNG/JPG up to 10MB. Minimum 1 photo'),
-                GestureDetector(
-                  onTap: _addPhoto,
-                  child: DottedBorder(
-                    color: Colors.grey,
-                    strokeWidth: 1.5,
-                    dashPattern: const [6, 4],
-                    borderType: BorderType.RRect,
-                    radius: const Radius.circular(12),
-                    child: Container(
-                      width: double.infinity,
-                      height: 160,
-                      alignment: Alignment.center,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                // 1) Basic Information (Styled Card Layout)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
                         children: [
-                          const Icon(Icons.file_upload_outlined, size: 36, color: Colors.grey),
-                          const SizedBox(height: 8),
-                          const Text('Click to upload or drag and drop', style: TextStyle(color: Colors.grey)),
-                          const SizedBox(height: 6),
-                          Text('${_photos.length + _pickedFiles.length} photos added', style: const TextStyle(color: Colors.grey)),
+                          Container(
+                            height: 36,
+                            width: 36,
+                            decoration: const BoxDecoration(
+                              color: Color.fromARGB(255, 41, 70, 92),
+                              shape: BoxShape.circle,
+                            ),
+                            alignment: Alignment.center,
+                            child: const Text(
+                              '1',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          const Text(
+                            'Basic Information',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ],
                       ),
-                    ),
+                      const SizedBox(height: 24),
+
+                      const Text('Property Name *', style: TextStyle(fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 8),
+                      TextFormField(
+                        controller: _nameController,
+                        decoration: const InputDecoration(
+                          hintText: 'Enter property name',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.all(Radius.circular(12)),
+                          ),
+                        ),
+                        validator: (v) => v == null || v.trim().isEmpty ? 'Enter property name' : null,
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      const Text('Property Type *', style: TextStyle(fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 8),
+                      DropdownButtonFormField<String>(
+                        value: _propertyType,
+                        items: ['Farmhouse', 'Villa','Hotels','Hourly Rental']
+                            .map((t) => DropdownMenuItem(value: t, child: Text(t)))
+                            .toList(),
+                        onChanged: (v) => setState(() => _propertyType = v ?? _propertyType),
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.all(Radius.circular(12)),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      const Text('Description', style: TextStyle(fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 8),
+                      TextFormField(
+                        controller: _descriptionController,
+                        decoration: const InputDecoration(
+                          hintText: 'Describe your property...',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.all(Radius.circular(12)),
+                          ),
+                        ),
+                        maxLines: 4,
+                      ),
+                    ],
                   ),
                 ),
 
-                const SizedBox(height: 12),
-                if (_photos.isNotEmpty || _pickedFiles.isNotEmpty)
-                  SizedBox(
-                    height: 80,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: _photos.length + _pickedFiles.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 8),
-                      itemBuilder: (context, i) {
-                        if (i < _photos.length) {
-                          final photoUrl = _photos[i];
-                          return Stack(
-                            children: [
-                              Container(
-                                width: 120,
-                                decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), color: Colors.grey[200]),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Image.network(
-                                    photoUrl,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => Image.asset('assets/images/fallback_image.png')
-,
-                                  ),
-                                ),
-                              ),
-                              Positioned(
-                                right: 2,
-                                top: 2,
-                                child: InkWell(onTap: () => setState(() => _photos.removeAt(i)), child: const Icon(Icons.close, size: 18)),
-                              )
-                            ],
-                          );
-                        } else {
-                          final idx = i - _photos.length;
-                          final file = _pickedFiles[idx];
-                          return Stack(
-                            children: [
-                              Container(
-                                width: 120,
-                                decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), color: Colors.grey[200]),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Image.file(
-                                    File(file.path),
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) =>const Icon(Icons.image_not_supported, size: 40)
-,
-                                  ),
-                                ),
-                              ),
-                              Positioned(
-                                right: 2,
-                                top: 2,
-                                child: InkWell(onTap: () => setState(() => _pickedFiles.removeAt(idx)), child: const Icon(Icons.close, size: 18)),
-                              )
-                            ],
-                          );
-                        }
-                      },
+                const SizedBox(height: 24),
+
+                // 2) Location
+                // 2️⃣ Location
+Container(
+  width: double.infinity,
+  padding: const EdgeInsets.all(20),
+  decoration: BoxDecoration(
+    color: Colors.white,
+    borderRadius: BorderRadius.circular(20),
+    boxShadow: [
+      BoxShadow(
+        color: Colors.black.withOpacity(0.05),
+        blurRadius: 12,
+        offset: const Offset(0, 4),
+      ),
+    ],
+  ),
+  child: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Row(
+        children: [
+          Container(
+            height: 36,
+            width: 36,
+            decoration: const BoxDecoration(
+              color: Color.fromARGB(255, 41, 70, 92),
+              shape: BoxShape.circle,
+            ),
+            alignment: Alignment.center,
+            child: const Text(
+              '2',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          const Text(
+            'Location',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+
+      const SizedBox(height: 24),
+
+      const Text('Street Address *',
+          style: TextStyle(fontWeight: FontWeight.w600)),
+      const SizedBox(height: 8),
+      TextFormField(
+        controller: _streetController,
+        decoration: const InputDecoration(
+          hintText: 'Enter street address',
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.all(Radius.circular(12)),
+          ),
+        ),
+      ),
+
+      const SizedBox(height: 20),
+
+      Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('City *',
+                    style: TextStyle(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _cityController,
+                  decoration: const InputDecoration(
+                    hintText: 'City',
+                    border: OutlineInputBorder(
+                      borderRadius:
+                          BorderRadius.all(Radius.circular(12)),
                     ),
                   ),
-
-                const SizedBox(height: 18),
-
-                // 6) Availability
-                _sectionTitle('Availability Settings', ''),
-                SwitchListTile.adaptive(
-                  title: const Text('Instant Booking'),
-                  value: _instantBooking,
-                  onChanged: (v) => setState(() => _instantBooking = v),
                 ),
-                SwitchListTile.adaptive(
-                  title: const Text('Active Listing'),
-                  value: _activeListing,
-                  onChanged: (v) => setState(() => _activeListing = v),
+              ],
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('State *',
+                    style: TextStyle(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _stateController,
+                  decoration: const InputDecoration(
+                    hintText: 'State',
+                    border: OutlineInputBorder(
+                      borderRadius:
+                          BorderRadius.all(Radius.circular(12)),
+                    ),
+                  ),
                 ),
+              ],
+            ),
+          ),
+        ],
+      ),
 
-                const SizedBox(height: 20),
+      const SizedBox(height: 20),
+
+      const Text('ZIP Code *',
+          style: TextStyle(fontWeight: FontWeight.w600)),
+      const SizedBox(height: 8),
+      TextFormField(
+        controller: _zipController,
+        keyboardType: TextInputType.number,
+        decoration: const InputDecoration(
+          hintText: 'Enter ZIP code',
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.all(Radius.circular(12)),
+          ),
+        ),
+      ),
+    ],
+  ),
+),
+
+const SizedBox(height: 24),
+
+// 3️⃣ Pricing & Capacity
+Container(
+  width: double.infinity,
+  padding: const EdgeInsets.all(20),
+  decoration: BoxDecoration(
+    color: Colors.white,
+    borderRadius: BorderRadius.circular(20),
+    boxShadow: [
+      BoxShadow(
+        color: Colors.black.withOpacity(0.05),
+        blurRadius: 12,
+        offset: const Offset(0, 4),
+      ),
+    ],
+  ),
+  child: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Row(
+        children: [
+          Container(
+            height: 36,
+            width: 36,
+            decoration: const BoxDecoration(
+              color: Color.fromARGB(255, 41, 70, 92),
+              shape: BoxShape.circle,
+            ),
+            alignment: Alignment.center,
+            child: const Text(
+              '3',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          const Text(
+            'Pricing & Capacity',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+
+      const SizedBox(height: 24),
+
+      if (_propertyType != 'car') ...[
+        Row(children: [
+          Expanded(
+            child: TextFormField(
+              controller: _priceController,
+              decoration: const InputDecoration(
+                labelText: 'Price per Night *',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(12)),
+                ),
+              ),
+              keyboardType: TextInputType.number,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: TextFormField(
+              controller: _hourlyPriceController,
+              decoration: const InputDecoration(
+                labelText: 'Price per Hour (optional)',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(12)),
+                ),
+              ),
+              keyboardType: TextInputType.number,
+            ),
+          ),
+        ]),
+        const SizedBox(height: 20),
+        Row(children: [
+          Expanded(
+            child: TextFormField(
+              controller: _bedroomsController,
+              decoration: const InputDecoration(
+                labelText: 'Bedrooms *',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(12)),
+                ),
+              ),
+              keyboardType: TextInputType.number,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: TextFormField(
+              controller: _bathroomsController,
+              decoration: const InputDecoration(
+                labelText: 'Bathrooms *',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(12)),
+                ),
+              ),
+              keyboardType: TextInputType.number,
+            ),
+          ),
+        ]),
+        const SizedBox(height: 20),
+        Row(children: [
+          Expanded(
+            child: TextFormField(
+              controller: _guestsController,
+              decoration: const InputDecoration(
+                labelText: 'Max Guests *',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(12)),
+                ),
+              ),
+              keyboardType: TextInputType.number,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: TextFormField(
+              controller: _minStayController,
+              decoration: const InputDecoration(
+                labelText: 'Min Stay (nights) *',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(12)),
+                ),
+              ),
+              keyboardType: TextInputType.number,
+            ),
+          ),
+        ]),
+      ],
+    ],
+  ),
+),
+
+const SizedBox(height: 24),
+
+// 5️⃣ Property Document
+Container(
+  width: double.infinity,
+  padding: const EdgeInsets.all(20),
+  decoration: BoxDecoration(
+    color: Colors.white,
+    borderRadius: BorderRadius.circular(20),
+    boxShadow: [
+      BoxShadow(
+        color: Colors.black.withOpacity(0.05),
+        blurRadius: 12,
+        offset: const Offset(0, 4),
+      ),
+    ],
+  ),
+  child: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Row(
+        children: [
+          Container(
+            height: 36,
+            width: 36,
+            decoration: const BoxDecoration(
+              color: Color.fromARGB(255, 41, 70, 92),
+              shape: BoxShape.circle,
+            ),
+            alignment: Alignment.center,
+            child: const Text(
+              '5',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+          ),
+          const SizedBox(width: 12),
+          const Text(
+            'Property Document',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
+      const SizedBox(height: 20),
+      Row(
+        children: [
+          ElevatedButton.icon(
+            onPressed: _pickDocument,
+            icon: const Icon(Icons.description),
+            label: const Text('Select Property Document'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color.fromARGB(255, 41, 70, 92),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              _documentFile == null
+                  ? 'No document selected'
+                  : _documentFile!.name,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    ],
+  ),
+),
+
+const SizedBox(height: 24),
+
+// 6️⃣ Photos Upload
+Container(
+  width: double.infinity,
+  padding: const EdgeInsets.all(20),
+  decoration: BoxDecoration(
+    color: Colors.white,
+    borderRadius: BorderRadius.circular(20),
+    boxShadow: [
+      BoxShadow(
+        color: Colors.black.withOpacity(0.05),
+        blurRadius: 12,
+        offset: const Offset(0, 4),
+      ),
+    ],
+  ),
+  child: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Row(
+        children: [
+          Container(
+            height: 36,
+            width: 36,
+            decoration: const BoxDecoration(
+              color: Color.fromARGB(255, 41, 70, 92),
+              shape: BoxShape.circle,
+            ),
+            alignment: Alignment.center,
+            child: const Text(
+              '6',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+          ),
+          const SizedBox(width: 12),
+          const Text(
+            'Photos Upload',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
+      const SizedBox(height: 8),
+      const Text(
+        'PNG/JPG up to 10MB. Minimum 1 photo',
+        style: TextStyle(color: Colors.grey),
+      ),
+      const SizedBox(height: 20),
+      GestureDetector(
+        onTap: _addPhoto,
+        child: DottedBorder(
+          color: Colors.grey,
+          strokeWidth: 1.5,
+          dashPattern: const [6, 4],
+          borderType: BorderType.RRect,
+          radius: const Radius.circular(12),
+          child: Container(
+            width: double.infinity,
+            height: 160,
+            alignment: Alignment.center,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.file_upload_outlined, size: 36, color: Colors.grey),
+                const SizedBox(height: 8),
+                const Text('Click to upload or drag and drop',
+                    style: TextStyle(color: Colors.grey)),
+                const SizedBox(height: 6),
+                Text(
+                  '${_photos.length + _pickedFiles.length} photos added',
+                  style: const TextStyle(color: Colors.grey),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ],
+  ),
+),
+
+const SizedBox(height: 24),
+                
+
+                // 7️⃣ Availability Settings
+Container(
+  width: double.infinity,
+  padding: const EdgeInsets.all(20),
+  decoration: BoxDecoration(
+    color: Colors.white,
+    borderRadius: BorderRadius.circular(20),
+    boxShadow: [
+      BoxShadow(
+        color: Colors.black.withOpacity(0.05),
+        blurRadius: 12,
+        offset: const Offset(0, 4),
+      ),
+    ],
+  ),
+  child: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Row(
+        children: [
+          Container(
+            height: 36,
+            width: 36,
+            decoration: const BoxDecoration(
+              color: Color.fromARGB(255, 41, 70, 92),
+              shape: BoxShape.circle,
+            ),
+            alignment: Alignment.center,
+            child: const Text(
+              '7',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+          ),
+          const SizedBox(width: 12),
+          const Text(
+            'Availability Settings',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
+      const SizedBox(height: 20),
+      SwitchListTile.adaptive(
+        title: const Text('Instant Booking'),
+        value: _instantBooking,
+        onChanged: (v) => setState(() => _instantBooking = v),
+      ),
+      SwitchListTile.adaptive(
+        title: const Text('Active Listing'),
+        value: _activeListing,
+        onChanged: (v) => setState(() => _activeListing = v),
+      ),
+    ],
+  ),
+),
+
+const SizedBox(height: 24),
+               
 
                 // Bottom actions
                 Row(
@@ -664,7 +1059,7 @@ else
                     const SizedBox(width: 12),
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: _isPublishing ? null : _onPublish,
+                        onPressed: _isPublishing ? null : _openPreview,
                         style: ElevatedButton.styleFrom(backgroundColor: Colors.green, padding: const EdgeInsets.symmetric(vertical: 14)),
                         child: _isPublishing ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Text('Publish Property'),
                       ),
@@ -677,7 +1072,8 @@ else
           ),
         ),
       ),
-    );
+        );
+      
   }
 }
 
@@ -745,3 +1141,4 @@ class _DashRectPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
+              

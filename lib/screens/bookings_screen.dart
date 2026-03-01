@@ -4,7 +4,6 @@ import '../navigation/app_routes.dart';
 import '../controllers/bookings_controller.dart';
 // app_drawer removed from this secondary screen to keep back navigation consistent
 import '../widgets/loading_widget.dart';
-import '../theme/app_colors.dart';
 
 
 class BookingsScreen extends StatefulWidget {
@@ -29,9 +28,11 @@ class _BookingsScreenState extends State<BookingsScreen> {
     if (_filterStatus == 'all') {
       return bookingsController.bookings;
     }
-    return bookingsController.bookings
-        .where((booking) => booking['status'] == _filterStatus)
-        .toList();
+    return bookingsController.bookings.where((booking){
+       final status =
+        (booking['status'] ?? '').toString().toLowerCase();
+    return status == _filterStatus;
+  }).toList();
   }
 
   @override
@@ -99,6 +100,8 @@ class _BookingsScreenState extends State<BookingsScreen> {
                   child: Row(
                     children: [
                       _filterButton('all', 'All'),
+                      _filterButton('upcoming', 'Upcoming'),
+                      _filterButton('pending', 'Pending'),
                       _filterButton('upcoming', 'Upcoming'),
                       _filterButton('completed', 'Completed'),
                       _filterButton('cancelled', 'Cancelled'),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
 import 'package:get/get.dart';
@@ -95,9 +96,9 @@ class _HomeScreenState extends State<HomeScreen> {
     'Farmhouse': false,
     'Villa': false,
     'Hotel': false,
-    'Apartment': false,
-    'Cottage': false,
-    'Homestay': false,
+    'Flights': false,
+    'Car Rentals': false,
+    'Hourly Rentals': false,
   };
   String _sortOption = 'Relevance';
 
@@ -285,9 +286,28 @@ class _HomeScreenState extends State<HomeScreen> {
           _amenities.addAll(Map<String, bool>.from(raw['amenities']));
         } catch (_) {}
       }
+      // Backwards/alternate key names: some screens used 'houseAmenities' or
+      // 'house_amenities' previously. Accept those as well to avoid silent
+      // breakages when key names change in the filters UI.
+      if (raw.containsKey('houseAmenities') && raw['houseAmenities'] is Map) {
+        try {
+          _amenities.addAll(Map<String, bool>.from(raw['houseAmenities']));
+        } catch (_) {}
+      }
+      if (raw.containsKey('house_amenities') && raw['house_amenities'] is Map) {
+        try {
+          _amenities.addAll(Map<String, bool>.from(raw['house_amenities']));
+        } catch (_) {}
+      }
       if (raw.containsKey('propertyTypes') && raw['propertyTypes'] is Map) {
         try {
           _propertyTypes.addAll(Map<String, bool>.from(raw['propertyTypes']));
+        } catch (_) {}
+      }
+      // Accept alternative naming for property types if used elsewhere
+      if (raw.containsKey('property_types') && raw['property_types'] is Map) {
+        try {
+          _propertyTypes.addAll(Map<String, bool>.from(raw['property_types']));
         } catch (_) {}
       }
       if (raw.containsKey('sortOption') && raw['sortOption'] is String) {
@@ -616,7 +636,12 @@ class _HomeScreenState extends State<HomeScreen> {
         Container(
           // reduced vertical padding to make header more compact while still
           // covering the status bar area
-          padding: EdgeInsets.fromLTRB(16, MediaQuery.of(context).padding.top + 8, 16, 12),
+          padding: EdgeInsets.fromLTRB(
+            16,
+            MediaQuery.of(context).padding.top + 4,
+            16,
+            8,
+          ),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
@@ -736,8 +761,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ],
               ),
-
-              const SizedBox(height: 10),
+              const SizedBox(height: 6),
               Builder(builder: (ctx) {
                 final cs = Theme.of(ctx).colorScheme;
                 return Padding(
@@ -824,32 +848,142 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 8),
               SizedBox(
-                height: 140,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  itemCount: _filteredFarmhouses.length > 6 ? 6 : _filteredFarmhouses.length,
-                  itemBuilder: (context, index) {
-                    final item = _filteredFarmhouses[index];
-                    return Container(
-                      width: 260,
-                      margin: const EdgeInsets.only(right: 12),
-                      child: Card(
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        child: Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(child: Text(item['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold))),
-                              const SizedBox(height: 6),
-                              Text(item['location'] ?? ''),
-                              const SizedBox(height: 6),
-                              Text('₹${(item['price'] ?? 0).toString()}', style: const TextStyle(fontWeight: FontWeight.w700)),
-                            ],
-                          ),
+                height: 160,
+                child: StreamBuilder(
+                  stream: FirebaseFirestore.instance
+                      .collection('properties')
+                      .where('isLastMinuteDeal', isEqualTo: true)
+                      .where('status', isEqualTo: 'active')
+                      .where('lastMinuteValidTill', isGreaterThan: Timestamp.now())
+                      .orderBy('lastMinuteValidTill')
+                      .orderBy('lastMinuteDiscount', descending: true)
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+
+                    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                      return const Center(
+                        child: Text(
+                          'No last minute deals available',
+                          style: TextStyle(color: Colors.grey),
                         ),
-                      ),
+                      );
+                    }
+
+                    final deals = snapshot.data!.docs;
+
+                    return ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      itemCount: deals.length > 6 ? 6 : deals.length,
+                      itemBuilder: (context, index) {
+                        final data = deals[index].data() as Map<String, dynamic>;
+                        final discount = data['lastMinuteDiscount'] ?? 0;
+                        final Timestamp? validTillTs = data['lastMinuteValidTill'];
+
+                        if (validTillTs == null) return const SizedBox.shrink();
+
+                        return StreamBuilder<int>(
+                          stream: Stream.periodic(const Duration(seconds: 30), (x) => x),
+                          builder: (context, _) {
+                            final now = DateTime.now();
+                            final validTill = validTillTs.toDate();
+                            final remaining = validTill.difference(now);
+
+                            if (remaining.isNegative) {
+                              // Auto hide when expired
+                              return const SizedBox.shrink();
+                            }
+
+                            final hours = remaining.inHours;
+                            final minutes = remaining.inMinutes % 60;
+
+                            return Container(
+                              width: 260,
+                              margin: const EdgeInsets.only(right: 12),
+                              child: Card(
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(10.0),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        data['propertyName'] ?? 'Property',
+                                        style: const TextStyle(fontWeight: FontWeight.bold),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(data['location'] ?? ''),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        'Expires in ${hours}h ${minutes}m',
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.red,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      const Spacer(),
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Builder(builder: (_) {
+                                            final originalPrice = (data['price'] ?? 0) as num;
+                                            final discountVal = (data['lastMinuteDiscount'] ?? 0) as num;
+                                            final discountedPrice = discountVal > 0
+                                                ? (originalPrice - (originalPrice * discountVal / 100)).round()
+                                                : originalPrice;
+
+                                            return Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                if (discountVal > 0)
+                                                  Text(
+                                                    '₹$originalPrice',
+                                                    style: const TextStyle(
+                                                      fontSize: 12,
+                                                      color: Colors.grey,
+                                                      decoration: TextDecoration.lineThrough,
+                                                    ),
+                                                  ),
+                                                Text(
+                                                  '₹$discountedPrice',
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.w700,
+                                                    fontSize: 16,
+                                                  ),
+                                                ),
+                                              ],
+                                            );
+                                          }),
+                                          if (discount > 0)
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                              decoration: BoxDecoration(
+                                                color: const Color.fromARGB(255, 41, 70, 92),
+                                                borderRadius: BorderRadius.circular(8),
+                                              ),
+                                              child: Text(
+                                                '$discount% OFF',
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        );
+                      },
                     );
                   },
                 ),
@@ -898,8 +1032,19 @@ class _HomeScreenState extends State<HomeScreen> {
                                   _maxDistance = filters['maxDistance'] ?? _maxDistance;
                                   _luxuryOnly = filters['luxuryOnly'] ?? _luxuryOnly;
                                   _minRating = filters['minRating'] ?? _minRating;
-                                  _amenities.addAll(filters['amenities'] ?? {});
-                                  _propertyTypes.addAll(filters['propertyTypes'] ?? {});
+                                  // Accept both old and new key names for amenities/property types
+                                  final Map<String, dynamic> amenitiesFromCallback = Map<String, dynamic>.from(
+                                      (filters['amenities'] ?? filters['houseAmenities'] ?? filters['house_amenities'] ?? <String, dynamic>{}) as Map);
+                                  final Map<String, dynamic> propertyTypesFromCallback = Map<String, dynamic>.from(
+                                      (filters['propertyTypes'] ?? filters['property_types'] ?? <String, dynamic>{}) as Map);
+
+                                  try {
+                                    _amenities.addAll(Map<String, bool>.from(amenitiesFromCallback));
+                                  } catch (_) {}
+                                  try {
+                                    _propertyTypes.addAll(Map<String, bool>.from(propertyTypesFromCallback));
+                                  } catch (_) {}
+
                                   _sortOption = filters['sortOption'] ?? _sortOption;
                                 });
                                 _applyFilters();

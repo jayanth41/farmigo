@@ -31,6 +31,27 @@ class BookingsController extends GetxController {
       for (final doc in snap.docs) {
         final data = Map<String, dynamic>.from(doc.data());
         data['id'] = doc.id;
+
+        // 🔥 Auto-complete logic
+        if (data['status'] == 'upcoming' && data['checkOut'] != null) {
+          final checkout = DateTime.tryParse(data['checkOut']);
+          if (checkout != null && DateTime.now().isAfter(checkout)) {
+            await FirebaseFirestore.instance
+                .collection('bookings')
+                .doc(doc.id)
+                .update({'status': 'completed'});
+
+            await FirebaseFirestore.instance
+                .collection('users')
+                .doc(user.uid)
+                .collection('bookings')
+                .doc(doc.id)
+                .update({'status': 'completed'});
+
+            data['status'] = 'completed';
+          }
+        }
+
         results.add(data);
       }
 
@@ -54,19 +75,86 @@ class BookingsController extends GetxController {
     String? ownerId,
   }) async {
     try {
-      final success = await BookingService.createBooking(
-        propertyId: listingId,
-        ownerId: ownerId,
-        propertyName: propertyName,
-        location: location,
-        imageUrl: imageUrl,
-        checkIn: checkIn,
-        checkOut: checkOut,
-        totalPrice: totalPrice,
-      );
-      return success;
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return false;
+
+      final firestore = FirebaseFirestore.instance;
+      final bookingRef = firestore.collection('bookings').doc();
+
+      final bookingData = {
+        'listingId': listingId,
+        'propertyName': propertyName,
+        'location': location,
+        'imageUrl': imageUrl,
+        'checkIn': checkIn,
+        'checkOut': checkOut,
+        'totalPrice': totalPrice,
+        'ownerId': ownerId,
+        'userId': user.uid,
+        'status': 'pending',
+        'createdAt': FieldValue.serverTimestamp(),
+      };
+
+      final batch = firestore.batch();
+
+      // Global bookings collection
+      batch.set(bookingRef, bookingData);
+
+      // User subcollection copy
+      final userBookingRef = firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('bookings')
+          .doc(bookingRef.id);
+
+      batch.set(userBookingRef, bookingData);
+
+      await batch.commit();
+
+      await fetchBookings();
+      return true;
     } catch (e) {
       debugPrint('addBooking failed: $e');
+      return false;
+    }
+  }
+
+  Future<bool> approveBooking(String bookingId) async {
+    try {
+      final firestore = FirebaseFirestore.instance;
+
+      final bookingRef = firestore.collection('bookings').doc(bookingId);
+      final bookingSnap = await bookingRef.get();
+      if (!bookingSnap.exists) return false;
+
+      final data = bookingSnap.data() as Map<String, dynamic>;
+      final userId = data['userId'];
+
+      final batch = firestore.batch();
+
+      batch.update(bookingRef, {
+        'status': 'upcoming',
+        'approvedAt': FieldValue.serverTimestamp(),
+      });
+
+      if (userId != null) {
+        final userBookingRef = firestore
+            .collection('users')
+            .doc(userId)
+            .collection('bookings')
+            .doc(bookingId);
+
+        batch.update(userBookingRef, {
+          'status': 'upcoming',
+          'approvedAt': FieldValue.serverTimestamp(),
+        });
+      }
+
+      await batch.commit();
+      await fetchBookings();
+      return true;
+    } catch (e) {
+      debugPrint('approveBooking failed: $e');
       return false;
     }
   }
@@ -93,6 +181,25 @@ class BookingsController extends GetxController {
     } catch (e) {
       debugPrint('cancelBooking failed: $e');
       return false;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> fetchOwnerBookings(String ownerId) async {
+    try {
+      final snap = await FirebaseFirestore.instance
+          .collection('bookings')
+          .where('ownerId', isEqualTo: ownerId)
+          .orderBy('createdAt', descending: true)
+          .get();
+
+      return snap.docs.map((doc) {
+        final data = Map<String, dynamic>.from(doc.data());
+        data['id'] = doc.id;
+        return data;
+      }).toList();
+    } catch (e) {
+      debugPrint('fetchOwnerBookings failed: $e');
+      return [];
     }
   }
 }

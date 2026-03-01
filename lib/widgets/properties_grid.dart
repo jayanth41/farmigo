@@ -119,7 +119,7 @@ Widget _buildEmptyState(BuildContext context, Category? category) {
               Navigator.of(context).popUntil((r) => r.isFirst);
             }
           },
-          child: const Text('Explore Farmhouses'),
+          child: const Text('Explore Properties'),
         ),
       ],
     ),

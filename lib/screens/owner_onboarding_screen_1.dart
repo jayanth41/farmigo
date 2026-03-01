@@ -3,7 +3,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/owner_onboarding_service.dart';
 import '../widgets/snackbar_helper.dart';
-import 'owner_onboarding_screen.dart';
 
 /// Screen 1: User Not Owner
 /// Displays when user is new and has NO onboarding data.
@@ -235,7 +234,7 @@ class _OwnerOnboardingScreen1State extends State<OwnerOnboardingScreen1> {
 
               // City dropdown
               DropdownButtonFormField<String>(
-                value: _selectedCity,
+                initialValue: _selectedCity,
                 decoration: InputDecoration(
                   labelText: 'City',
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
@@ -256,7 +255,7 @@ class _OwnerOnboardingScreen1State extends State<OwnerOnboardingScreen1> {
 
               // Property type dropdown
               DropdownButtonFormField<String>(
-                value: _selectedPropertyType,
+                initialValue: _selectedPropertyType,
                 decoration: InputDecoration(
                   labelText: 'Property Type',
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
