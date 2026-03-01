@@ -10,6 +10,8 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'filters/filters_provider.dart';
 import 'navigation/app_routes.dart';
 import 'theme/app_theme.dart';
+import 'helpers/test_data_helper.dart';
+import 'helpers/seed_farmhouse_data.dart';
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
@@ -52,6 +54,12 @@ Future<void> main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // Create test data for PropertyDetailsScreen
+  await TestDataHelper.addTestProperty();
+
+  // Seed farmhouse properties to Firestore
+  await SeedFarmhouseData.seedAllProperties();
 
   // Request notification permission from FirebaseMessaging
   await _requestNotificationPermission();

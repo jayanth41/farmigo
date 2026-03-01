@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../screens/farmhouse_details_screen.dart';
+import '../screens/property_details_screen.dart';
 import '../screens/booking_details_screen.dart';
 import '../controllers/favorites_controller.dart';
 import '../models/farmhouse_model.dart';
@@ -95,15 +97,9 @@ class _FarmhouseCardState extends State<FarmhouseCard> {
           MaterialPageRoute(
             builder: (_) =>
                 (widget.category.toLowerCase().contains('farm'))
-                    ? FarmhouseDetailsScreen(
-                        name: widget.name,
-                        location: widget.location,
-                        price: widget.price,
-                        distance: widget.distance ?? '',
-                        imageUrl: widget.image,
-                        images: widget.images,
-                        id: widget.id,
-                       // images: item.images,
+                    ? PropertyDetailsScreen(
+                        propertyId: widget.id,
+                        currentUserId: FirebaseAuth.instance.currentUser?.uid,
                       )
                     : BookingDetailsScreen(
                         name: widget.name,

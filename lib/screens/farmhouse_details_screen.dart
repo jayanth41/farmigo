@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../widgets/app_drawer.dart';
 import '../widgets/image_with_fallback.dart';
 import '../models/farmhouse_model.dart';
@@ -9,8 +10,8 @@ import '../controllers/favorites_controller.dart';
 import '../controllers/bookings_controller.dart';
 import '../data/farmhouses_data.dart'; // ADDED: Import farmhouses data
 import 'bookings_screen.dart';
+import 'property_details_screen.dart';
 import 'dart:async';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'profile_screen.dart';
 // Reward updates are handled by BookingService during booking creation.
 
@@ -1044,15 +1045,9 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (_) => FarmhouseDetailsScreen(
-                                      id: farmhouse['name'],
-                                      name: farmhouse['name'],
-                                      location: farmhouse['location'],
-                                      price: (farmhouse['price'] as num)
-                                          .toDouble(),
-                                      distance: farmhouse['distance'],
-                                      imageUrl: farmhouse['image'],
-                                      images: farmhouse['images'] ?? [],
+                                    builder: (_) => PropertyDetailsScreen(
+                                      propertyId: farmhouse['id'] ?? farmhouse['name'],
+                                      currentUserId: FirebaseAuth.instance.currentUser?.uid,
                                     ),
                                   ),
                                 );

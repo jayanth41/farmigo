@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../controllers/favorites_controller.dart';
 // theme colors used via Theme.of(context)
 import 'farmhouse_details_screen.dart';
+import 'property_details_screen.dart';
 import '../widgets/image_with_fallback.dart';
 import '../navigation/app_routes.dart';
 import 'all_properties_screen.dart';
@@ -382,13 +384,9 @@ class FavoriteCard extends StatelessWidget {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => FarmhouseDetailsScreen(
-                              name: farmhouse.name,
-                              location: farmhouse.location,
-                              price: farmhouse.price,
-                              distance: farmhouse.distance,
-                              imageUrl: farmhouse.imageUrl,
-                              id: farmhouse.id,
+                            builder: (context) => PropertyDetailsScreen(
+                              propertyId: farmhouse.id,
+                              currentUserId: FirebaseAuth.instance.currentUser?.uid,
                             ),
                           ),
                         );

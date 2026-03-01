@@ -9,7 +9,7 @@ class FarmhousesScreen extends StatelessWidget {
 
   static const List<Map<String, dynamic>> _farmhouses = [
     {
-      'id': '11111111-1111-1111-1111-111111111111',
+      'id': 'gAxjswYYPCZ1NK4Hw8XB',
       'name': 'The Night Garden Stay',
       'location': 'Anajpur, Hyderabad',
       'state': 'Telangana',
