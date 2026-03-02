@@ -41,31 +41,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final user = _auth.currentUser;
-    final isGuest = user == null;
 
-    if (isGuest) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Profile')),
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text('Guest', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontSize: 22)),
-                const SizedBox(height: 8),
-                const Text('Please login to continue', style: TextStyle(fontSize: 16), textAlign: TextAlign.center),
-                const SizedBox(height: 20),
-                ElevatedButton(onPressed: () => Navigator.pushNamed(context, '/login'), child: const Text('Login')),
-              ],
+    return Scaffold(
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(100),
+        child: Container(
+          decoration: const BoxDecoration(
+            color: Color.fromARGB(255, 41, 70, 92),
+            borderRadius: BorderRadius.only(
+              bottomLeft: Radius.circular(24),
+              bottomRight: Radius.circular(24),
+            ),
+          ),
+          child: const SafeArea(
+            child: Center(
+              child: Text(
+                'Profile',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 26,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ),
         ),
-      );
-    }
-
-    return Scaffold(
-      appBar: AppBar(title: const Text('Profile')),
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
@@ -94,21 +95,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   // Always-visible button to complete owner details. Navigates to
                   // OwnerDetailsScreen where users can fill owner-related fields.
                  
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        try {
-                          Navigator.pushNamed(context, AppRoutes.bookingHistory);
-                        } catch (e) {
-                          debugPrint('Navigation to booking history failed: $e');
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.blueGrey),
-                      child: const Text('View Booking History'),
-                    ),
-                  ),
                   const SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,

@@ -24,7 +24,6 @@ import 'screens/signup_screen.dart';
 import 'screens/offers_screen.dart';
 import 'screens/help_support_screen.dart';
 import 'screens/settings_screen.dart';
-import 'screens/booking_history_screen.dart';
 import 'screens/owner_dashboard.dart';
 import 'screens/car_owner_dashboard_new.dart';
 import 'controllers/favorites_controller.dart';
@@ -177,7 +176,6 @@ class MyApp extends StatelessWidget {
             GetPage(name: AppRoutes.favorites, page: () => const FavoritesScreen()),
             GetPage(name: AppRoutes.bookings, page: () => const BookingsScreen()),
             GetPage(name: AppRoutes.profile, page: () => const ProfileScreen()),
-            GetPage(name: AppRoutes.bookingHistory, page: () => const BookingHistoryScreen()),
             // Location selector is used as a modal bottom sheet (LocationSelectorScreen)
             GetPage(name: AppRoutes.settings, page: () => const SettingsScreen()),
             GetPage(name: AppRoutes.offers, page: () => const OffersScreen()),
