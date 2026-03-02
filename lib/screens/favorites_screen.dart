@@ -3,7 +3,6 @@ import 'package:get/get.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../controllers/favorites_controller.dart';
 // theme colors used via Theme.of(context)
-import 'farmhouse_details_screen.dart';
 import 'property_details_screen.dart';
 import '../widgets/image_with_fallback.dart';
 import '../navigation/app_routes.dart';
@@ -20,6 +19,8 @@ class FavoritesScreen extends StatefulWidget {
 class _FavoritesScreenState extends State<FavoritesScreen> {
   late FavoritesController favoritesController;
 
+  String _sortType = 'recent';
+
   @override
   void initState() {
     super.initState();
@@ -32,69 +33,52 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      // Secondary screen: remove drawer and provide a back button in AppBar
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (route) => false),
-        ),
-        backgroundColor:  Color.fromARGB(255, 41, 70, 92),
-        iconTheme: const IconThemeData(color: Colors.white),
-        elevation: 0,
-        title: const Text(
-          'My Favorites',
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
+      // Custom curved header similar to Help & Support, no back arrow
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(100),
+        child: Container(
+          decoration: const BoxDecoration(
+            color: Color.fromARGB(255, 41, 70, 92),
+            borderRadius: BorderRadius.only(
+              bottomLeft: Radius.circular(18),
+              bottomRight: Radius.circular(18),
+            ),
+          ),
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  const Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'My Favorites',
+                          style: TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          'Your saved dream stays...',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.white70,
+                            fontWeight: FontWeight.w400,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
-        centerTitle: false,
-        actions: [
-          Obx(
-            () => favoritesController.favorites.isNotEmpty
-                ? IconButton(
-                    icon: const Icon(Icons.delete_sweep),
-                    tooltip: 'Clear all favorites',
-                    onPressed: () {
-                      showDialog(
-                        context: context,
-                        builder: (BuildContext context) {
-                          return AlertDialog(
-                            title: const Text('Clear Favorites'),
-                            content: const Text(
-                              'Are you sure you want to remove all favorites?',
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context),
-                                child: const Text('Cancel'),
-                              ),
-                              TextButton(
-                                onPressed: () {
-                                  favoritesController.clearAllFavorites();
-                                  Navigator.pop(context);
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('All favorites cleared'),
-                                      duration: Duration(seconds: 1),
-                                    ),
-                                  );
-                                },
-                                child: Text(
-                                  'Clear',
-                                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                                ),
-                              ),
-                            ],
-                          );
-                        },
-                      );
-                    },
-                  )
-                : const SizedBox.shrink(),
-          ),
-        ],
       ),
       body: Obx(
         () {
@@ -118,7 +102,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                       ),
                   const SizedBox(height: 8),
                       Text(
-                        'Add farmhouses to your favorites to see them here',
+                        'Add Properties to your favorites to see them here',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: Theme.of(context).colorScheme.onSurface.withOpacity(0.65),
                         ),
@@ -127,22 +111,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                   const SizedBox(height: 24),
                   ElevatedButton.icon(
                     onPressed: () {
-                      // Navigate to AllPropertiesScreen showing all properties
-                      try {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const AllPropertiesScreen(properties: farmhousesData),
-                          ),
-                        );
-                      } catch (_) {
-                        // Fallback to named route if needed
-                        try {
-                          Get.toNamed(AppRoutes.farmhouses);
-                        } catch (_) {
-                          Navigator.of(context).pushReplacementNamed(AppRoutes.farmhouses);
-                        }
-                      }
+                      Get.offAllNamed(AppRoutes.home);
                     },
                     icon: const Icon(Icons.explore),
                     label: const Text('Explore'),
@@ -168,12 +137,30 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                 child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
                       'Saved: ${favoritesController.favorites.length}',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                         color: Theme.of(context).colorScheme.onSurface.withOpacity(0.75),
+                      ),
+                    ),
+                    DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: _sortType,
+                        dropdownColor: Theme.of(context).colorScheme.surface,
+                        style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                        items: const [
+                          DropdownMenuItem(value: 'recent', child: Text('Recently Added')),
+                          DropdownMenuItem(value: 'low', child: Text('Price Low to High')),
+                          DropdownMenuItem(value: 'high', child: Text('Price High to Low')),
+                        ],
+                        onChanged: (value) {
+                          setState(() {
+                            _sortType = value ?? 'recent';
+                          });
+                        },
                       ),
                     ),
                   ],
@@ -191,26 +178,63 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                           ),
                         ),
                       )
-                    : ListView.builder(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: favoritesController.favorites.length,
-                        itemBuilder: (context, index) {
-                          final farmhouse = favoritesController.favorites[index];
-                          return FavoriteCard(
-                            farmhouse: farmhouse,
-                            onRemove: () {
-                              favoritesController.removeFavorite(farmhouse.id);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                      '${farmhouse.name} removed from favorites'),
-                                  duration: const Duration(seconds: 1),
+                    : (() {
+                        final sortedFavorites = [...favoritesController.favorites];
+                        if (_sortType == 'low') {
+                          sortedFavorites.sort((a, b) => a.price.compareTo(b.price));
+                        } else if (_sortType == 'high') {
+                          sortedFavorites.sort((a, b) => b.price.compareTo(a.price));
+                        }
+                        return ListView.builder(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: sortedFavorites.length,
+                          itemBuilder: (context, index) {
+                            final farmhouse = sortedFavorites[index];
+                            return Dismissible(
+                              key: Key(farmhouse.id.toString()),
+                              direction: DismissDirection.endToStart,
+                              background: Container(
+                                alignment: Alignment.centerRight,
+                                padding: const EdgeInsets.symmetric(horizontal: 20),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.shade400,
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
-                              );
-                            },
-                          );
-                        },
-                      ),
+                                child: const Icon(
+                                  Icons.delete,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              onDismissed: (direction) {
+                                final removedItem = farmhouse;
+                                final removedIndex = index;
+
+                                favoritesController.removeFavorite(farmhouse.id);
+
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('${farmhouse.name} removed'),
+                                    duration: const Duration(seconds: 3),
+                                    action: SnackBarAction(
+                                      label: 'UNDO',
+                                      textColor: Colors.white,
+                                      onPressed: () {
+                                        favoritesController.favorites.insert(removedIndex, removedItem);
+                                      },
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: FavoriteCard(
+                                farmhouse: farmhouse,
+                                onRemove: () {
+                                  favoritesController.removeFavorite(farmhouse.id);
+                                },
+                              ),
+                            );
+                          },
+                        );
+                      })(),
               ),
             ],
           );
@@ -261,6 +285,26 @@ class FavoriteCard extends StatelessWidget {
                   height: 180,
                   width: double.infinity,
                   fit: BoxFit.cover,
+                ),
+                // Property Type Badge
+                Positioned(
+                  top: 8,
+                  left: 8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.6),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child:Text(
+                        'Farmhouse', // default type
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                  ),
                 ),
                 // Remove button
                 Positioned(
@@ -329,6 +373,27 @@ class FavoriteCard extends StatelessWidget {
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 6),
+                  // Rating row
+                  Row(
+                    children: [
+                      const Icon(Icons.star, color: Colors.amber, size: 16),
+                      const SizedBox(width: 4),
+                      Text(
+                        farmhouse.rating?.toStringAsFixed(1) ?? '4.5',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        '(${farmhouse.reviewCount ?? 0} reviews)',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 6),
                   // Location
