@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class TermsPolicyScreen extends StatefulWidget {
   const TermsPolicyScreen({super.key});
@@ -9,6 +11,8 @@ class TermsPolicyScreen extends StatefulWidget {
 
 class _TermsPolicyScreenState extends State<TermsPolicyScreen>
     with SingleTickerProviderStateMixin {
+  bool _accepted = false;
+
   late TabController _tabController;
 
   @override
@@ -29,22 +33,59 @@ class _TermsPolicyScreenState extends State<TermsPolicyScreen>
     final onSurface = Theme.of(context).colorScheme.onSurface;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Terms & Policies'),
-        elevation: 0,
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: colorScheme.primary,
-          indicatorWeight: 3,
-          labelColor: colorScheme.primary,
-          unselectedLabelColor: onSurface.withOpacity(0.6),
-          labelStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-          unselectedLabelStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-          tabs: const [
-            Tab(text: 'Terms'),
-            Tab(text: 'Privacy'),
-            Tab(text: 'Refund'),
-          ],
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(120),
+        child: Container(
+          decoration: const BoxDecoration(
+            color: Color.fromARGB(255, 41, 70, 92),
+            borderRadius: BorderRadius.only(
+              bottomLeft: Radius.circular(18),
+              bottomRight: Radius.circular(18),
+            ),
+          ),
+          child: SafeArea(
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: IconButton(
+                          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 24),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ),
+                      const Text(
+                        'Terms & Policies',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 23,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                TabBar(
+                  controller: _tabController,
+                  indicatorColor: Colors.transparent,
+                  dividerColor: Colors.transparent,
+                  labelColor: Colors.white,
+                  unselectedLabelColor: Colors.white70,
+                  labelStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                  unselectedLabelStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                  tabs: const [
+                    Tab(text: 'Terms'),
+                    Tab(text: 'Privacy'),
+                    Tab(text: 'Refund'),
+                  ],
+                ),
+              ],
+            ),
+          ),
         ),
       ),
       body: TabBarView(
@@ -65,25 +106,24 @@ class _TermsPolicyScreenState extends State<TermsPolicyScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 20),
-          _buildSectionTitle('Terms of Service'),
+          _buildSectionTitle('Acceptance of Terms'),
           _buildSectionContent(
-            'By using Skybase, you agree to comply with these terms and conditions. '
-            'You must be at least 18 years old to book properties on our platform. '
-            'All bookings are subject to property availability and host approval.',
+            'By accessing or using SkyBase, you agree to be bound by these Terms and Conditions. This agreement applies to both Users (Guests) and Property Owners. If you do not agree with any part of these terms, you must discontinue use of the platform immediately.',
           ),
           const SizedBox(height: 24),
-          _buildSectionTitle('User Responsibilities'),
+          _buildSectionTitle('User & Owner Responsibilities'),
           _buildSectionContent(
-            'Users are responsible for providing accurate information during booking. '
-            'Guests must follow house rules and respect property facilities. '
-            'Unauthorized parties or commercial activities are strictly prohibited.',
+            'Users must provide accurate personal and booking information. Property Owners must provide truthful property descriptions, pricing, and availability details. Fake listings, misleading information, or fraudulent activity are strictly prohibited. SkyBase reserves the right to suspend or terminate accounts that violate platform policies.',
           ),
           const SizedBox(height: 24),
-          _buildSectionTitle('Payment Terms'),
+          _buildSectionTitle('Bookings & Platform Role'),
           _buildSectionContent(
-            'Payment must be completed before check-in. We accept various payment methods. '
-            'All transactions are final unless cancellation policy applies. '
-            'Skybase is not responsible for third-party payment failures.',
+            'SkyBase acts solely as a digital platform connecting Users and Property Owners. We do not own, manage, or control listed properties. All bookings are subject to availability and owner approval where applicable. SkyBase is not responsible for property condition, disputes between parties, or third-party service failures.',
+          ),
+          const SizedBox(height: 24),
+          _buildSectionTitle('Account Suspension & Termination'),
+          _buildSectionContent(
+            'SkyBase may suspend or permanently terminate accounts involved in fraud, abuse, policy violations, payment manipulation, or illegal activities. Repeated cancellations or misuse of platform features may also result in account restrictions.',
           ),
           const SizedBox(height: 36),
         ],
@@ -98,25 +138,24 @@ class _TermsPolicyScreenState extends State<TermsPolicyScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 20),
-          _buildSectionTitle('Privacy Policy'),
+          _buildSectionTitle('Information We Collect'),
           _buildSectionContent(
-            'We collect personal information necessary for booking and communication. '
-            'Your data is encrypted and stored securely on our servers. '
-            'We do not share your information with third parties without consent.',
+            'We collect information such as name, email address, phone number, booking details, property information, chat messages, and device data. Firebase services are used for authentication, database storage, and notifications.',
           ),
           const SizedBox(height: 24),
-          _buildSectionTitle('Data Collection'),
+          _buildSectionTitle('How We Use Your Data'),
           _buildSectionContent(
-            'We collect name, email, phone, and payment details. '
-            'Usage analytics help us improve our platform. '
-            'You can request data deletion at any time.',
+            'Your information is used to process bookings, manage listings, enable communication between Users and Owners, send notifications, and improve platform functionality. We do not sell personal data to third parties.',
           ),
           const SizedBox(height: 24),
-          _buildSectionTitle('Cookies & Tracking'),
+          _buildSectionTitle('Data Security & Retention'),
           _buildSectionContent(
-            'We use cookies to enhance user experience and provide personalized content. '
-            'You can disable cookies in your browser settings. '
-            'Third-party analytics may be used to understand platform usage.',
+            'All data is securely stored using trusted cloud infrastructure. We implement reasonable technical safeguards to protect user information. Users may request account deletion, and associated personal data will be removed in accordance with applicable policies.',
+          ),
+          const SizedBox(height: 24),
+          _buildSectionTitle('Notifications & Tracking'),
+          _buildSectionContent(
+            'SkyBase may use push notifications to inform users about bookings, messages, or updates. Basic analytics may be used to enhance user experience and app performance.',
           ),
           const SizedBox(height: 36),
         ],
@@ -131,26 +170,19 @@ class _TermsPolicyScreenState extends State<TermsPolicyScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 20),
-          _buildSectionTitle('Refund Policy'),
+          _buildSectionTitle('Cancellation & Refund Policy'),
           _buildSectionContent(
-            'Refunds are processed based on cancellation timing and property policies. '
-            'Cancellations 7+ days before check-in are fully refundable. '
-            'Late cancellations may incur charges as per property policy.',
+            'Refund eligibility depends on the cancellation timing and the specific property’s policy. Users are encouraged to review cancellation terms before confirming a booking.',
           ),
           const SizedBox(height: 24),
-          _buildSectionTitle('Refund Timeline'),
+          _buildSectionTitle('Standard Refund Timeline'),
           _buildSectionContent(
-            '7+ days before check-in: 100% refund\n'
-            '3-7 days before check-in: 50% refund\n'
-             'Less than 3 days: No refund (non-refundable booking)\n'
-            'Refunds are processed within 5-7 business days.',
+            '7 or more days before check-in: 90% refund.\n3 to 6 days before check-in: 80% refund.\nLess than 3 days before check-in: 70% refund .\nRefunds are processed within 5–7 business days depending on payment provider timelines.',
           ),
           const SizedBox(height: 24),
-          _buildSectionTitle('Issue Resolution'),
+          _buildSectionTitle('Dispute Resolution'),
           _buildSectionContent(
-            'Contact support within 24 hours of check-in for any issues. '
-            'We will investigate and provide appropriate compensation if applicable. '
-            'All disputes will be resolved fairly based on evidence.',
+            'In case of booking disputes, users must contact support within 24 hours of check-in. SkyBase will review available evidence and facilitate a fair resolution between both parties. Final decisions are made at SkyBase’s discretion.',
           ),
           const SizedBox(height: 36),
         ],

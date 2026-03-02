@@ -45,13 +45,8 @@ dependencies:
   geocoding: ^4.0.0
 
   # image picker
-<<<<<<< Updated upstream
   image_picker: ^1.2.1
-  
-=======
-  image_picker: ^1.0.7
   font_awesome_flutter: ^10.7.0
->>>>>>> Stashed changes
   # Charts
   fl_chart: ^0.69.0
   
