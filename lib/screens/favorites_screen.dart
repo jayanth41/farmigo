@@ -6,8 +6,6 @@ import '../controllers/favorites_controller.dart';
 import 'property_details_screen.dart';
 import '../widgets/image_with_fallback.dart';
 import '../navigation/app_routes.dart';
-import 'all_properties_screen.dart';
-import '../data/farmhouses_data.dart';
 
 class FavoritesScreen extends StatefulWidget {
   const FavoritesScreen({super.key});

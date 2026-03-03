@@ -11,7 +11,7 @@ class TermsPolicyScreen extends StatefulWidget {
 
 class _TermsPolicyScreenState extends State<TermsPolicyScreen>
     with SingleTickerProviderStateMixin {
-  bool _accepted = false;
+  final bool _accepted = false;
 
   late TabController _tabController;
 

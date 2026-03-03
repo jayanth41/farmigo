@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import '../models/property_model.dart';
+import '../data/farmhouses_data.dart';
 
 class PropertyService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -17,6 +18,49 @@ class PropertyService {
         return PropertyModel.fromJson({...data, 'id': doc.id});
       } else {
         debugPrint('   ❌ Document does not exist with ID: $propertyId');
+        // Fallback: check local farmhouses data (useful for demo/local seeded data)
+        try {
+          final local = farmhousesData.firstWhere(
+            (f) => (f['id']?.toString() ?? '') == propertyId,
+            orElse: () => {},
+          );
+          if (local.isNotEmpty) {
+            debugPrint('   ℹ️ Found local farmhouse data for id=$propertyId, mapping to PropertyModel');
+            // Map local farmhouse fields to PropertyModel shape
+            final mapped = <String, dynamic>{
+              'id': local['id'] ?? propertyId,
+              'userId': local['ownerId'] ?? '',
+              'name': local['name'] ?? '',
+              'description': local['description'] ?? local['name'] ?? '',
+              'category': local['category'] ?? 'Farmhouses',
+              'city': (local['location'] as String?)?.split(',').first.trim() ?? '',
+              'state': local['state'] ?? '',
+              'latitude': local['latitude'] ?? 0.0,
+              'longitude': local['longitude'] ?? 0.0,
+              'pricePerNight': (local['price'] ?? 0).toDouble(),
+              'bedrooms': local['bedrooms'] ?? 0,
+              'bathrooms': local['bathrooms'] ?? 0,
+              'maxGuests': local['maxGuests'] ?? 0,
+              'minStay': local['minStay'] ?? 1,
+              'imageUrls': local['images'] ?? [local['imageUrl'] ?? ''],
+              'highlights': local['highlights'] ?? [],
+              'amenities': local['amenities'] ?? [],
+              'policies': local['policies'] ?? {},
+              'timings': local['timings'] ?? {},
+              'nearbyAttractions': local['nearbyAttractions'] ?? [],
+              'averageRating': local['rating'] ?? 0.0,
+              'reviewCount': local['reviews'] ?? 0,
+              'instantBooking': local['instantBooking'] ?? false,
+              'isActive': local['isActive'] ?? true,
+              'createdAt': local['createdAt'] ?? DateTime.now().toIso8601String(),
+              'ownerDetails': local['ownerDetails'],
+            };
+
+            return PropertyModel.fromJson(mapped);
+          }
+        } catch (e) {
+          debugPrint('   ❌ Error checking local farmhouses data: $e');
+        }
       }
       return null;
     } catch (e) {
