@@ -134,33 +134,9 @@ class PropertyService {
   }
 
   /// Get similar properties (same category and city)
-  Future<List<PropertyModel>> getSimilarProperties({
-    required String category,
-    required String city,
-    required String currentPropertyId,
-    int limit = 5,
-  }) async {
-    try {
-      final querySnapshot = await _firestore
-          .collection('properties')
-          .where('category', isEqualTo: category)
-          .where('city', isEqualTo: city)
-          .where('isActive', isEqualTo: true)
-          .limit(limit + 1)
-          .get();
-      
-      final properties = querySnapshot.docs
-          .map((doc) => PropertyModel.fromJson({...doc.data(), 'id': doc.id}))
-          .where((p) => p.id != currentPropertyId)
-          .take(limit)
-          .toList();
-      
-      return properties;
-    } catch (e) {
-      debugPrint('Error fetching similar properties: $e');
-      return [];
-    }
-  }
+  // getSimilarProperties removed — similar properties are no longer provided
+  // by the service. If needed in future, reintroduce a well-defined query
+  // that considers category, city and excludes the current property.
 
   /// Update property with new data
   Future<bool> updateProperty(String propertyId, Map<String, dynamic> data) async {

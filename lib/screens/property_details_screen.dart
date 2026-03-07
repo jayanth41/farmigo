@@ -237,8 +237,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                   _buildReviewsSection(),
                   const SizedBox(height: 24),
 
-                  // 15. Similar Properties
-                  _buildSimilarPropertiesSection(),
+                  // Similar properties removed
                   const SizedBox(height: 32),
                 ],
               ),
@@ -1279,124 +1278,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
     }
   }
 
-  Widget _buildSimilarPropertiesSection() {
-    return FutureBuilder(
-      future: _propertyService.getSimilarProperties(
-        category: property.category,
-        city: property.city,
-        currentPropertyId: widget.propertyId,
-      ),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return const SizedBox.shrink();
-        }
-
-        final similarProperties = snapshot.data!;
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Similar Properties',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              height: 220,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: similarProperties.length,
-                itemBuilder: (context, index) {
-                  final prop = similarProperties[index];
-                  return Container(
-                    width: 180,
-                    margin: const EdgeInsets.only(right: 12),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey.shade300),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: GestureDetector(
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => PropertyDetailsScreen(
-                              propertyId: prop.id,
-                              currentUserId: widget.currentUserId,
-                            ),
-                          ),
-                        );
-                      },
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Container(
-                              color: Colors.grey.shade200,
-                              child: prop.imageUrls.isNotEmpty
-                                  ? Image.network(
-                                      prop.imageUrls.first,
-                                      fit: BoxFit.cover,
-                                    )
-                                  : const Icon(Icons.image),
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  prop.name,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      '₹${prop.pricePerNight.toStringAsFixed(0)}',
-                                      style: const TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.green,
-                                      ),
-                                    ),
-                                    Row(
-                                      children: [
-                                        const Icon(Icons.star,
-                                            size: 12, color: Colors.amber),
-                                        Text(
-                                          prop.averageRating
-                                              .toStringAsFixed(1),
-                                          style: const TextStyle(fontSize: 10),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
+  // Similar properties feature removed.
 
   Widget _buildFixedBottomBar() {
     return Container(

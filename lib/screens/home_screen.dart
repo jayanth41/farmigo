@@ -194,7 +194,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       debugPrint('Firestore properties snapshot received: ${snapshot.docs.length} docs');
       // Map and normalize, then filter active documents.
       final mapped = snapshot.docs.map((d) {
-        final raw = d.data() as Map<String, dynamic>;
+        final raw = d.data();
         final Map<String, dynamic> m = Map<String, dynamic>.from(raw);
         // Ensure canonical keys expected by the UI
         m['id'] = d.id;
@@ -265,7 +265,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       // Log first few properties for debug
       for (var i = 0; i < (data.length < 5 ? data.length : 5); i++) {
         try {
-          debugPrint('Property[${i}] name=${data[i]['propertyName']} city=${data[i]['city']} image=${(data[i]['photoUrls'] is List && data[i]['photoUrls'].isNotEmpty) ? data[i]['photoUrls'][0] : data[i]['imageUrl']} price=${data[i]['pricePerNight']}');
+          debugPrint('Property[$i] name=${data[i]['propertyName']} city=${data[i]['city']} image=${(data[i]['photoUrls'] is List && data[i]['photoUrls'].isNotEmpty) ? data[i]['photoUrls'][0] : data[i]['imageUrl']} price=${data[i]['pricePerNight']}');
         } catch (_) {}
       }
 
@@ -1208,7 +1208,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                           _applyFilters();
                         },
                       );
-                    }).toList(),
+                    }),
 
                     const SizedBox(height: 8),
 
