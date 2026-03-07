@@ -150,12 +150,34 @@ class _LocationSelectorScreenState extends State<LocationSelectorScreen> with Si
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
-                  children: popularCities.map((c) {
-                    return ActionChip(
-                      label: Text(c),
-                      onPressed: () => _selectCity(c),
-                    );
-                  }).toList(),
+                  children: [
+                    // 'All cities' chip - selecting it clears city filter (default)
+                    ActionChip(
+                      label: const Text('All cities'),
+                      backgroundColor: locCtrl.selectedCity.value.trim().isEmpty
+                          ? theme.colorScheme.primary.withOpacity(0.12)
+                          : null,
+                      labelStyle: TextStyle(
+                        color: locCtrl.selectedCity.value.trim().isEmpty
+                            ? theme.colorScheme.primary
+                            : null,
+                      ),
+                      onPressed: () {
+                        // Clear selected city to represent 'all cities'
+                        locCtrl.setLocation(city: '', state: locCtrl.selectedState.value);
+                        Navigator.of(context).pop();
+                      },
+                    ),
+                    ...popularCities.map((c) {
+                      final isSelected = locCtrl.selectedCity.value.toLowerCase().trim() == c.toLowerCase();
+                      return ActionChip(
+                        label: Text(c),
+                        backgroundColor: isSelected ? theme.colorScheme.primary.withOpacity(0.12) : null,
+                        labelStyle: TextStyle(color: isSelected ? theme.colorScheme.primary : null),
+                        onPressed: () => _selectCity(c),
+                      );
+                    }).toList(),
+                  ],
                 ),
                 const SizedBox(height: 16),
                 Text('All cities', style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
@@ -163,12 +185,30 @@ class _LocationSelectorScreenState extends State<LocationSelectorScreen> with Si
                 ListView.builder(
                   physics: const NeverScrollableScrollPhysics(),
                   shrinkWrap: true,
-                  itemCount: allCities.where((c) => c.toLowerCase().contains(_search.text.toLowerCase())).length,
+                  itemCount: allCities.where((c) => c.toLowerCase().contains(_search.text.toLowerCase())).length + 1,
                   itemBuilder: (context, idx) {
+                    // First item represents 'All cities' to make it the default selectable option
                     final filtered = allCities.where((c) => c.toLowerCase().contains(_search.text.toLowerCase())).toList();
-                    final city = filtered[idx];
+                    if (idx == 0) {
+                      final isSelected = locCtrl.selectedCity.value.trim().isEmpty;
+                      return ListTile(
+                        title: const Text('All cities'),
+                        selected: isSelected,
+                        selectedTileColor: theme.colorScheme.primary.withOpacity(0.08),
+                        selectedColor: theme.colorScheme.primary,
+                        onTap: () {
+                          locCtrl.setLocation(city: '', state: locCtrl.selectedState.value);
+                          Navigator.of(context).pop();
+                        },
+                      );
+                    }
+                    final city = filtered[idx - 1];
+                    final isSelected = locCtrl.selectedCity.value.toLowerCase().trim() == city.toLowerCase();
                     return ListTile(
                       title: Text(city),
+                      selected: isSelected,
+                      selectedTileColor: theme.colorScheme.primary.withOpacity(0.08),
+                      selectedColor: theme.colorScheme.primary,
                       onTap: () => _selectCity(city),
                     );
                   },

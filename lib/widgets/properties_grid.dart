@@ -14,39 +14,33 @@ class PropertiesGrid extends StatelessWidget {
     if (properties.isEmpty) {
       return _buildEmptyState(context, category);
     }
-    // Filter out entries with missing or clearly invalid image URLs so the
-    // UI doesn't attempt to render cards that will throw decoding errors.
-    final valid = properties.where((farmhouse) {
-      try {
-        final imageUrl = (farmhouse['imageUrl'] ?? farmhouse['image'] ?? '').toString().trim();
-        if (imageUrl.isEmpty) return false;
-        final lower = imageUrl.toLowerCase();
-        // Allow http(s), data URIs and asset references
-        if (lower.startsWith('http://') || lower.startsWith('https://') || lower.startsWith('data:') || lower.startsWith('assets/')) return true;
-        return false;
-      } catch (e) {
-        debugPrint('PropertiesGrid: skipping item due to invalid image field: $e');
-        return false;
-      }
-    }).toList();
+    // Do not exclude items just because they lack an image field.
+    // Image rendering is handled by ImageWithFallback which shows a
+    // placeholder when the URL is empty or fails to load. Keep the
+    // original ordering and build a card for each provided property.
+    final items = properties;
 
-    if (valid.isEmpty) {
+    if (items.isEmpty) {
       return _buildEmptyState(context, category);
     }
 
     return Column(
-      children: valid.map((farmhouse) {
+      children: items.map((farmhouse) {
         // Defensive conversions: data coming from maps may omit keys or be null.
-        final idStr = (farmhouse['id'] != null) ? farmhouse['id'].toString() : (farmhouse['name']?.toString() ?? '');
-        final nameStr = (farmhouse['name']?.toString() ?? 'Untitled');
-        final locationStr = (farmhouse['location']?.toString() ?? 'Unknown location');
-        final categoryStr = (farmhouse['category']?.toString() ?? 'Farmhouses');
-        final priceVal = (farmhouse['price'] is int)
-            ? (farmhouse['price'] as int).toDouble()
-            : (farmhouse['price'] as double? ?? 0.0);
+    final idStr = (farmhouse['id'] != null) ? farmhouse['id'].toString() : (farmhouse['propertyName']?.toString() ?? '');
+    final nameStr = (farmhouse['propertyName']?.toString() ?? farmhouse['name']?.toString() ?? 'Untitled');
+    final locationStr = (farmhouse['city']?.toString() ?? farmhouse['location']?.toString() ?? 'Unknown location');
+    final categoryStr = (farmhouse['category']?.toString() ?? 'Farmhouses');
+    final priceVal = (farmhouse['pricePerNight'] is num)
+      ? (farmhouse['pricePerNight'] as num).toDouble()
+      : (farmhouse['pricePerNight'] as double? ?? 0.0);
         final distanceStr = farmhouse['distance']?.toString() ?? '';
-  final imageUrlStr = (farmhouse['imageUrl'] ?? farmhouse['image'] ?? '').toString();
-        final imagesList = (farmhouse['images'] as List?)?.map((e) => e.toString()).toList() ?? <String>[];
+  // Prefer photoUrls list first, then imageUrl/image fields. If none exist
+  // ImageWithFallback will render a placeholder.
+  final imagesList = (farmhouse['photoUrls'] as List?)?.map((e) => e.toString()).toList() ?? <String>[];
+  final imageUrlStr = (imagesList.isNotEmpty)
+      ? imagesList.first
+      : (farmhouse['imageUrl'] ?? farmhouse['image'] ?? '').toString();
         final ratingVal = (farmhouse['rating'] is int)
             ? (farmhouse['rating'] as int).toDouble()
             : (farmhouse['rating'] as double? ?? 0.0);

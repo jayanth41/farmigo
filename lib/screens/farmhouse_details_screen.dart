@@ -333,6 +333,7 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
           }
 
           return {
+            'id': farm['id'] ?? '',
             'name': farm['name'] ?? 'Unknown',
             'location': farm['location'] ?? 'Unknown',
             'image': farm['imageUrl'] ?? '',
@@ -549,6 +550,34 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                     ],
                   ),
                   const SizedBox(height: 20),
+                  ElevatedButton(
+                    onPressed: () {
+                      final propId = widget.id?.toString();
+                      if (propId == null || propId.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Full property details not available')),
+                        );
+                        return;
+                      }
+
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => PropertyDetailsScreen(
+                            propertyId: propId,
+                            currentUserId: FirebaseAuth.instance.currentUser?.uid,
+                          ),
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    child: const Text('View full property details'),
+                  ),
+                  const SizedBox(height: 12),
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -1042,11 +1071,21 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                             final farmhouse = similarFarmhouses[index];
                             return GestureDetector(
                               onTap: () {
+                                final propId = farmhouse['id']?.toString();
+                                if (propId == null || propId.isEmpty) {
+                                  // If no numeric/string id is present, avoid pushing PropertyDetailsScreen
+                                  // because it expects a valid propertyId that maps to Firestore or local seed data.
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Property details not available')),
+                                  );
+                                  return;
+                                }
+
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
                                     builder: (_) => PropertyDetailsScreen(
-                                      propertyId: farmhouse['id'] ?? farmhouse['name'],
+                                      propertyId: propId,
                                       currentUserId: FirebaseAuth.instance.currentUser?.uid,
                                     ),
                                   ),

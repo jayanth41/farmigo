@@ -99,14 +99,16 @@ class LocationController extends GetxController {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (_) => ListView(
-        children: states.map((state) {
+        children: states.map((s) {
+          final isSelected = s == selectedState.value;
           return ListTile(
-            title: Text(state),
-            trailing: state == selectedState.value
-                ? const Icon(Icons.check, color: Colors.green)
-                : null,
+            title: Text(s),
+            selected: isSelected,
+            selectedTileColor: Colors.blue.withOpacity(0.08),
+            selectedColor: Colors.blue,
+            trailing: isSelected ? const Icon(Icons.check, color: Colors.blue) : null,
             onTap: () {
-              selectedState.value = state;
+              selectedState.value = s;
               Navigator.pop(context);
             },
           );

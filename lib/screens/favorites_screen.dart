@@ -5,6 +5,7 @@ import '../controllers/favorites_controller.dart';
 // theme colors used via Theme.of(context)
 import 'property_details_screen.dart';
 import '../widgets/image_with_fallback.dart';
+import 'explore_screen.dart';
 import '../navigation/app_routes.dart';
 
 class FavoritesScreen extends StatefulWidget {
@@ -109,7 +110,10 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                   const SizedBox(height: 24),
                   ElevatedButton.icon(
                     onPressed: () {
-                      Get.offAllNamed(AppRoutes.home);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const ExploreScreen()),
+                      );
                     },
                     icon: const Icon(Icons.explore),
                     label: const Text('Explore'),

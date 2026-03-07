@@ -27,7 +27,16 @@ class PropertyService {
           if (local.isNotEmpty) {
             debugPrint('   ℹ️ Found local farmhouse data for id=$propertyId, mapping to PropertyModel');
             // Map local farmhouse fields to PropertyModel shape
-            final mapped = <String, dynamic>{
+      // Ensure we have at least one usable image URL to avoid Image.network 404 spam.
+      final rawImages = (local['images'] as List<dynamic>?)
+          ?.map((e) => e?.toString() ?? '')
+          .toList() ??
+        [(local['imageUrl']?.toString() ?? '')];
+      final cleanedImages = rawImages.map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+      const String placeholderImage = 'https://via.placeholder.com/800x600.png?text=No+Image';
+      final imageUrlsFinal = cleanedImages.isNotEmpty ? cleanedImages : [placeholderImage];
+
+      final mapped = <String, dynamic>{
               'id': local['id'] ?? propertyId,
               'userId': local['ownerId'] ?? '',
               'name': local['name'] ?? '',
@@ -37,12 +46,14 @@ class PropertyService {
               'state': local['state'] ?? '',
               'latitude': local['latitude'] ?? 0.0,
               'longitude': local['longitude'] ?? 0.0,
-              'pricePerNight': (local['price'] ?? 0).toDouble(),
+        'pricePerNight': (local['price'] ?? 0) is String
+          ? double.tryParse(local['price']) ?? 0.0
+          : (local['price'] ?? 0).toDouble(),
               'bedrooms': local['bedrooms'] ?? 0,
               'bathrooms': local['bathrooms'] ?? 0,
               'maxGuests': local['maxGuests'] ?? 0,
               'minStay': local['minStay'] ?? 1,
-              'imageUrls': local['images'] ?? [local['imageUrl'] ?? ''],
+              'imageUrls': imageUrlsFinal,
               'highlights': local['highlights'] ?? [],
               'amenities': local['amenities'] ?? [],
               'policies': local['policies'] ?? {},

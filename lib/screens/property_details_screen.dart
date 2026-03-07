@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:share_plus/share_plus.dart' as share;
 import 'package:google_maps_flutter/google_maps_flutter.dart' as maps;
 import 'package:intl/intl.dart' as intl;
@@ -152,6 +153,28 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
           children: [
             // 1. Image Gallery
             _buildImageGallery(),
+
+            // Debug banner to confirm loaded property data (only in debug mode)
+            if (kDebugMode)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                child: Card(
+                  color: Colors.blue.shade50,
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Debug: propertyId = ${widget.propertyId}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 4),
+                        Text('Loaded name: ${property.name}', style: const TextStyle(fontSize: 12)),
+                        const SizedBox(height: 2),
+                        Text('Images: ${property.imageUrls.length}', style: const TextStyle(fontSize: 12)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             
             Padding(
               padding: const EdgeInsets.all(16.0),

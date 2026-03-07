@@ -6,7 +6,6 @@ import 'package:get/get.dart';
 import '../services/user_service.dart';
 import '../controllers/favorites_controller.dart';
 import '../controllers/location_controller.dart';
-import '../data/farmhouses_data.dart';
 import 'favorites_screen.dart';
 import 'bookings_screen.dart';
 import 'profile_screen.dart';
@@ -53,6 +52,9 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
   late LocationController locationController = Get.put(LocationController());
+  // Subscribe to selected city changes so we can re-apply filters when user
+  // chooses a different city from the LocationSelector.
+  StreamSubscription<String>? _citySubscription;
   int _selectedIndex = 0;
   final TextEditingController _searchController = TextEditingController();
   // Animated placeholder state
@@ -81,7 +83,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   Future<String?>? _locationFuture;
 
   // Location & Category selectors
-  final String _selectedState = 'Telangana';
+  final String _selectedState = 'all';
   final String _selectedCategory = 'All';
 
   // Advanced filter state (shared with filters screen)
@@ -108,8 +110,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   // Filtered list for search results
   List<Map<String, dynamic>> _filteredFarmhouses = [];
 
-  // Reference to farmhouses data (defined in data file)
-  static const List<Map<String, dynamic>> farmhouses = farmhousesData;
+  // Firestore loaded properties
+  List<Map<String, dynamic>> _allProperties = [];
 
   // Notification / animation state
   late final AnimationController _bellController;
@@ -124,7 +126,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   @override
   void initState() {
     super.initState();
-    _filteredFarmhouses = List.from(farmhouses);
+    _listenProperties();
     _searchController.addListener(_onSearchChanged);
 
     // Initialize FavoritesController
@@ -138,6 +140,14 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       Get.put(LocationController());
     }
     locationController = Get.find<LocationController>();
+    // Listen to city changes and re-apply filters so the UI updates
+    // immediately when the user selects a city.
+    try {
+      _citySubscription = locationController.selectedCity.listen((_) {
+        if (!mounted) return;
+        _applyFilters();
+      });
+    } catch (_) {}
 
     // Load user profile from the app's user service (Firestore) if available
     loadProfile();
@@ -170,6 +180,107 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
     _audioPlayer = AudioPlayer();
     _initFCM();
+  }
+
+  /// Listen to Firestore properties collection and keep local caches updated.
+  void _listenProperties() {
+    // Listen to all property documents and filter/normalize client-side.
+    // Some projects use `isActive: true`, others use `status: 'active'` —
+    // to be robust we fetch all and accept either indicator.
+    FirebaseFirestore.instance
+        .collection('properties')
+        .snapshots()
+        .listen((snapshot) {
+      debugPrint('Firestore properties snapshot received: ${snapshot.docs.length} docs');
+      // Map and normalize, then filter active documents.
+      final mapped = snapshot.docs.map((d) {
+        final raw = d.data() as Map<String, dynamic>;
+        final Map<String, dynamic> m = Map<String, dynamic>.from(raw);
+        // Ensure canonical keys expected by the UI
+        m['id'] = d.id;
+        // name normalization
+        if ((m['propertyName'] == null || m['propertyName'].toString().isEmpty) && m['name'] != null) {
+          m['propertyName'] = m['name'];
+        }
+        // city normalization
+        if ((m['city'] == null || m['city'].toString().isEmpty) && m['location'] != null) {
+          m['city'] = m['location'];
+        }
+        // price normalization
+        if (m['pricePerNight'] == null && m['price'] != null) {
+          m['pricePerNight'] = m['price'];
+        }
+        // photoUrls normalization: accept photoUrls (list) or image/imageUrl/images
+        if (m['photoUrls'] == null) {
+          if (m['images'] is List && (m['images'] as List).isNotEmpty) {
+            m['photoUrls'] = List<String>.from((m['images'] as List).map((e) => e.toString()));
+          } else if (m['imageUrl'] != null && m['imageUrl'].toString().isNotEmpty) {
+            m['photoUrls'] = [m['imageUrl'].toString()];
+          } else if (m['image'] != null && m['image'].toString().isNotEmpty) {
+            m['photoUrls'] = [m['image'].toString()];
+          } else {
+            m['photoUrls'] = <String>[];
+          }
+        }
+        // Also set imageUrl to first photo for UI components that expect it
+        try {
+          if ((m['imageUrl'] == null || (m['imageUrl'] as String).isEmpty) && m['photoUrls'] is List && (m['photoUrls'] as List).isNotEmpty) {
+            m['imageUrl'] = (m['photoUrls'] as List).first.toString();
+          }
+        } catch (_) {}
+        // amenities normalization: accept map {WiFi: true} or list ['WiFi']
+        if (m['amenities'] is Map) {
+          try {
+            final map = Map<String, dynamic>.from(m['amenities']);
+            m['amenities'] = map.entries.where((e) => e.value == true).map((e) => e.key).toList();
+          } catch (_) {
+            m['amenities'] = <String>[];
+          }
+        } else if (m['amenities'] is List) {
+          m['amenities'] = List<String>.from((m['amenities'] as List).map((e) => e.toString()));
+        } else {
+          m['amenities'] = <String>[];
+        }
+
+        return m;
+      }).toList();
+
+      // Filter for active properties: prefer isActive boolean, fall back to status string
+      final data = mapped.where((m) {
+        try {
+          if (m.containsKey('isActive')) {
+            return m['isActive'] == true;
+          }
+          if (m.containsKey('status')) {
+            final s = m['status']?.toString().toLowerCase() ?? '';
+            return s == 'active' || s == 'enabled' || s == 'true';
+          }
+          // If neither field exists, assume active to avoid hiding docs unexpectedly.
+          return true;
+        } catch (_) {
+          return false;
+        }
+      }).toList();
+      debugPrint('Properties after isActive/status filter: ${data.length}');
+      // Log first few properties for debug
+      for (var i = 0; i < (data.length < 5 ? data.length : 5); i++) {
+        try {
+          debugPrint('Property[${i}] name=${data[i]['propertyName']} city=${data[i]['city']} image=${(data[i]['photoUrls'] is List && data[i]['photoUrls'].isNotEmpty) ? data[i]['photoUrls'][0] : data[i]['imageUrl']} price=${data[i]['pricePerNight']}');
+        } catch (_) {}
+      }
+
+      if (!mounted) return;
+
+      setState(() {
+        _allProperties = List<Map<String, dynamic>>.from(data);
+        // Initialize filtered list to all properties by default so "Featured"
+        // sections show results when no filters are applied.
+        _filteredFarmhouses = List<Map<String, dynamic>>.from(_allProperties);
+      });
+      debugPrint('Loaded properties: ${_allProperties.length}');
+      _applyFilters();
+      debugPrint('Filtered properties after load: ${_filteredFarmhouses.length}');
+    });
   }
 
   Future<void> _initFCM() async {
@@ -332,6 +443,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     _searchController.dispose();
     try {
       _filtersProvider?.removeListener(_onGlobalFiltersChanged);
+    } catch (_) {}
+    try {
+      _citySubscription?.cancel();
     } catch (_) {}
     _placeholderTimer?.cancel();
     _bottomBorderTimer?.cancel();
@@ -541,20 +655,89 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     );
   }
 
+  // Returns a list of up to 6 search suggestions based on name/location.
+  List<String> _getSearchSuggestions(String query) {
+    if (query.isEmpty) return [];
+
+    final q = query.toLowerCase();
+    final suggestions = <String>{};
+
+    for (final farm in _allProperties) {
+      final name = (farm['propertyName'] as String?)?.toLowerCase() ?? '';
+      final location = (farm['city'] as String?)?.toLowerCase() ?? '';
+
+      if (name.contains(q)) suggestions.add(farm['propertyName']);
+      if (location.contains(q)) suggestions.add(farm['city']);
+
+      if (suggestions.length >= 6) break;
+    }
+
+    return suggestions.toList();
+  }
+
+  Widget _buildHighlightedText(String text, String query) {
+    final lowerText = text.toLowerCase();
+    final lowerQuery = query.toLowerCase();
+    final start = lowerText.indexOf(lowerQuery);
+
+    if (start < 0 || query.isEmpty) return Text(text);
+
+    final end = start + query.length;
+
+    return RichText(
+      text: TextSpan(
+        style: const TextStyle(color: Colors.black, fontSize: 14),
+        children: [
+          TextSpan(text: text.substring(0, start)),
+          TextSpan(
+            text: text.substring(start, end),
+            style: const TextStyle(
+              color: Color.fromARGB(255, 41, 70, 92),
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          TextSpan(text: text.substring(end)),
+        ],
+      ),
+    );
+  }
+
   void _applyFilters() {
     final query = _searchController.text.toLowerCase();
     final selectedState = _selectedState.toLowerCase();
     final selectedCategory = _selectedCategory.toLowerCase();
 
     setState(() {
-      _filteredFarmhouses = farmhouses.where((farm) {
-        final name = (farm['name'] as String).toLowerCase();
-        final location = (farm['location'] as String).toLowerCase();
-        final price = (farm['price'] as double?) ?? 0.0;
-        final distance =
-            double.tryParse((farm['distance'] as String).split(' ').first) ?? 0;
+      _filteredFarmhouses = _allProperties.where((farm) {
+        debugPrint('HomeScreen: total properties loaded = ${_allProperties.length}');
+        final name = (farm['propertyName'] as String?)?.toLowerCase() ?? '';
+        final location = (farm['city'] as String?)?.toLowerCase() ?? '';
+        // Selected city from LocationController
+        String selectedCity = '';
+        try {
+          selectedCity = locationController.selectedCity.value.toLowerCase();
+        } catch (_) {}
+        // If a city is selected, only show properties from that city
+        if (selectedCity.isNotEmpty && !location.contains(selectedCity)) {
+          return false;
+        }
+        final price = (farm['pricePerNight'] is num)
+            ? (farm['pricePerNight'] as num).toDouble()
+            : 0.0;
+        double distance = 0;
+        try {
+          if (farm['distance'] != null) {
+            final raw = farm['distance'].toString();
+            distance = double.tryParse(raw.split(' ').first) ?? 0;
+          }
+        } catch (_) {
+          distance = 0;
+        }
 
-        bool matchesSearch = name.contains(query) || location.contains(query);
+        bool matchesSearch = true;
+        if (query.isNotEmpty) {
+          matchesSearch = name.contains(query) || location.contains(query);
+        }
 
         if (!(price >= _priceRange.start && price <= _priceRange.end)) {
           return false;
@@ -565,14 +748,28 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         final rating = (farm['rating'] is double) ? (farm['rating'] as double) : 0.0;
         if (rating < _minRating) return false;
 
-        final farmAmenities = (farm['amenities'] as List?)?.cast<String>() ?? <String>[];
+        List<String> farmAmenities = [];
+        try {
+          if (farm['amenities'] is Map) {
+            final map = Map<String, dynamic>.from(farm['amenities']);
+            farmAmenities = map.entries
+                .where((e) => e.value == true)
+                .map((e) => e.key)
+                .toList();
+          } else if (farm['amenities'] is List) {
+            farmAmenities = (farm['amenities'] as List).cast<String>();
+          }
+        } catch (_) {
+          farmAmenities = [];
+        }
         for (final entry in _amenities.entries) {
           if (entry.value && !farmAmenities.contains(entry.key)) {
             return false;
           }
         }
 
-        final farmPropertyType = (farm['property_type'] as String?)?.toLowerCase() ?? '';
+        final farmPropertyType =
+            (farm['propertyType'] ?? farm['property_type'] ?? '').toString().toLowerCase();
         bool propertyTypeMatches = true;
         bool anyPropertyTypeSelected = _propertyTypes.values.any((v) => v);
 
@@ -596,21 +793,36 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           return false;
         }
 
+        debugPrint('HomeScreen: property passed filters -> ${farm['propertyName']}');
         return matchesSearch;
       }).toList();
 
       switch (_sortOption) {
         case 'Price: Low to High':
           _filteredFarmhouses.sort((a, b) =>
-              (a['price'] as double).compareTo(b['price'] as double));
+              ((a['pricePerNight'] is num ? (a['pricePerNight'] as num).toDouble() : 0.0))
+                  .compareTo(
+                      (b['pricePerNight'] is num ? (b['pricePerNight'] as num).toDouble() : 0.0)));
           break;
         case 'Price: High to Low':
           _filteredFarmhouses.sort((a, b) =>
-              (b['price'] as double).compareTo(a['price'] as double));
+              ((b['pricePerNight'] is num ? (b['pricePerNight'] as num).toDouble() : 0.0))
+                  .compareTo(
+                      (a['pricePerNight'] is num ? (a['pricePerNight'] as num).toDouble() : 0.0)));
           break;
         case 'Distance':
-          double dist(Map<String, dynamic> f) =>
-              double.tryParse((f['distance'] as String).split(' ').first) ?? 0;
+          double dist(Map<String, dynamic> f) {
+            double distance = 0;
+            try {
+              if (f['distance'] != null) {
+                final raw = f['distance'].toString();
+                distance = double.tryParse(raw.split(' ').first) ?? 0;
+              }
+            } catch (_) {
+              distance = 0;
+            }
+            return distance;
+          }
           _filteredFarmhouses.sort((a, b) => dist(a).compareTo(dist(b)));
           break;
         case 'Rating':
@@ -623,6 +835,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           break;
       }
     });
+    debugPrint('Filtered properties (post _applyFilters): ${_filteredFarmhouses.length}');
   }
 
   @override
@@ -961,402 +1174,469 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         ),
 
         Expanded(
-          child: ListView(
-            padding: const EdgeInsets.only(bottom: 120),
-            children: [
-              const SizedBox(height: 16),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          child: _searchController.text.isNotEmpty
+              ? ListView(
+                  padding: const EdgeInsets.only(bottom: 120),
                   children: [
-                    Text(
-                      'Hello 👋 ${_profile != null && _profile!['name'] != null ? _profile!['name'] : 'Guest'}',
-                      style: Theme.of(context).textTheme.bodyLarge,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Where would you like to go...?',
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        color: const Color.fromARGB(255, 41, 70, 92),
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
+                    const SizedBox(height: 16),
 
-              const SizedBox(height: 8.5),
-              CategoryGrid(
-                selectedCategory: _selectedCategory,
-                onTap: (c) {
-                  final cat = CategoryExt.fromLabel(c);
-
-                  // If Flights tapped → open real flight search screen (force navigation)
-                  if (cat == Category.flights) {
-                    debugPrint('[HomeScreen] Flights tapped → opening FlightSearchScreen');
-                    Get.to(() => const FlightSearchScreen());
-                    return;
-                  }
-
-                  // Otherwise open normal category results
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => CategoryResultsScreen(
-                        category: cat,
-                        allProperties: farmhouses,
-                      ),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 20),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text('Last minute deals', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color:  Color.fromARGB(255, 41, 70, 92))),
-              ),
-              const SizedBox(height: 8),
-              SizedBox(
-                height: 160,
-                child: StreamBuilder(
-                  stream: FirebaseFirestore.instance
-                      .collection('properties')
-                      .where('isLastMinuteDeal', isEqualTo: true)
-                      .where('status', isEqualTo: 'active')
-                      .where('lastMinuteValidTill', isGreaterThan: Timestamp.now())
-                      .orderBy('lastMinuteValidTill')
-                      .orderBy('lastMinuteDiscount', descending: true)
-                      .snapshots(),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-
-                    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                      return const Center(
-                        child: Text(
-                          'No last minute deals available',
-                          style: TextStyle(color: Colors.grey),
-                        ),
-                      );
-                    }
-
-                    final deals = snapshot.data!.docs;
-
-                    return ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      itemCount: deals.length > 6 ? 6 : deals.length,
-                      itemBuilder: (context, index) {
-                        final data = deals[index].data();
-                        final discount = data['lastMinuteDiscount'] ?? 0;
-                        final Timestamp? validTillTs = data['lastMinuteValidTill'];
-
-                        if (validTillTs == null) return const SizedBox.shrink();
-
-                        return StreamBuilder<int>(
-                          stream: Stream.periodic(const Duration(seconds: 30), (x) => x),
-                          builder: (context, _) {
-                            final now = DateTime.now();
-                            final validTill = validTillTs.toDate();
-                            final remaining = validTill.difference(now);
-
-                            if (remaining.isNegative) {
-                              // Auto hide when expired
-                              return const SizedBox.shrink();
-                            }
-
-                            final hours = remaining.inHours;
-                            final minutes = remaining.inMinutes % 60;
-
-                            return Container(
-                              width: 260,
-                              margin: const EdgeInsets.only(right: 12),
-                              child: Card(
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(10.0),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        data['propertyName'] ?? 'Property',
-                                        style: const TextStyle(fontWeight: FontWeight.bold),
-                                      ),
-                                      const SizedBox(height: 6),
-                                      Text(data['location'] ?? ''),
-                                      const SizedBox(height: 6),
-                                      Text(
-                                        'Expires in ${hours}h ${minutes}m',
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          color: Colors.red,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                      const Spacer(),
-                                      Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Builder(builder: (_) {
-                                            final originalPrice = (data['price'] ?? 0) as num;
-                                            final discountVal = (data['lastMinuteDiscount'] ?? 0) as num;
-                                            final discountedPrice = discountVal > 0
-                                                ? (originalPrice - (originalPrice * discountVal / 100)).round()
-                                                : originalPrice;
-
-                                            return Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                if (discountVal > 0)
-                                                  Text(
-                                                    '₹$originalPrice',
-                                                    style: const TextStyle(
-                                                      fontSize: 12,
-                                                      color: Colors.grey,
-                                                      decoration: TextDecoration.lineThrough,
-                                                    ),
-                                                  ),
-                                                Text(
-                                                  '₹$discountedPrice',
-                                                  style: const TextStyle(
-                                                    fontWeight: FontWeight.w700,
-                                                    fontSize: 16,
-                                                  ),
-                                                ),
-                                              ],
-                                            );
-                                          }),
-                                          if (discount > 0)
-                                            Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                              decoration: BoxDecoration(
-                                                color: const Color.fromARGB(255, 41, 70, 92),
-                                                borderRadius: BorderRadius.circular(8),
-                                              ),
-                                              child: Text(
-                                                '$discount% OFF',
-                                                style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                              ),
-                                            ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            );
-                          },
-                        );
-                      },
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(height: 16),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text('Recommended', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color.fromARGB(255, 41, 70, 92))),
-              ),
-              const SizedBox(height: 8),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                child: Row(
-                  children: [
-                    const Expanded(
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Text(
-                        "Featured Properties",
-                        style: TextStyle(
+                        'Search results',
+                        style: const TextStyle(
                           fontSize: 18,
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w600,
+                          color: Color.fromARGB(255, 41, 70, 92),
                         ),
                       ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.filter_alt, size: 20, color: Color.fromARGB(255, 41, 70, 92)),
-                      onPressed: () {
-                        final cat = () {
-                          final s = _selectedCategory.toLowerCase();
-                          if (s.contains('farm')) return Category.farmhouse;
-                          if (s.contains('villa')) return Category.villa;
-                          if (s.contains('hotel')) return Category.hotel;
-                          if (s.contains('flight') || s.contains('flights')) return Category.flights;
-                          if (s.contains('car')) return Category.car;
-                          if (s.contains('hour')) return Category.hourly;
-                          return Category.all;
-                        }();
 
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => FiltersScreen(
-                              category: cat,
-                              onFiltersApplied: (filters) {
-                                setState(() {
-                                  _priceRange = filters['priceRange'] ?? _priceRange;
-                                  _maxDistance = filters['maxDistance'] ?? _maxDistance;
-                                  _luxuryOnly = filters['luxuryOnly'] ?? _luxuryOnly;
-                                  _minRating = filters['minRating'] ?? _minRating;
-                                  // Accept both old and new key names for amenities/property types
-                                  final Map<String, dynamic> amenitiesFromCallback = Map<String, dynamic>.from(
-                                      (filters['amenities'] ?? filters['houseAmenities'] ?? filters['house_amenities'] ?? <String, dynamic>{}) as Map);
-                                  final Map<String, dynamic> propertyTypesFromCallback = Map<String, dynamic>.from(
-                                      (filters['propertyTypes'] ?? filters['property_types'] ?? <String, dynamic>{}) as Map);
+                    const SizedBox(height: 10),
 
-                                  try {
-                                    _amenities.addAll(Map<String, bool>.from(amenitiesFromCallback));
-                                  } catch (_) {}
-                                  try {
-                                    _propertyTypes.addAll(Map<String, bool>.from(propertyTypesFromCallback));
-                                  } catch (_) {}
+                    ..._getSearchSuggestions(_searchController.text).map((s) {
+                      final query = _searchController.text;
+                      final titleWidget = _buildHighlightedText(s, query);
+                      return ListTile(
+                        leading: const Icon(Icons.search),
+                        title: titleWidget,
+                        onTap: () {
+                          _searchController.text = s;
+                          _searchController.selection = TextSelection.fromPosition(
+                            TextPosition(offset: s.length),
+                          );
+                          _applyFilters();
+                        },
+                      );
+                    }).toList(),
 
-                                  _sortOption = filters['sortOption'] ?? _sortOption;
-                                });
-                                _applyFilters();
-                              },
-                              initialFilters: {
-                                'priceRange': _priceRange,
-                                'maxDistance': _maxDistance,
-                                'luxuryOnly': _luxuryOnly,
-                                'minRating': _minRating,
-                                'amenities': _amenities,
-                                'propertyTypes': _propertyTypes,
-                                'sortOption': _sortOption,
-                              },
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => AllPropertiesScreen(
-                              properties: _filteredFarmhouses,
-                            ),
-                          ),
-                        );
-                      },
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
+                    const SizedBox(height: 8),
+
+                    PropertiesGrid(properties: _filteredFarmhouses),
+                  ],
+                )
+              : ListView(
+                  padding: const EdgeInsets.only(bottom: 120),
+                  children: [
+                    const SizedBox(height: 16),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('View all'),
-                          SizedBox(width: 4),
-                          Icon(Icons.arrow_forward_ios, size: 14),
+                          Text(
+                            'Hello 👋 ${_profile != null && _profile!['name'] != null ? _profile!['name'] : 'Guest'}',
+                            style: Theme.of(context).textTheme.bodyLarge,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Where would you like to go...?',
+                            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                              color: const Color.fromARGB(255, 41, 70, 92),
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                         ],
                       ),
-                    )
-                  ],
-                ),
-              ),
-              PropertiesGrid(properties: _filteredFarmhouses),
+                    ),
+                    const SizedBox(height: 16),
 
-              const SizedBox(height: 12),
-              // Additional horizontal property cards to appear below Recommended
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text('Explore more properties', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color:  Color.fromARGB(255, 41, 70, 92))),
-              ),
-              const SizedBox(height: 8),
-              SizedBox(
-                height: 200,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  itemCount: _filteredFarmhouses.isNotEmpty ? (_filteredFarmhouses.length > 6 ? 6 : _filteredFarmhouses.length) : 0,
-                  itemBuilder: (context, index) {
-                    final item = _filteredFarmhouses[index];
-                    return Container(
-                      width: 260,
-                      margin: const EdgeInsets.only(right: 12),
-                      child: Card(
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              height: 110,
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                color: Colors.grey.shade300,
-                                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                                image: item['image'] != null ? DecorationImage(image: NetworkImage(item['image']), fit: BoxFit.cover) : null,
+                    const SizedBox(height: 8.5),
+                    CategoryGrid(
+                      selectedCategory: _selectedCategory,
+                      onTap: (c) {
+                        final cat = CategoryExt.fromLabel(c);
+
+                        // If Flights tapped → open real flight search screen (force navigation)
+                        if (cat == Category.flights) {
+                          debugPrint('[HomeScreen] Flights tapped → opening FlightSearchScreen');
+                          Get.to(() => const FlightSearchScreen());
+                          return;
+                        }
+
+                        // Otherwise open normal category results
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => CategoryResultsScreen(
+                              category: cat,
+                              allProperties: _allProperties,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 20),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text('Last minute deals', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color:  Color.fromARGB(255, 41, 70, 92))),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 160,
+                      child: StreamBuilder(
+                        // Build the query dynamically so we can apply the selected
+                        // city filter when the user has chosen a city.
+                        stream: (() {
+                          try {
+                            final selectedCity = locationController.selectedCity.value.trim();
+                            Query query = FirebaseFirestore.instance
+                                .collection('properties')
+                                .where('isLastMinuteDeal', isEqualTo: true)
+                                .where('isActive', isEqualTo: true)
+                                .where('lastMinuteValidTill', isGreaterThan: Timestamp.now());
+
+                            if (selectedCity.isNotEmpty) {
+                              // Only include deals for the selected city
+                              query = query.where('city', isEqualTo: selectedCity);
+                            }
+
+                            query = query.orderBy('lastMinuteValidTill').orderBy('lastMinuteDiscount', descending: true);
+                            return query.snapshots();
+                          } catch (e) {
+                            debugPrint('Failed to build deals query with city filter: $e');
+                            return FirebaseFirestore.instance
+                                .collection('properties')
+                                .where('isLastMinuteDeal', isEqualTo: true)
+                                .where('isActive', isEqualTo: true)
+                                .where('lastMinuteValidTill', isGreaterThan: Timestamp.now())
+                                .orderBy('lastMinuteValidTill')
+                                .orderBy('lastMinuteDiscount', descending: true)
+                                .snapshots();
+                          }
+                        })(),
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState == ConnectionState.waiting) {
+                            return const Center(child: CircularProgressIndicator());
+                          }
+
+                          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                            return const Center(
+                              child: Text(
+                                'No last minute deals available',
+                                style: TextStyle(color: Colors.grey),
+                              ),
+                            );
+                          }
+
+                          final deals = snapshot.data!.docs;
+
+                          return ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            itemCount: deals.length > 6 ? 6 : deals.length,
+                            itemBuilder: (context, index) {
+                final raw = deals[index].data();
+                final Map<String, dynamic> data = (raw is Map<String, dynamic>) ? raw : <String, dynamic>{};
+                final discount = data['lastMinuteDiscount'] ?? 0;
+                final Timestamp? validTillTs = (data['lastMinuteValidTill'] is Timestamp)
+                  ? data['lastMinuteValidTill'] as Timestamp
+                  : null;
+
+                              if (validTillTs == null) return const SizedBox.shrink();
+
+                              return StreamBuilder<int>(
+                                stream: Stream.periodic(const Duration(seconds: 30), (x) => x),
+                                builder: (context, _) {
+                                  final now = DateTime.now();
+                                  final validTill = validTillTs.toDate();
+                                  final remaining = validTill.difference(now);
+
+                                  if (remaining.isNegative) {
+                                    // Auto hide when expired
+                                    return const SizedBox.shrink();
+                                  }
+
+                                  final hours = remaining.inHours;
+                                  final minutes = remaining.inMinutes % 60;
+
+                                  return Container(
+                                    width: 260,
+                                    margin: const EdgeInsets.only(right: 12),
+                                    child: Card(
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(10.0),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              data['propertyName'] ?? 'Property',
+                                              style: const TextStyle(fontWeight: FontWeight.bold),
+                                            ),
+                                            const SizedBox(height: 6),
+                                            Text(data['location'] ?? ''),
+                                            const SizedBox(height: 6),
+                                            Text(
+                                              'Expires in ${hours}h ${minutes}m',
+                                              style: const TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.red,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                            const Spacer(),
+                                            Row(
+                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                              children: [
+                                                Builder(builder: (_) {
+                                                  final originalPrice = (data['price'] ?? 0) as num;
+                                                  final discountVal = (data['lastMinuteDiscount'] ?? 0) as num;
+                                                  final discountedPrice = discountVal > 0
+                                                      ? (originalPrice - (originalPrice * discountVal / 100)).round()
+                                                      : originalPrice;
+
+                                                  return Column(
+                                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                                    children: [
+                                                      if (discountVal > 0)
+                                                        Text(
+                                                          '₹$originalPrice',
+                                                          style: const TextStyle(
+                                                            fontSize: 12,
+                                                            color: Colors.grey,
+                                                            decoration: TextDecoration.lineThrough,
+                                                          ),
+                                                        ),
+                                                      Text(
+                                                        '₹$discountedPrice',
+                                                        style: const TextStyle(
+                                                          fontWeight: FontWeight.w700,
+                                                          fontSize: 16,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  );
+                                                }),
+                                                if (discount > 0)
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                    decoration: BoxDecoration(
+                                                      color: const Color.fromARGB(255, 41, 70, 92),
+                                                      borderRadius: BorderRadius.circular(8),
+                                                    ),
+                                                    child: Text(
+                                                      '$discount% OFF',
+                                                      style: const TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 12,
+                                                        fontWeight: FontWeight.w600,
+                                                      ),
+                                                    ),
+                                                  ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              );
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text('Recommended', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color.fromARGB(255, 41, 70, 92))),
+                    ),
+                    const SizedBox(height: 8),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                      child: Row(
+                        children: [
+                          const Expanded(
+                            child: Text(
+                              "Featured Properties",
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
-                            Padding(
-                              padding: const EdgeInsets.all(10.0),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.filter_alt, size: 20, color: Color.fromARGB(255, 41, 70, 92)),
+                            onPressed: () {
+                              final cat = () {
+                                final s = _selectedCategory.toLowerCase();
+                                if (s.contains('farm')) return Category.farmhouse;
+                                if (s.contains('villa')) return Category.villa;
+                                if (s.contains('hotel')) return Category.hotel;
+                                if (s.contains('flight') || s.contains('flights')) return Category.flights;
+                                if (s.contains('car')) return Category.car;
+                                if (s.contains('hour')) return Category.hourly;
+                                return Category.all;
+                              }();
+
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => FiltersScreen(
+                                    category: cat,
+                                    onFiltersApplied: (filters) {
+                                      setState(() {
+                                        _priceRange = filters['priceRange'] ?? _priceRange;
+                                        _maxDistance = filters['maxDistance'] ?? _maxDistance;
+                                        _luxuryOnly = filters['luxuryOnly'] ?? _luxuryOnly;
+                                        _minRating = filters['minRating'] ?? _minRating;
+                                        // Accept both old and new key names for amenities/property types
+                                        final Map<String, dynamic> amenitiesFromCallback = Map<String, dynamic>.from(
+                                            (filters['amenities'] ?? filters['houseAmenities'] ?? filters['house_amenities'] ?? <String, dynamic>{}) as Map);
+                                        final Map<String, dynamic> propertyTypesFromCallback = Map<String, dynamic>.from(
+                                            (filters['propertyTypes'] ?? filters['property_types'] ?? <String, dynamic>{}) as Map);
+
+                                        try {
+                                          _amenities.addAll(Map<String, bool>.from(amenitiesFromCallback));
+                                        } catch (_) {}
+                                        try {
+                                          _propertyTypes.addAll(Map<String, bool>.from(propertyTypesFromCallback));
+                                        } catch (_) {}
+
+                                        _sortOption = filters['sortOption'] ?? _sortOption;
+                                      });
+                                      _applyFilters();
+                                    },
+                                    initialFilters: {
+                                      'priceRange': _priceRange,
+                                      'maxDistance': _maxDistance,
+                                      'luxuryOnly': _luxuryOnly,
+                                      'minRating': _minRating,
+                                      'amenities': _amenities,
+                                      'propertyTypes': _propertyTypes,
+                                      'sortOption': _sortOption,
+                                    },
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => AllPropertiesScreen(
+                                    properties: _filteredFarmhouses,
+                                  ),
+                                ),
+                              );
+                            },
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text('View all'),
+                                SizedBox(width: 4),
+                                Icon(Icons.arrow_forward_ios, size: 14),
+                              ],
+                            ),
+                          )
+                        ],
+                      ),
+                    ),
+                    PropertiesGrid(properties: _filteredFarmhouses),
+
+                    const SizedBox(height: 12),
+                    // Additional horizontal property cards to appear below Recommended
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text('Explore more properties', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color:  Color.fromARGB(255, 41, 70, 92))),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 200,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        itemCount: _filteredFarmhouses.isNotEmpty ? (_filteredFarmhouses.length > 6 ? 6 : _filteredFarmhouses.length) : 0,
+                        itemBuilder: (context, index) {
+                          final item = _filteredFarmhouses[index];
+                          return Container(
+                            width: 260,
+                            margin: const EdgeInsets.only(right: 12),
+                            child: Card(
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(item['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold)),
-                                  const SizedBox(height: 6),
-                                  Text(item['location'] ?? ''),
-                                  const SizedBox(height: 6),
-                                  Text('₹${(item['price'] ?? 0).toString()}', style: const TextStyle(fontWeight: FontWeight.w700)),
+                                  Container(
+                                    height: 110,
+                                    width: double.infinity,
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey.shade300,
+                                      borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                                      image: (item['photoUrls'] is List && item['photoUrls'].isNotEmpty)
+                                          ? DecorationImage(image: NetworkImage(item['photoUrls'][0]), fit: BoxFit.cover)
+                                          : null,
+                                    ),
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.all(10.0),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(item['propertyName'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold)),
+                                        const SizedBox(height: 6),
+                                        Text(item['city'] ?? ''),
+                                        const SizedBox(height: 6),
+                                        Text('₹${(item['pricePerNight'] ?? 0).toString()}', style: const TextStyle(fontWeight: FontWeight.w700)),
+                                      ],
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
-                          ],
-                        ),
+                          );
+                        },
                       ),
-                    );
-                  },
-                ),
-              ),
+                    ),
 
-              const SizedBox(height: 16),
-              // Small dummy cards below Recommended
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text('You might also like', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-              ),
-              const SizedBox(height: 8),
-              SizedBox(
-                height: 120,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  itemCount: _filteredFarmhouses.isNotEmpty ? (_filteredFarmhouses.length > 3 ? 3 : _filteredFarmhouses.length) : 3,
-                  itemBuilder: (context, index) {
-                    final item = _filteredFarmhouses.isNotEmpty ? _filteredFarmhouses[index] : {
-                      'name': 'Cozy Retreat',
-                      'location': 'Nearby',
-                      'price': 2500,
-                    };
-                    return Container(
-                      width: 200,
-                      margin: const EdgeInsets.only(right: 12),
-                      child: Card(
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        child: Padding(
-                          padding: const EdgeInsets.all(10.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(item['name'] ?? 'Cozy Retreat', style: const TextStyle(fontWeight: FontWeight.bold)),
-                              const SizedBox(height: 6),
-                              Text(item['location'] ?? 'Nearby'),
-                              const Spacer(),
-                              Text('₹${(item['price'] ?? 0).toString()}', style: const TextStyle(fontWeight: FontWeight.w700)),
-                            ],
-                          ),
-                        ),
+                    const SizedBox(height: 16),
+                    // Small dummy cards below Recommended
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text('You might also like', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 120,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        itemCount: _filteredFarmhouses.isNotEmpty ? (_filteredFarmhouses.length > 3 ? 3 : _filteredFarmhouses.length) : 3,
+                        itemBuilder: (context, index) {
+                          final item = _filteredFarmhouses.isNotEmpty ? _filteredFarmhouses[index] : {
+                            'name': 'Cozy Retreat',
+                            'location': 'Nearby',
+                            'price': 2500,
+                          };
+                          return Container(
+                            width: 200,
+                            margin: const EdgeInsets.only(right: 12),
+                            child: Card(
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              child: Padding(
+                                padding: const EdgeInsets.all(10.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(item['name'] ?? 'Cozy Retreat', style: const TextStyle(fontWeight: FontWeight.bold)),
+                                    const SizedBox(height: 6),
+                                    Text(item['location'] ?? 'Nearby'),
+                                    const Spacer(),
+                                    Text('₹${(item['price'] ?? 0).toString()}', style: const TextStyle(fontWeight: FontWeight.w700)),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        },
                       ),
-                    );
-                  },
+                    ),
+                  ],
                 ),
-              ),
-
-            ],
-          ),
         ),
       ],
     );

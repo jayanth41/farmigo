@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import '../screens/property_details_screen.dart';
 import '../screens/farmhouse_details_screen.dart';
 import '../screens/booking_details_screen.dart';
 import '../controllers/favorites_controller.dart';
