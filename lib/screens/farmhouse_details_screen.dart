@@ -595,7 +595,7 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                                       ? Icons.favorite
                                       : Icons.favorite_border,
                                   color: favoritesController.isFavorited(farmhouse.id)
-                                      ? Colors.red
+                                      ?  Color(0xFF2C3E50)
                                       : Colors.black,
                                   size: 24,
                                 ),
@@ -1050,47 +1050,6 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.green[50],
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              'Price per night',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey,
-                              ),
-                            ),
-                            Text(
-                              '₹${calculatedPrice.toStringAsFixed(0)}',
-                              style: const TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.green,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'For $selectedPeopleRange people',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey,
-                            fontStyle: FontStyle.italic,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
                   const SizedBox(height: 28),
                   const Text(
                     'Amenities',
@@ -1118,12 +1077,12 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                           Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: Colors.green[50],
+                              color:  Color.fromARGB(255, 107, 145, 183),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Icon(
                               amenity['icon'],
-                              color: Colors.green,
+                              color:  Color(0xFF2C3E50),
                               size: 28,
                             ),
                           ),
@@ -1436,9 +1395,9 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.amber[50],
+                      color: Colors.green[50],
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.amber[200]!, width: 1),
+                      border: Border.all(color: Colors.green[200]!, width: 1),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1457,7 +1416,7 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                             Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: Colors.amber,
+                                color: Colors.green,
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: const Text(
@@ -1504,6 +1463,138 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                   ),
 
                   const SizedBox(height: 20),
+
+                  const SizedBox(height: 28),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Guest Photos',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () {
+                          showDialog(
+                            context: context,
+                            builder: (context) {
+                              return Dialog(
+                                insetPadding: const EdgeInsets.all(16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: GridView.builder(
+                                    shrinkWrap: true,
+                                    itemCount: guestPhotos.length,
+                                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                      crossAxisCount: 3,
+                                      crossAxisSpacing: 8,
+                                      mainAxisSpacing: 8,
+                                    ),
+                                    itemBuilder: (context, index) {
+                                      return ClipRRect(
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: ImageWithFallback(
+                                          imageUrl: guestPhotos[index],
+                                          fit: BoxFit.cover,
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              );
+                            },
+                          );
+                        },
+                        child: const Text(
+                          "View All",
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.blue,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    height: 120,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: guestPhotos.length + 1,
+                      itemBuilder: (context, index) {
+                        if (index == guestPhotos.length) {
+                          return Container(
+                            width: 120,
+                            margin: const EdgeInsets.only(right: 12),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[200],
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.add_photo_alternate,
+                                    size: 32,
+                                    color: Colors.grey,
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    'More',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }
+                        return Container(
+                          width: 120,
+                          margin: const EdgeInsets.only(right: 12),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            color: Colors.grey[300],
+                          ),
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: ImageWithFallback(
+                                  imageUrl: guestPhotos[index],
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                              Container(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(12),
+                                  gradient: const LinearGradient(
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                    colors: [
+                                      Colors.transparent,
+                                      Color.fromRGBO(0, 0, 0, 0.3),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
 
                   const Text(
                     'Write a Review',
@@ -1580,89 +1671,7 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 28),
-                  const Text(
-                    'Guest Photos',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    height: 120,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: guestPhotos.length + 1,
-                      itemBuilder: (context, index) {
-                        if (index == guestPhotos.length) {
-                          return Container(
-                            width: 120,
-                            margin: const EdgeInsets.only(right: 12),
-                            decoration: BoxDecoration(
-                              color: Colors.grey[200],
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.add_photo_alternate,
-                                    size: 32,
-                                    color: Colors.grey,
-                                  ),
-                                  SizedBox(height: 4),
-                                  Text(
-                                    'More',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        }
-                        return Container(
-                          width: 120,
-                          margin: const EdgeInsets.only(right: 12),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            color: Colors.grey[300],
-                          ),
-                          child: Stack(
-                            fit: StackFit.expand,
-                            children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
-                                child: ImageWithFallback(
-                                  imageUrl: guestPhotos[index],
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
-                              Container(
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(12),
-                                  gradient: const LinearGradient(
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                    colors: [
-                                      Colors.transparent,
-                                      Color.fromRGBO(0, 0, 0, 0.3),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 28),
+
 
                   // Nearby Attractions (temporary static list)
                   const Text(
