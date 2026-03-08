@@ -1,482 +1,244 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:typed_data';
+import 'package:http/http.dart' as http;
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 import '../models/car_booking.dart';
 
+class InvoiceService {
+
+  static Future<void> generateInvoice({
+    required String bookingId,
+    required String propertyName,
+    required String location,
+    required String checkIn,
+    required String checkOut,
+    required double totalPrice,
+    required String userEmail,
+    required String guestName,
+    required String guestPhone,
+    String? propertyImage,
+  }) async {
+
+    final pdf = pw.Document();
+
+    // Preload image bytes outside the page builder so we don't use `await`
+    // inside the synchronous page-builder callback. Use a simple HTTP GET to
+    // fetch raw bytes which we can pass to pw.MemoryImage.
+    Uint8List? imageBytes;
+    if (propertyImage != null) {
+      try {
+        final uri = Uri.parse(propertyImage);
+        final resp = await http.get(uri);
+        if (resp.statusCode == 200) {
+          imageBytes = resp.bodyBytes;
+        } else {
+          debugPrint('Failed to fetch invoice image, status: ${resp.statusCode}');
+          imageBytes = null;
+        }
+      } catch (e) {
+        debugPrint('Failed to load property image for invoice: $e');
+        imageBytes = null;
+      }
+    }
+
+    pdf.addPage(
+      pw.Page(
+        build: (context) => pw.Padding(
+          padding: const pw.EdgeInsets.all(24),
+          child: pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+
+              /// SKYBASE HEADER
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text(
+                    "Skybase",
+                    style: pw.TextStyle(
+                      fontSize: 28,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
+                  ),
+                  pw.Text(
+                    "Invoice #$bookingId",
+                    style: pw.TextStyle(
+                      fontSize: 14,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+
+              pw.SizedBox(height: 20),
+
+              /// PROPERTY IMAGE
+              if (imageBytes != null)
+                pw.Container(
+                  height: 160,
+                  width: double.infinity,
+                  child: pw.Image(
+                    pw.MemoryImage(imageBytes),
+                    fit: pw.BoxFit.cover,
+                  ),
+                ),
+
+              pw.SizedBox(height: 20),
+
+              /// PROPERTY DETAILS
+              pw.Text(
+                "Property Details",
+                style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+              ),
+
+              pw.SizedBox(height: 8),
+
+              pw.Text("Property: $propertyName"),
+              pw.Text("Location: $location"),
+              pw.Text("Check-in: $checkIn"),
+              pw.Text("Check-out: $checkOut"),
+
+              pw.SizedBox(height: 20),
+
+              /// GUEST DETAILS
+              pw.Text(
+                "Guest Details",
+                style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+              ),
+
+              pw.SizedBox(height: 8),
+
+              pw.Text("Name: $guestName"),
+              pw.Text("Phone: $guestPhone"),
+              pw.Text("Email: $userEmail"),
+
+              pw.SizedBox(height: 20),
+
+              pw.Divider(),
+
+              /// PRICE
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text(
+                    "Total Paid",
+                    style: pw.TextStyle(
+                      fontSize: 16,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
+                  ),
+                  pw.Text(
+                    "₹${totalPrice.toStringAsFixed(0)}",
+                    style: pw.TextStyle(
+                      fontSize: 18,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+
+              pw.SizedBox(height: 30),
+
+              pw.Text(
+                "Thank you for booking with Skybase!",
+                style: const pw.TextStyle(fontSize: 12),
+              ),
+
+            ],
+          ),
+        ),
+      ),
+    );
+
+    await Printing.layoutPdf(
+      onLayout: (format) async => pdf.save(),
+    );
+  }
+}
+
+/// Simple screen wrapper that allows generating and printing an invoice for a
+/// booking. This replaces the previously-missing `InvoiceScreen` widget used
+/// by booking flows.
 class InvoiceScreen extends StatefulWidget {
   final CarBooking booking;
-  final VoidCallback onConfirmPay;
+  final VoidCallback? onConfirmPay;
 
-  const InvoiceScreen({
-    super.key,
-    required this.booking,
-    required this.onConfirmPay,
-  });
+  const InvoiceScreen({super.key, required this.booking, this.onConfirmPay});
 
   @override
   State<InvoiceScreen> createState() => _InvoiceScreenState();
 }
 
 class _InvoiceScreenState extends State<InvoiceScreen> {
-  bool _isProcessing = false;
+  bool _isGenerating = false;
+
+  Future<void> _generate() async {
+    setState(() => _isGenerating = true);
+    try {
+      final userEmail = FirebaseAuth.instance.currentUser?.email ?? '';
+      await InvoiceService.generateInvoice(
+        bookingId: widget.booking.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
+        propertyName: widget.booking.carName,
+        location: '',
+        checkIn: widget.booking.startDate.toIso8601String(),
+        checkOut: widget.booking.endDate.toIso8601String(),
+        totalPrice: widget.booking.finalTotal.toDouble(),
+        userEmail: userEmail,
+        guestName: '',
+        guestPhone: '',
+        propertyImage: null,
+      );
+    } catch (e) {
+      debugPrint('Invoice generation failed: $e');
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to generate invoice: $e')));
+    } finally {
+      if (mounted) setState(() => _isGenerating = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final booking = widget.booking;
-    final textColor = Theme.of(context).colorScheme.onSurface;
-    final bgColor = Theme.of(context).colorScheme.surface;
-
     return Scaffold(
-      backgroundColor: bgColor,
-      appBar: AppBar(
-        backgroundColor: bgColor,
-        elevation: 0,
-        centerTitle: true,
-        title: Text(
-          'Booking Invoice',
-          style: TextStyle(
-            color: textColor,
-            fontWeight: FontWeight.w700,
-            fontSize: 18,
-          ),
-        ),
-        iconTheme: IconThemeData(color: textColor),
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      appBar: AppBar(title: const Text('Invoice')),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Booking: ${widget.booking.carName}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            Text('From: ${widget.booking.startDate.toLocal()}'),
+            Text('To: ${widget.booking.endDate.toLocal()}'),
+            const SizedBox(height: 16),
+            Text('Total: ₹${widget.booking.finalTotal}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.green)),
+            const Spacer(),
+            Row(
               children: [
-            // Invoice Header Card
-            _buildInvoiceHeader(booking, textColor),
-            const SizedBox(height: 24),
-
-            // Booking Details
-            _buildSectionTitle('Booking Details', textColor),
-            _buildDetailCard(
-              children: [
-                _buildDetailRow('Car', booking.carName, textColor),
-                const Divider(height: 16, thickness: 0.5),
-                _buildDetailRow(
-                  'Check-in',
-                  _formatDateTime(booking.startDate),
-                  textColor,
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: _isGenerating ? null : _generate,
+                    child: _isGenerating ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('Generate & Print Invoice'),
+                  ),
                 ),
-                const Divider(height: 16, thickness: 0.5),
-                _buildDetailRow(
-                  'Check-out',
-                  _formatDateTime(booking.endDate),
-                  textColor,
-                ),
-                if (booking.isSameDayBooking) ...[
-                  const Divider(height: 16, thickness: 0.5),
-                  _buildDetailRow(
-                    'Duration',
-                    '${booking.hours} hours',
-                    textColor,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      if (widget.onConfirmPay != null) widget.onConfirmPay!();
+                      Navigator.of(context).pop();
+                    },
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                    child: const Text('Confirm Booking'),
                   ),
-                ] else ...[
-                  const Divider(height: 16, thickness: 0.5),
-                  _buildDetailRow(
-                    'Duration',
-                    '${booking.numberOfDays} days',
-                    textColor,
-                  ),
-                ],
-                if (booking.driverRequested) ...[
-                  const Divider(height: 16, thickness: 0.5),
-                  _buildDetailRow(
-                    'Driver',
-                    'Requested ✓',
-                    textColor,
-                    valueColor: Colors.green,
-                  ),
-                ],
-              ],
-            ),
-            const SizedBox(height: 24),
-
-            // Price Breakdown
-            _buildSectionTitle('Price Breakdown', textColor),
-            _buildDetailCard(
-              children: [
-                if (booking.hourlyTotal > 0) ...[
-                  _buildPriceRow(
-                    'Hourly Rate',
-                    '₹${booking.hourlyTotal}',
-                    textColor,
-                  ),
-                  const Divider(height: 16, thickness: 0.5),
-                ] else ...[
-                  if (booking.weekdayTotal > 0) ...[
-                    _buildPriceRow(
-                      'Weekday (${_countWeekdays(booking.startDate, booking.endDate)} days)',
-                      '₹${booking.weekdayTotal}',
-                      textColor,
-                    ),
-                    const Divider(height: 16, thickness: 0.5),
-                  ],
-                  if (booking.weekendTotal > 0) ...[
-                    _buildPriceRow(
-                      'Weekend (${_countWeekends(booking.startDate, booking.endDate)} days)',
-                      '₹${booking.weekendTotal}',
-                      textColor,
-                    ),
-                    const Divider(height: 16, thickness: 0.5),
-                  ],
-                ],
-                if (booking.driverTotal > 0) ...[
-                  _buildPriceRow(
-                    'Driver Charges',
-                    '₹${booking.driverTotal}',
-                    textColor,
-                  ),
-                  const Divider(height: 16, thickness: 0.5),
-                ],
-                _buildPriceRow(
-                  'Subtotal',
-                  '₹${booking.finalTotal - (booking.driverTotal > 0 ? booking.driverTotal : 0)}',
-                  textColor,
                 ),
               ],
-            ),
-            const SizedBox(height: 16),
-
-            // Final Total
-            _buildFinalTotalCard(booking, textColor),
-            const SizedBox(height: 32),
-
-            // Confirm & Pay Button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _isProcessing ? null : _handleConfirmAndPay,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.black,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  disabledBackgroundColor: Colors.grey[400],
-                ),
-                child: _isProcessing
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                          strokeWidth: 2,
-                        ),
-                      )
-                    : const Text(
-                        'Confirm & Pay',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Cancel Button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () => Navigator.of(context).pop(),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.grey[200],
-                  foregroundColor: Colors.black87,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: const Text(
-                  'Cancel',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
+            )
           ],
         ),
-          ),
-        ),
       ),
     );
-  }
-
-  Widget _buildInvoiceHeader(CarBooking booking, Color textColor) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.black,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Invoice Summary',
-            style: TextStyle(
-              color: Colors.grey[400],
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              letterSpacing: 0.5,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            booking.carName,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Booking Period',
-                    style: TextStyle(
-                      color: Colors.grey[400],
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${_formatDate(booking.startDate)} - ${_formatDate(booking.endDate)}',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    'Total Amount',
-                    style: TextStyle(
-                      color: Colors.grey[400],
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '₹${booking.finalTotal}',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSectionTitle(String title, Color textColor) {
-    return Text(
-      title,
-      style: TextStyle(
-        color: textColor,
-        fontSize: 16,
-        fontWeight: FontWeight.bold,
-      ),
-    );
-  }
-
-  Widget _buildDetailCard({required List<Widget> children}) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.secondary.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-          width: 1,
-        ),
-      ),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: children,
-      ),
-    );
-  }
-
-  Widget _buildDetailRow(
-    String label,
-    String value,
-    Color textColor, {
-    Color? valueColor,
-  }) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.grey[600],
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        Text(
-          value,
-          style: TextStyle(
-            color: valueColor ?? textColor,
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPriceRow(String label, String amount, Color textColor) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.grey[600],
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        Text(
-          amount,
-          style: TextStyle(
-            color: textColor,
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildFinalTotalCard(CarBooking booking, Color textColor) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.green.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Colors.green.withOpacity(0.3),
-          width: 1.5,
-        ),
-      ),
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            'Final Total',
-            style: TextStyle(
-              color: textColor,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          Text(
-            '₹${booking.finalTotal}',
-            style: const TextStyle(
-              color: Colors.green,
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _handleConfirmAndPay() async {
-    setState(() => _isProcessing = true);
-
-    try {
-      // In a real app, you would integrate Razorpay here
-      // For now, we'll just call the callback
-      await Future.delayed(const Duration(seconds: 1));
-
-      if (!mounted) return;
-
-      widget.onConfirmPay();
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Booking confirmed! Payment processed.'),
-          backgroundColor: Colors.green,
-        ),
-      );
-
-      Navigator.of(context).popUntil((route) => route.isFirst);
-    } catch (e) {
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } finally {
-      if (mounted) {
-        setState(() => _isProcessing = false);
-      }
-    }
-  }
-
-  String _formatDate(DateTime date) {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return '${date.day} ${months[date.month - 1]}';
-  }
-
-  String _formatDateTime(DateTime date) {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return '${date.day} ${months[date.month - 1]} ${date.year}';
-  }
-
-  int _countWeekdays(DateTime start, DateTime end) {
-    int count = 0;
-    DateTime current = start;
-    while (current.isBefore(end) || current.isAtSameMomentAs(end)) {
-      if (current.weekday != DateTime.saturday && current.weekday != DateTime.sunday) {
-        count++;
-      }
-      current = current.add(const Duration(days: 1));
-    }
-    return count;
-  }
-
-  int _countWeekends(DateTime start, DateTime end) {
-    int count = 0;
-    DateTime current = start;
-    while (current.isBefore(end) || current.isAtSameMomentAs(end)) {
-      if (current.weekday == DateTime.saturday || current.weekday == DateTime.sunday) {
-        count++;
-      }
-      current = current.add(const Duration(days: 1));
-    }
-    return count;
   }
 }

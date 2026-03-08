@@ -176,7 +176,7 @@ class _LocationSelectorScreenState extends State<LocationSelectorScreen> with Si
                         labelStyle: TextStyle(color: isSelected ? theme.colorScheme.primary : null),
                         onPressed: () => _selectCity(c),
                       );
-                    }).toList(),
+                    }),
                   ],
                 ),
                 const SizedBox(height: 16),

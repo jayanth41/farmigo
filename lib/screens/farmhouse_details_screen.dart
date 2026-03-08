@@ -1858,16 +1858,19 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
               child: ElevatedButton(
                 onPressed: () async {
                   final currentUser = FirebaseAuth.instance.currentUser;
+
                   if (currentUser == null || _isGuest) {
                     final messenger = ScaffoldMessenger.of(context);
-                    messenger.showSnackBar(const SnackBar(content: Text('Complete your profile or login to make bookings')));
-                    if (currentUser == null) {
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen()));
-                    } else {
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen()));
-                    }
+                    messenger.showSnackBar(
+                      const SnackBar(content: Text('Complete your profile or login to make bookings')),
+                    );
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                    );
                     return;
                   }
+
                   if (widget.id == null) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text("Invalid property")),
@@ -1882,19 +1885,212 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                     return;
                   }
 
-                  _pendingBooking = {
-                    'listingId': widget.id!,
-                    'propertyName': widget.name,
-                    'location': widget.location,
-                    'imageUrl': widget.imageUrl,
-                    'ownerId': widget.ownerId,
-                    'checkIn': selectedCheckInDate?.toIso8601String() ?? '',
-                    'checkOut': selectedCheckOutDate?.toIso8601String() ?? '',
-                    'totalPrice': calculatedPrice,
-                    'paidAt': Timestamp.now(),
-                  };
+                  showDialog(
+                    context: context,
+                    builder: (context) {
+                      return StatefulBuilder(
+                        builder: (context, setState) {
+                          final TextEditingController specialRequestController =
+                              TextEditingController();
+                          final TextEditingController otherGuestNameController =
+                              TextEditingController();
+                          final TextEditingController otherGuestPhoneController =
+                              TextEditingController();
 
-                  _openCheckout(calculatedPrice);
+                          bool bookingForSomeoneElse = false;
+                          XFile? idProof;
+
+                          Future<void> pickIdProof() async {
+                            final picked = await ImagePicker().pickImage(
+                              source: ImageSource.gallery,
+                              imageQuality: 80,
+                            );
+                            if (picked != null) {
+                              setState(() {
+                                idProof = picked;
+                              });
+                            }
+                          }
+
+                          return AlertDialog(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            title: const Text(
+                              "Booking Summary",
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            content: SizedBox(
+                              width: double.maxFinite,
+                              child: SingleChildScrollView(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    /// PROPERTY DETAILS
+                                    const Text(
+                                      "Property Details",
+                                      style: TextStyle(fontWeight: FontWeight.bold),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(widget.name),
+                                    Text(widget.location),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      "Check‑in: ${selectedCheckInDate!.day}/${selectedCheckInDate!.month}/${selectedCheckInDate!.year}",
+                                    ),
+                                    Text(
+                                      selectedCheckOutDate != null
+                                          ? "Check‑out: ${selectedCheckOutDate!.day}/${selectedCheckOutDate!.month}/${selectedCheckOutDate!.year}"
+                                          : "Check‑out: Not selected",
+                                    ),
+                                    Text("Guests: $selectedPeopleRange"),
+
+                                    const Divider(height: 24),
+
+                                    /// RULES
+                                    const Text(
+                                      "Property Rules",
+                                      style: TextStyle(fontWeight: FontWeight.bold),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    const Text("• No loud music after 10 PM"),
+                                    const Text("• Alcohol only in designated areas"),
+                                    const Text("• Follow guest capacity limits"),
+
+                                    const Divider(height: 24),
+
+                                    /// PRICE BREAKDOWN
+                                    const Text(
+                                      "Price Details",
+                                      style: TextStyle(fontWeight: FontWeight.bold),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text("₹${calculatedPrice.toStringAsFixed(0)} × $totalNights nights"),
+                                    const Text("Service fee ₹500"),
+                                    const Text("Taxes ₹350"),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      "Total ₹${totalPrice.toStringAsFixed(0)}",
+                                      style: const TextStyle(fontWeight: FontWeight.bold),
+                                    ),
+
+                                    const Divider(height: 24),
+
+                                    /// BOOKING FOR
+                                    const Text(
+                                      "Booking For",
+                                      style: TextStyle(fontWeight: FontWeight.bold),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(FirebaseAuth.instance.currentUser?.email ?? "User"),
+
+                                    const SizedBox(height: 10),
+
+                                    Row(
+                                      children: [
+                                        Checkbox(
+                                          value: bookingForSomeoneElse,
+                                          onChanged: (v) {
+                                            setState(() {
+                                              bookingForSomeoneElse = v ?? false;
+                                            });
+                                          },
+                                        ),
+                                        const Text("Booking for someone else"),
+                                      ],
+                                    ),
+
+                                    if (bookingForSomeoneElse) ...[
+                                      TextField(
+                                        controller: otherGuestNameController,
+                                        decoration: const InputDecoration(
+                                          labelText: "Guest Name",
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      TextField(
+                                        controller: otherGuestPhoneController,
+                                        decoration: const InputDecoration(
+                                          labelText: "Guest Phone",
+                                        ),
+                                      ),
+                                      const SizedBox(height: 12),
+                                    ],
+
+                                    /// SPECIAL REQUEST
+                                    const Text(
+                                      "Special Request",
+                                      style: TextStyle(fontWeight: FontWeight.bold),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    TextField(
+                                      controller: specialRequestController,
+                                      maxLines: 2,
+                                      decoration: const InputDecoration(
+                                        hintText: "Decoration, early check-in, etc.",
+                                        border: OutlineInputBorder(),
+                                      ),
+                                    ),
+
+                                    const SizedBox(height: 16),
+
+                                    /// ID PROOF
+                                    const Text(
+                                      "Upload Aadhaar / ID Proof",
+                                      style: TextStyle(fontWeight: FontWeight.bold),
+                                    ),
+                                    const SizedBox(height: 8),
+
+                                    Row(
+                                      children: [
+                                        ElevatedButton.icon(
+                                          onPressed: pickIdProof,
+                                          icon: const Icon(Icons.upload),
+                                          label: const Text("Upload"),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        if (idProof != null)
+                                          const Text(
+                                            "ID selected",
+                                            style: TextStyle(color: Colors.green),
+                                          ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: const Text("Cancel"),
+                              ),
+                              ElevatedButton(
+                                onPressed: () {
+                                  Navigator.pop(context);
+
+                                  _pendingBooking = {
+                                    'listingId': widget.id!,
+                                    'propertyName': widget.name,
+                                    'location': widget.location,
+                                    'imageUrl': widget.imageUrl,
+                                    'ownerId': widget.ownerId,
+                                    'checkIn': selectedCheckInDate?.toIso8601String() ?? '',
+                                    'checkOut': selectedCheckOutDate?.toIso8601String() ?? '',
+                                    'totalPrice': totalPrice,
+                                    'paidAt': Timestamp.now(),
+                                  };
+
+                                  _openCheckout(totalPrice);
+                                },
+                                child: Text("Confirm & Pay ₹${totalPrice.toStringAsFixed(0)}"),
+                              ),
+                            ],
+                          );
+                        },
+                      );
+                    },
+                  );
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green,

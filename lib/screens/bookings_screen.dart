@@ -76,91 +76,109 @@ class _BookingsScreenState extends State<BookingsScreen> {
       body: Obx(() {
         if (bookingsController.isLoading.value) {
           return const LoadingWidget();
-        } else if (bookingsController.bookings.isEmpty) {
-          // Centered empty state per design requirements
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.calendar_today, size: 72, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3)),
-                const SizedBox(height: 12),
-                Text(
-                  'No bookings yet',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'You have no bookings at the moment',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
-                ),
-                const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () {
-                      try {
-                        Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false);
-                      } catch (_) {}
-                    },
-                    child: const Text('Explore Properties'),
-                  ),
-              ],
-            ),
-          );
-        } else {
-          return Column(
-            children: [
-              // Filter Tabs (styled like the React buttons)
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8.0, vertical: 12.0),
-                  child: Row(
-                    children: [
-                      _filterButton('all', 'All'),
-                      _filterButton('upcoming', 'Upcoming'),
-                      _filterButton('pending', 'Pending'),
-                      _filterButton('upcoming', 'Upcoming'),
-                      _filterButton('completed', 'Completed'),
-                      _filterButton('cancelled', 'Cancelled'),
-                    ],
-                  ),
-                ),
-              ),
-              // Bookings List
-              Expanded(
-                child: filteredBookings.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.inbox_outlined,
-                              size: 64,
-                              color: Colors.grey[400],
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'No $_filterStatus bookings',
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                        itemCount: filteredBookings.length,
-                        itemBuilder: (context, index) {
-                          final booking = filteredBookings[index];
-                          return BookingItemCard(booking: booking);
-                        },
-                      ),
-              ),
-            ],
-          );
         }
+
+        // Always show the tabs (even when there are no bookings). The
+        // content below the tabs will display either the global empty state
+        // (no bookings at all) or the filtered list / filtered-empty state.
+        return Column(
+          children: [
+            // Top Tabs for booking status
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: DefaultTabController(
+                length: 3,
+                child: Column(
+                  children: [
+                    TabBar(
+                      labelColor: const Color.fromARGB(255, 41, 70, 92),
+                      unselectedLabelColor: Colors.grey,
+                      indicatorColor: const Color.fromARGB(255, 41, 70, 92),
+                      onTap: (index) {
+                        setState(() {
+                          if (index == 0) {
+                            _filterStatus = 'upcoming';
+                          } else if (index == 1) {
+                            _filterStatus = 'completed';
+                          } else {
+                            _filterStatus = 'cancelled';
+                          }
+                        });
+                      },
+                      tabs: const [
+                        Tab(text: "Upcoming"),
+                        Tab(text: "Completed"),
+                        Tab(text: "Cancelled"),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // Bookings List or Empty State
+            Expanded(
+              child: bookingsController.bookings.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.calendar_today, size: 72, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3)),
+                          const SizedBox(height: 12),
+                          Text(
+                            'No bookings yet',
+                            style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'You have no bookings at the moment',
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton(
+                            onPressed: () {
+                              try {
+                                Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false);
+                              } catch (_) {}
+                            },
+                            child: const Text('Explore Properties'),
+                          ),
+                        ],
+                      ),
+                    )
+                  : (filteredBookings.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.inbox_outlined,
+                                size: 64,
+                                color: Colors.grey[400],
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'No $_filterStatus bookings',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                          itemCount: filteredBookings.length,
+                          itemBuilder: (context, index) {
+                            final booking = filteredBookings[index];
+                            return BookingItemCard(booking: booking);
+                          },
+                        )
+                    ),
+            ),
+          ],
+        );
       }),
     );
   }
