@@ -182,7 +182,7 @@ class _FarmhouseOwnerDashboardState extends State<FarmhouseOwnerDashboard> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               const Text(
-                                'My Properties',
+                                'Manage Properties',
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,

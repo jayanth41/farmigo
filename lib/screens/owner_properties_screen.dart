@@ -38,7 +38,7 @@ class _OwnerPropertiesScreenState extends State<OwnerPropertiesScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("My Properties"),
+        title: const Text("Manage Properties"),
         actions: [
           IconButton(
             icon: const Icon(Icons.add),

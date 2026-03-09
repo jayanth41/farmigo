@@ -311,22 +311,6 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
                 },
               ),
               _DrawerTile(
-                icon: Icons.apartment_outlined,
-                label: 'My Properties',
-                selected: false,
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => MyPropertiesScreen(
-                        properties: _properties,
-                        category: _ownerCategory,
-                      ),
-                    ),
-                  );
-                },
-              ),
-              _DrawerTile(
                 icon: Icons.calendar_today_outlined,
                 label: 'Bookings',
                 selected: false,
@@ -650,7 +634,31 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
                       const SizedBox(height: 20),
 
                       // --- Properties grid (1 card on small screens, 3 on wide) ---
-                      Text('Your Properties', style: Theme.of(context).textTheme.titleSmall),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('Your Properties', style: Theme.of(context).textTheme.titleSmall),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => MyPropertiesScreen(
+                                    properties: _properties,
+                                    category: _ownerCategory,
+                                  ),
+                                ),
+                              );
+                            },
+                            child: const Text(
+                              'View All',
+                              style: TextStyle(
+                                color: Color.fromARGB(255, 41, 70, 92),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                       const SizedBox(height: 8),
                       GridView.builder(
                         shrinkWrap: true,
@@ -661,7 +669,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
                           mainAxisSpacing: 12,
                           childAspectRatio: 1.1,
                         ),
-                        itemCount: _properties.length,
+                        itemCount: _properties.length > 3 ? 3 : _properties.length,
                         itemBuilder: (context, index) {
                           final p = _properties[index];
                           final photos = (p['photoUrls'] as List<dynamic>?)?.cast<String>() ?? [];
@@ -670,54 +678,64 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
                           final rating = (p['rating'] as num?)?.toDouble() ?? 0.0;
                           final views = (p['views'] as num?)?.toInt() ?? 0;
 
-                          return Card(
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-                            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                              ClipRRect(
-                                borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
-                                child: firstPhoto != null
-                                    ? Image.network(firstPhoto, height: 160, width: double.infinity, fit: BoxFit.cover)
-                                    : Container(height: 160, color: Colors.grey[200], child: const Icon(Icons.home, size: 48)),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
-                                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFE3F2FD),
-                                      borderRadius: BorderRadius.circular(20),
-                                      border: Border.all(color: const Color.fromARGB(255, 41, 70, 92)),
+                          return InkWell(
+                            borderRadius: BorderRadius.circular(18),
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => OwnerPropertyDetailScreen(property: p),
+                                ),
+                              );
+                            },
+                            child: Card(
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                ClipRRect(
+                                  borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+                                  child: firstPhoto != null
+                                      ? Image.network(firstPhoto, height: 160, width: double.infinity, fit: BoxFit.cover)
+                                      : Container(height: 160, color: Colors.grey[200], child: const Icon(Icons.home, size: 48)),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+                                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFE3F2FD),
+                                        borderRadius: BorderRadius.circular(20),
+                                        border: Border.all(color: const Color.fromARGB(255, 41, 70, 92)),
+                                      ),
+                                      child: Text(p['propertyType'] ?? '', style: const TextStyle(fontSize: 12, color: Color.fromARGB(255, 41, 70, 92), fontWeight: FontWeight.w600,)),
                                     ),
-                                    child: Text(p['propertyType'] ?? '', style: const TextStyle(fontSize: 12, color: Color.fromARGB(255, 41, 70, 92), fontWeight: FontWeight.w600,)),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Text(p['propertyName'] ?? 'Unnamed property', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, ), maxLines: 2, overflow: TextOverflow.ellipsis),
-                                  const SizedBox(height: 6),
-                                  Row(children: [const Icon(Icons.location_on, size: 14), const SizedBox(width: 4), Expanded(child: Text(address, style: const TextStyle(fontSize: 13, ), maxLines: 1, overflow: TextOverflow.ellipsis))]),
-                                  const SizedBox(height: 8),
-                                  Wrap(
-                                    spacing: 8,
-                                    runSpacing: 6,
-                                    children: [
-                                      Row(mainAxisSize: MainAxisSize.min, children: [
-                                        const Icon(Icons.calendar_today, size: 14, color: Colors.blue),
-                                        const SizedBox(width: 4),
-                                        Text('${p['totalBookings'] ?? 0} bookings', style: const TextStyle(fontSize: 12, fontFamily: 'Inter')),
-                                      ]),
-                                      Row(mainAxisSize: MainAxisSize.min, children: [
-                                        const Icon(Icons.remove_red_eye, size: 14, color: Colors.purple),
-                                        Text(' $views', style: const TextStyle(fontSize: 12, fontFamily: 'Inter')),
-                                      ]),
-                                      Row(mainAxisSize: MainAxisSize.min, children: [
-                                        const Icon(Icons.star, size: 14, color: Colors.amber),
-                                        Text(' ${rating.toStringAsFixed(1)}', style: const TextStyle(fontSize: 12, fontFamily: 'Inter')),
-                                      ]),
-                                    ],
-                                  ),
-                                ]),
-                              ),
-                            ]),
+                                    const SizedBox(height: 6),
+                                    Text(p['propertyName'] ?? 'Unnamed property', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, ), maxLines: 2, overflow: TextOverflow.ellipsis),
+                                    const SizedBox(height: 6),
+                                    Row(children: [const Icon(Icons.location_on, size: 14), const SizedBox(width: 4), Expanded(child: Text(address, style: const TextStyle(fontSize: 13, ), maxLines: 1, overflow: TextOverflow.ellipsis))]),
+                                    const SizedBox(height: 8),
+                                    Wrap(
+                                      spacing: 8,
+                                      runSpacing: 6,
+                                      children: [
+                                        Row(mainAxisSize: MainAxisSize.min, children: [
+                                          const Icon(Icons.calendar_today, size: 14, color: Colors.blue),
+                                          const SizedBox(width: 4),
+                                          Text('${p['totalBookings'] ?? 0} bookings', style: const TextStyle(fontSize: 12, fontFamily: 'Inter')),
+                                        ]),
+                                        Row(mainAxisSize: MainAxisSize.min, children: [
+                                          const Icon(Icons.remove_red_eye, size: 14, color: Colors.purple),
+                                          Text(' $views', style: const TextStyle(fontSize: 12, fontFamily: 'Inter')),
+                                        ]),
+                                        Row(mainAxisSize: MainAxisSize.min, children: [
+                                          const Icon(Icons.star, size: 14, color: Colors.amber),
+                                          Text(' ${rating.toStringAsFixed(1)}', style: const TextStyle(fontSize: 12, fontFamily: 'Inter')),
+                                        ]),
+                                      ],
+                                    ),
+                                  ]),
+                                ),
+                              ]),
+                            ),
                           );
                         },
                       ),
@@ -896,6 +914,7 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
   late List<Map<String, dynamic>> _props; // local list for animated removal
   final GlobalKey<AnimatedListState> _listKey = GlobalKey<AnimatedListState>();
   final Set<String> _deletingIds = {}; // track loading states
+  int _tabIndex = 0; // 0 = Active, 1 = Inactive, 2 = Pending
 
   @override
   void initState() {
@@ -912,123 +931,100 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
   }
 
   void _showPropertyMenu(BuildContext context, Map<String, dynamic> p) {
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      barrierColor: Colors.black26,
-      builder: (ctx) => Stack(
-        children: [
-          Positioned(
-            top: MediaQuery.of(context).padding.top + 510, // same vertical position
-            left: MediaQuery.of(context).size.width * 0.40, // move slightly more to the right
-            right: MediaQuery.of(context).size.width * 0.10, // keep card narrow while shifting right
-            child: Material(
-              color: Colors.transparent,
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: const [
-                    BoxShadow(color: Color(0x1A000000), blurRadius: 10, offset: Offset(0, 6)),
-                  ],
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    ListTile(
-                      leading: const Icon(Icons.remove_red_eye_outlined),
-                      title: const Text('View Details'),
-                      onTap: () {
-                        Navigator.pop(ctx);
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => OwnerPropertyDetailScreen(property: p),
-                          ),
-                        );
-                      },
-                    ),
-                    const Divider(height: 1),
-                    ListTile(
-                      leading: const Icon(Icons.edit_outlined),
-                      title: const Text('Edit Property'),
-                      onTap: () {
-                        Navigator.pop(ctx);
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => AddPropertyScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                    const Divider(height: 1),
-                    ListTile(
-                      leading: const Icon(Icons.delete_outline, color: Colors.red),
-                      title: const Text('Delete', style: TextStyle(color: Colors.red)),
-                      onTap: () async {
-                        Navigator.pop(ctx);
-                        final id = p['id'] as String?;
-                        if (id == null) return;
-
-                        final confirmed = await showDialog<bool>(
-                          context: context,
-                          builder: (c) => AlertDialog(
-                            title: const Text('Delete this property?'),
-                            content: const Text('This action cannot be undone.'),
-                            actions: [
-                              TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
-                              ElevatedButton(onPressed: () => Navigator.pop(c, true), child: const Text('Delete')),
-                            ],
-                          ),
-                        );
-                        if (confirmed != true) return;
-
-                        // show loading while deleting
-                        setState(() => _deletingIds.add(id));
-                        showDialog(
-                          context: context,
-                          barrierDismissible: false,
-                          builder: (_) => const Center(child: CircularProgressIndicator()),
-                        );
-
-                        try {
-                          await FirebaseFirestore.instance.collection('properties').doc(id).delete();
-
-                          // animated removal from list
-                          final index = _props.indexWhere((e) => e['id'] == id);
-                          if (index != -1) {
-                            final removed = _props[index];
-                            _props.removeAt(index);
-                            _activeStates.remove(id);
-                            _listKey.currentState?.removeItem(
-                              index,
-                              (context, animation) => SlideTransition(
-                                position: animation.drive(Tween(begin: const Offset(1, 0), end: Offset.zero)),
-                                child: FadeTransition(opacity: animation, child: _buildPropertyCard(removed)),
-                              ),
-                              duration: const Duration(milliseconds: 300),
-                            );
-                          }
-
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Property deleted')),
-                          );
-                        } catch (e) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Delete failed: $e')),
-                          );
-                        } finally {
-                          Navigator.of(context).pop(); // close loader
-                          setState(() => _deletingIds.remove(id));
-                        }
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.remove_red_eye_outlined),
+                title: const Text('View Details'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => OwnerPropertyDetailScreen(property: p),
+                    ),
+                  );
+                },
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.edit_outlined),
+                title: const Text('Edit Property'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => AddPropertyScreen(),
+                    ),
+                  );
+                },
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.delete_outline, color: Colors.red),
+                title: const Text(
+                  'Delete',
+                  style: TextStyle(color: Colors.red),
+                ),
+                onTap: () async {
+                  Navigator.pop(ctx);
+
+                  final id = p['id'] as String?;
+                  if (id == null) return;
+
+                  final confirmed = await showDialog<bool>(
+                    context: context,
+                    builder: (c) => AlertDialog(
+                      title: const Text('Delete this property?'),
+                      content: const Text('This action cannot be undone.'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(c, false),
+                          child: const Text('Cancel'),
+                        ),
+                        ElevatedButton(
+                          onPressed: () => Navigator.pop(c, true),
+                          child: const Text('Delete'),
+                        ),
+                      ],
+                    ),
+                  );
+
+                  if (confirmed != true) return;
+
+                  try {
+                    await FirebaseFirestore.instance
+                        .collection('properties')
+                        .doc(id)
+                        .delete();
+
+                    setState(() {
+                      _props.removeWhere((e) => e['id'] == id);
+                      _activeStates.remove(id);
+                    });
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Property deleted')),
+                    );
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Delete failed: $e')),
+                    );
+                  }
+                },
+              ),
+              const SizedBox(height: 10),
+            ],
+          ),
+        );
+      },
     );
   }
   String _addLabel() {
@@ -1051,11 +1047,27 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         foregroundColor: Colors.black87,
-        title: Row(
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: const [
-            Icon(Icons.home_work, color: Color.fromARGB(255, 41, 70, 92)),
-            SizedBox(width: 8),
-            Text('Skybase', style: TextStyle(color: Color.fromARGB(255, 41, 70, 92), fontWeight: FontWeight.bold)),
+            Text(
+              'Manage Properties',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+                color: Color.fromARGB(255, 41, 70, 92),
+              ),
+            ),
+            SizedBox(height: 4),
+            Text(
+              'Manage and track all your listed properties',
+              style: TextStyle(
+                fontSize: 15,
+                color: Color(0xFF64748B),
+                letterSpacing: 0.05,
+              ),
+            ),
           ],
         ),
         actions: const [
@@ -1068,76 +1080,135 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(
-              'My ${widget.category == null || widget.category!.isEmpty ? 'Properties' : widget.category!.replaceAll('_', ' ').split(' ').map((e) => e[0].toUpperCase() + e.substring(1)).join(' ')}',
-              style: const TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.w800,
-                color: Color.fromARGB(255, 41, 70, 92),
-                letterSpacing: 0.1,
-              ),
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              'Manage and track all your listed properties',
-              style: TextStyle(fontSize: 15, color: Color(0xFF64748B), letterSpacing: 0.05),
-            ),
-            const SizedBox(height: 12),
-
-            // Add Property button (full width, blue)
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color.fromARGB(255, 41, 70, 92),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ===== FILTER TABS =====
+              Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE3F2FD),
+                  borderRadius: BorderRadius.circular(20),
                 ),
-                onPressed: widget.properties.isEmpty
-                    ? () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AddPropertyScreen()))
-                    : null, // Disable if properties exist
-                icon: const Icon(Icons.add),
-                label: Text(_addLabel()),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => setState(() => _tabIndex = 0),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          decoration: BoxDecoration(
+                            color: _tabIndex == 0 ? const Color.fromARGB(255, 41, 70, 92) : Colors.transparent,
+                            borderRadius: const BorderRadius.horizontal(left: Radius.circular(20)),
+                          ),
+                          child: Center(
+                            child: Text(
+                              'Active',
+                              style: TextStyle(
+                                color: _tabIndex == 0 ? Colors.white : const Color.fromARGB(255, 41, 70, 92),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => setState(() => _tabIndex = 1),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          color: _tabIndex == 1 ? const Color.fromARGB(255, 41, 70, 92) : Colors.transparent,
+                          child: Center(
+                            child: Text(
+                              'Inactive',
+                              style: TextStyle(
+                                color: _tabIndex == 1 ? Colors.white : const Color.fromARGB(255, 41, 70, 92),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => setState(() => _tabIndex = 2),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          decoration: BoxDecoration(
+                            color: _tabIndex == 2 ? const Color.fromARGB(255, 41, 70, 92) : Colors.transparent,
+                            borderRadius: const BorderRadius.horizontal(right: Radius.circular(20)),
+                          ),
+                          child: Center(
+                            child: Text(
+                              'Pending',
+                              style: TextStyle(
+                                color: _tabIndex == 2 ? Colors.white : const Color.fromARGB(255, 41, 70, 92),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
 
-            // 2x2 stats grid like screenshot
-            GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: 2,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              childAspectRatio: 1.7,
-              children: [
-                _StatCard(title: 'Total Properties', value: total.toString()),
-                _StatCard(title: 'Active', value: active.toString(), highlight: true),
-                _StatCard(title: 'Total Bookings', value: bookings.toString()),
-                _StatCard(title: 'Avg Rating', value: avgRating.toStringAsFixed(1)),
-              ],
-            ),
-            const SizedBox(height: 20),
+              // ===== FILTERED PROPERTIES =====
+              Builder(
+                builder: (context) {
+                  final filtered = _props.where((p) {
+                    final status = (p['status'] ?? '').toString().toLowerCase();
+                    final approved = p['adminApproved'] == true;
 
-            // Properties list (one card per row like screenshot)
-            AnimatedList(
-              key: _listKey,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              initialItemCount: _props.length,
-              itemBuilder: (context, index, animation) {
-                final p = _props[index];
-                return SizeTransition(
-                  sizeFactor: animation,
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: _buildPropertyCard(p),
-                  ),
-                );
-              },
-            ),
-          ]),
+                    if (_tabIndex == 0) {
+                      return approved && status == 'active';
+                    }
+                    if (_tabIndex == 1) {
+                      return approved && status == 'inactive';
+                    }
+                    if (_tabIndex == 2) {
+                      return !approved;
+                    }
+                    return true;
+                  }).toList();
+
+                  if (filtered.isEmpty) {
+                    String message = 'No properties found';
+                    if (_tabIndex == 0) message = 'No active properties';
+                    if (_tabIndex == 1) message = 'No inactive properties';
+                    if (_tabIndex == 2) message = 'No pending properties';
+
+                    return SizedBox(
+                      height: MediaQuery.of(context).size.height * 0.5,
+                      child: Center(
+                        child: Text(
+                          message,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            color: Color(0xFF64748B),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+
+                  return Column(
+                    children: filtered.map((p) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: _buildPropertyCard(p),
+                      );
+                    }).toList(),
+                  );
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1357,31 +1428,185 @@ class OwnerPropertyDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final photos = (property['photoUrls'] as List<dynamic>?)?.cast<String>() ?? [];
+    final firstPhoto = photos.isNotEmpty ? photos.first : null;
+
+    final pricePerNight = property['pricePerNight'] ?? 0;
+    final revenue = property['revenue'] ?? 0;
+    final status = (property['status'] ?? 'inactive').toString();
+
+    final address = '${property['city'] ?? ''}, ${property['state'] ?? ''}'.trim();
+    final rating = (property['rating'] as num?)?.toDouble() ?? 0.0;
+    final bookings = property['totalBookings'] ?? 0;
+    final views = property['views'] ?? 0;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Property Details')),
+      appBar: AppBar(
+        title: const Text('Property Details'),
+        backgroundColor: const Color.fromARGB(255, 41, 70, 92),
+        foregroundColor: Colors.white,
+      ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
         children: [
-          Text(property['propertyName'] ?? 'Property', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 12),
-          Text('City: ${property['city'] ?? ''}'),
-          Text('State: ${property['state'] ?? ''}'),
-          Text('Type: ${property['propertyType'] ?? ''}'),
-          Text('Bookings: ${property['totalBookings'] ?? 0}'),
-          Text('Views: ${property['views'] ?? 0}'),
-          Text('Rating: ${property['rating'] ?? 0}'),
-          const SizedBox(height: 20),
-          ElevatedButton.icon(
-            icon: const Icon(Icons.edit),
-            label: const Text('Edit this property'),
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => AddPropertyScreen()),
-              );
-            },
+
+          // PHOTO GALLERY
+          SizedBox(
+            height: 240,
+            child: photos.isEmpty
+                ? Container(
+                    color: Colors.grey[300],
+                    child: const Center(child: Icon(Icons.home, size: 60)),
+                  )
+                : PageView.builder(
+                    itemCount: photos.length,
+                    itemBuilder: (context, index) {
+                      return Image.network(
+                        photos[index],
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                      );
+                    },
+                  ),
+          ),
+
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+
+                // PROPERTY TYPE
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE3F2FD),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: const Color.fromARGB(255, 41, 70, 92)),
+                  ),
+                  child: Text(
+                    property['propertyType'] ?? '',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color.fromARGB(255, 41, 70, 92),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 10),
+
+                // PROPERTY NAME
+                Text(
+                  property['propertyName'] ?? 'Property',
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+
+                const SizedBox(height: 6),
+
+                // LOCATION
+                Row(
+                  children: [
+                    const Icon(Icons.location_on, size: 16),
+                    const SizedBox(width: 6),
+                    Text(address),
+                  ],
+                ),
+
+                const SizedBox(height: 16),
+
+                // STATS ROW
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    _stat(Icons.calendar_today, bookings.toString(), "Bookings"),
+                    _stat(Icons.remove_red_eye, views.toString(), "Views"),
+                    _stat(Icons.star, rating.toStringAsFixed(1), "Rating"),
+                  ],
+                ),
+
+                const SizedBox(height: 20),
+
+                // OWNER ANALYTICS
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+
+                      const Text(
+                        "Owner Analytics",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          _stat(Icons.attach_money, '₹$revenue', "Revenue"),
+                          _stat(Icons.hotel, '₹$pricePerNight', "Per Night"),
+                          _stat(
+                            Icons.toggle_on,
+                            status.toUpperCase(),
+                            "Status",
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                // EDIT BUTTON
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color.fromARGB(255, 41, 70, 92),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    icon: const Icon(Icons.edit),
+                    label: const Text("Edit this property"),
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => AddPropertyScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _stat(IconData icon, String value, String label) {
+    return Column(
+      children: [
+        Icon(icon, size: 20, color: Colors.grey),
+        const SizedBox(height: 4),
+        Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
+        Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+      ],
     );
   }
 }
