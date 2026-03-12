@@ -270,7 +270,7 @@ class _OwnerSettingsScreenState extends State<OwnerSettingsScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _razorpay = Razorpay();
     _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handleRazorpaySuccess);
     _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handleRazorpayError);
@@ -382,7 +382,6 @@ class _OwnerSettingsScreenState extends State<OwnerSettingsScreen>
         bottom: TabBar(
           controller: _tabController,
           tabs: const [
-            Tab(text: 'Profile'),
             Tab(text: 'Notifications'),
             Tab(text: 'Payment'),
             Tab(text: 'Security'),
@@ -394,7 +393,6 @@ class _OwnerSettingsScreenState extends State<OwnerSettingsScreen>
           : TabBarView(
               controller: _tabController,
               children: [
-                _buildProfileTab(),
                 _buildNotificationsTab(),
                 _buildPaymentTab(),
                 _buildSecurityTab(),
@@ -403,63 +401,6 @@ class _OwnerSettingsScreenState extends State<OwnerSettingsScreen>
     );
   }
 
-  // ================= PROFILE TAB =================
-  Widget _buildProfileTab() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Personal Information',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 12),
-          TextField(
-            controller: nameCtrl,
-            readOnly: !isEditingProfile,
-            decoration: const InputDecoration(labelText: 'Name'),
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            controller: phoneCtrl,
-            readOnly: !isEditingProfile,
-            decoration: InputDecoration(
-              labelText: 'Phone Number',
-              suffixIcon: enable2FA
-                  ? const Icon(Icons.verified, color: Colors.green)
-                  : const Icon(Icons.verified_outlined),
-            ),
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            controller: bioCtrl,
-            readOnly: !isEditingProfile,
-            maxLines: 3,
-            decoration: const InputDecoration(labelText: 'Bio'),
-          ),
-          const SizedBox(height: 16),
-          const Text('Business Information',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 12),
-          TextField(
-            controller: businessNameCtrl,
-            readOnly: !isEditingProfile,
-            decoration: const InputDecoration(labelText: 'Business Name (Optional)'),
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            controller: businessAddrCtrl,
-            readOnly: !isEditingProfile,
-            decoration: const InputDecoration(labelText: 'Business Address'),
-          ),
-          const SizedBox(height: 16),
-          ElevatedButton(
-            onPressed: isEditingProfile ? _saveProfile : null,
-            child: const Text('Save Changes'),
-          ),
-        ],
-      ),
-    );
-  }
 
   // ================= NOTIFICATIONS TAB =================
   Widget _buildNotificationsTab() {

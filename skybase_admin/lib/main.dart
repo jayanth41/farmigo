@@ -5,6 +5,7 @@ import 'screens/dashboard_screen.dart';
 import 'screens/users_screen.dart';
 import 'screens/owners_screen.dart';
 import 'screens/admin_chat_list_screen.dart';
+import 'screens/property_approvals_screen.dart';
 void main() async{
   WidgetsFlutterBinding.ensureInitialized();
   try {
@@ -59,6 +60,7 @@ class _AdminHomeState extends State<AdminHome> {
     const UsersScreen(),
     const OwnersScreen(),
     const AdminChatListScreen(),
+    const PropertyApprovalsScreen(),
     const Center(child: Text("Bookings Screen")),
     const Center(child: Text("Payments Screen")),
     const Center(child: Text("Complaints Screen")),

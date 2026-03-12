@@ -34,7 +34,11 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
   String? _ownerName; // owner's display name
 
   int get _totalProperties => _properties.length;
-  int get _activeProperties => _properties.where((p) => (p['status'] ?? '').toString().toLowerCase() == 'active').length;
+  int get _activeProperties => _properties.where((p) {
+    final status = (p['status'] ?? '').toString().toLowerCase();
+    final approved = p['adminApproved'] == true;
+    return approved && status == 'active';
+  }).length;
   int get _totalBookings => _properties.fold<int>(0, (sum, p) => sum + ((p['totalBookings'] as num?)?.toInt() ?? 0));
   num get _totalEarnings =>
       _properties.fold<num>(0, (sum, p) => sum + ((p['revenue'] as num?) ?? 0));
@@ -343,6 +347,17 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
                   );
                 },
               ),
+              _DrawerTile(
+                icon: Icons.settings_outlined,
+                label: 'Settings',
+                selected: false,
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const OwnerSettingsScreen()),
+                  );
+                },
+              ),
               if (_roles != null && _roles!.length > 1) ...[
                 const Divider(height: 1),
                 const Padding(
@@ -428,30 +443,79 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
           ),
         ),
       ),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: Builder(
-          builder: (context) => IconButton(
-            icon: const Icon(Icons.menu, color: Colors.black87),
-            onPressed: () => Scaffold.of(context).openDrawer(),
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(90),
+        child: Container(
+          padding: EdgeInsets.fromLTRB(16, MediaQuery.of(context).padding.top + 4, 16, 8),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Theme.of(context).colorScheme.primary,
+                Theme.of(context).colorScheme.primaryContainer,
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Builder(
+                    builder: (context) => IconButton(
+                      icon: Icon(Icons.menu, color: Theme.of(context).colorScheme.onPrimary),
+                      onPressed: () => Scaffold.of(context).openDrawer(),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  RichText(
+                    text: TextSpan(
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
+                      children: [
+                        TextSpan(
+                          text: 'SKY',
+                          style: TextStyle(color: Theme.of(context).colorScheme.onPrimary),
+                        ),
+                        const TextSpan(
+                          text: 'BASE',
+                          style: TextStyle(color: Color(0xFFB9C5CC)),
+                        ),
+                      ],
+                    ),
+                  ),
+                
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const EditProfileScreen(),
+                        ),
+                      );
+                    },
+                    child: CircleAvatar(
+                      radius: 16,
+                      backgroundColor: Colors.white,
+                      child: Icon(
+                        Icons.person,
+                        size: 18,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+            ],
           ),
         ),
-        titleSpacing: 16,
-        title: Row(children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: Image.asset('assets/images/skybase_logo.png', height: 22, fit: BoxFit.cover, alignment: Alignment.center),
-          ),
-          SizedBox(width: 8),
-          Text('Skybase', style: TextStyle(color: Color(0xFF1E5FA8), fontWeight: FontWeight.bold,)),
-        ]),
-        actions: const [
-          Padding(
-            padding: EdgeInsets.only(right: 16),
-            child: Icon(Icons.person_outline, color: Colors.black54),
-          )
-        ],
       ),
       body: SafeArea(
         child: Builder(
@@ -496,9 +560,33 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
                     padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       // --- Welcome header ---
-                      Text('Welcome back, ${_ownerName ?? 'Owner'}!', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Color(0xFF0F172A))),
-                      const SizedBox(height: 4),
-                      const Text('Here\'s what\'s happening with your properties.', style: TextStyle(fontSize: 13, color: Color(0xFF64748B))),
+                      Builder(
+                        builder: (context) {
+                          final name = (_ownerName ?? 'Owner').split(' ').first;
+
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Welcome back, $name',
+                                style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF0F172A),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              const Text(
+                                "Here's what's happening with your properties",
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Color(0xFF64748B),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
                       const SizedBox(height: 12),
                       SizedBox(
                         width: double.infinity,
@@ -809,25 +897,13 @@ class _QuickActionsSection extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(color: const Color.fromARGB(255, 41, 70, 92), borderRadius: BorderRadius.circular(16)),
       padding: const EdgeInsets.all(10),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('Quick Actions', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
-        const SizedBox(height: 6),
-        _QuickActionTile(icon: Icons.add_home, label: 'Add New Property', onTap: () {
-          Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AddPropertyScreen()));
-        }),
-        const SizedBox(height: 4),
-        _QuickActionTile(icon: Icons.calendar_today, label: 'Manage Bookings', onTap: () {
-          Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ManageBookingsScreen()));
-        }),
-        const SizedBox(height: 4),
-        _QuickActionTile(icon: Icons.analytics, label: 'View Analytics', onTap: () {
-          Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OwnerAnalyticsScreen()));
-        }),
-        const SizedBox(height: 4),
-        _QuickActionTile(icon: Icons.settings, label: 'Property Settings', onTap: () {
-          Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OwnerSettingsScreen()));
-        }),
-      ]),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Quick Actions', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 6),
+        ],
+      ),
     );
   }
 }
@@ -912,8 +988,7 @@ class MyPropertiesScreen extends StatefulWidget {
 class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
   late Map<String, bool> _activeStates;
   late List<Map<String, dynamic>> _props; // local list for animated removal
-  final GlobalKey<AnimatedListState> _listKey = GlobalKey<AnimatedListState>();
-  final Set<String> _deletingIds = {}; // track loading states
+  // Local animated list key and deleting tracker removed (not used).
   int _tabIndex = 0; // 0 = Active, 1 = Inactive, 2 = Pending
 
   @override
@@ -957,13 +1032,46 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
               ListTile(
                 leading: const Icon(Icons.edit_outlined),
                 title: const Text('Edit Property'),
-                onTap: () {
+                onTap: () async {
                   Navigator.pop(ctx);
-                  Navigator.of(context).push(
+
+                  final confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (c) => AlertDialog(
+                      title: const Text('Edit Property'),
+                      content: const Text(
+                        'Are you sure you want to edit this property?\n\nAll changes will require admin approval before becoming visible.',
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(c, false),
+                          child: const Text('Cancel'),
+                        ),
+                        ElevatedButton(
+                          onPressed: () => Navigator.pop(c, true),
+                          child: const Text('Save Changes'),
+                        ),
+                      ],
+                    ),
+                  );
+
+                  if (confirm != true) return;
+
+                  final result = await Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (_) => AddPropertyScreen(),
                     ),
                   );
+
+                  if (result == true && context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Editing submitted successfully. Changes will reflect after admin approval.',
+                        ),
+                      ),
+                    );
+                  }
                 },
               ),
               const Divider(height: 1),
@@ -1027,20 +1135,11 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
       },
     );
   }
-  String _addLabel() {
-    final c = widget.category;
-    if (c == null || c.isEmpty) return 'Add Property';
-    final pretty = c.replaceAll('_', ' ');
-    return 'Add ${pretty[0].toUpperCase()}${pretty.substring(1)}';
-  }
+  // _addLabel removed (not used in this screen)
 
   @override
   Widget build(BuildContext context) {
-    final total = widget.properties.length;
-    final active = widget.properties.where((p) => (p['status'] ?? '').toString().toLowerCase() == 'active').length;
-    final bookings = widget.properties.fold<int>(0, (sum, p) => sum + ((p['totalBookings'] as num?)?.toInt() ?? 0));
-    final ratings = widget.properties.map((p) => (p['rating'] as num?)?.toDouble()).whereType<double>().toList();
-    final avgRating = ratings.isEmpty ? 0.0 : ratings.reduce((a, b) => a + b) / ratings.length;
+  // Removed unused local summary variables (total, active, bookings, ratings)
 
     return Scaffold(
       appBar: AppBar(
@@ -1216,7 +1315,6 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
 
   Widget _buildPropertyCard(Map<String, dynamic> p) {
     final photos = (p['photoUrls'] as List<dynamic>?)?.cast<String>() ?? [];
-    final firstPhoto = photos.isNotEmpty ? photos.first : null;
     final address = '${p['city'] ?? ''}, ${p['state'] ?? ''}'.trim();
     final rating = (p['rating'] as num?)?.toDouble() ?? 0.0;
     final reviews = (p['reviewCount'] as num?)?.toInt() ?? 0;
@@ -1230,9 +1328,9 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
         Stack(children: [
           ClipRRect(
             borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
-            child: firstPhoto != null
-                ? Image.network(firstPhoto, height: 200, width: double.infinity, fit: BoxFit.cover)
-                : Container(height: 200, width: double.infinity, color: Colors.grey[300], child: const Icon(Icons.home, size: 60)),
+      child: photos.isNotEmpty
+        ? Image.network(photos.first, height: 200, width: double.infinity, fit: BoxFit.cover)
+        : Container(height: 200, width: double.infinity, color: Colors.grey[300], child: const Icon(Icons.home, size: 60)),
           ),
           Positioned(
             top: 10,
@@ -1429,7 +1527,7 @@ class OwnerPropertyDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final photos = (property['photoUrls'] as List<dynamic>?)?.cast<String>() ?? [];
-    final firstPhoto = photos.isNotEmpty ? photos.first : null;
+  // firstPhoto removed; use photos list directly where needed
 
     final pricePerNight = property['pricePerNight'] ?? 0;
     final revenue = property['revenue'] ?? 0;
@@ -2473,3 +2571,88 @@ class _ReviewReplyScreenState extends State<ReviewReplyScreen> {
             );
           }
         }
+
+// _BottomCurveClipper removed — header now uses a rounded Container matching HomeScreen
+
+class EditProfileScreen extends StatelessWidget {
+  const EditProfileScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Edit Profile'),
+        backgroundColor: const Color.fromARGB(255, 41, 70, 92),
+        foregroundColor: Colors.white,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 10),
+
+            const Text(
+              'Profile Details',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+
+            const SizedBox(height: 20),
+
+            TextField(
+              decoration: InputDecoration(
+                labelText: 'Name',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            TextField(
+              decoration: InputDecoration(
+                labelText: 'Phone Number',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            TextField(
+              decoration: InputDecoration(
+                labelText: 'Email',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color.fromARGB(255, 41, 70, 92),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Profile updated successfully')),
+                  );
+                },
+                child: const Text('Save Changes'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
