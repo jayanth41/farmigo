@@ -18,6 +18,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Map<String, dynamic>? _userDoc;
   bool _loading = true;
+  String _activeRole = 'user';
   late FavoritesController _favoritesController;
   // Real-time stats: we'll use StreamBuilders directly on Firestore collections/docs
 
@@ -76,6 +77,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 20),
                   _buildStatsCounter(),
                   const SizedBox(height: 20),
+                  _buildRoleSwitch(),
+                  const SizedBox(height: 20),
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
@@ -84,9 +87,161 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           context,
                           MaterialPageRoute(builder: (_) => const EditProfileScreen()),
                         );
-                        if (changed == true) await _loadUser();
+
+                        if (changed == true) {
+                          await _loadUser();
+
+                          final user = _auth.currentUser;
+                          if (user != null) {
+                            await _firestore.collection('admin_notifications').add({
+                              'type': 'profile_update',
+                              'userId': user.uid,
+                              'userName': _userDoc?['name'] ?? '',
+                              'email': _userDoc?['email'] ?? '',
+                              'message': 'User updated profile details',
+                              'createdAt': FieldValue.serverTimestamp(),
+                              'isRead': false,
+                            });
+                          }
+                        }
                       },
                       child: const Text('Edit Profile'),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        final controller = TextEditingController();
+                        final result = await showDialog<String?>(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text("Update Email"),
+                            content: TextField(
+                              controller: controller,
+                              decoration: const InputDecoration(hintText: "Enter new email"),
+                            ),
+                            actions: [
+                              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
+                              ElevatedButton(onPressed: () => Navigator.pop(ctx, controller.text.trim()), child: const Text("Update")),
+                            ],
+                          ),
+                        );
+
+                        if (result != null && result.isNotEmpty) {
+                          var authUpdated = false;
+                          try {
+                            final current = _auth.currentUser;
+                            if (current != null) {
+                              // Some firebase_auth platform implementations may not
+                              // expose updateEmail on the static User type (or may
+                              // require reauthentication). Use a dynamic call so the
+                              // code compiles across versions and handle failures.
+                              final dyn = current as dynamic;
+                              if (dyn.updateEmail != null) {
+                                await dyn.updateEmail(result);
+                                authUpdated = true;
+                              }
+                            }
+                          } catch (e) {
+                            // Fall through — we'll notify the user below.
+                            debugPrint('updateEmail failed: $e');
+                          }
+
+                          // Update Firestore record only if auth update succeeded;
+                          // otherwise update local profile and notify user to
+                          // re-authenticate or change via provider settings.
+                          if (authUpdated) {
+                            await _firestore.collection('users').doc(_auth.currentUser!.uid).update({'email': result});
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text("Email updated successfully")),
+                              );
+                            }
+                          } else {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text("Could not update email on auth provider. Please re-authenticate or update email via your provider settings.")),
+                              );
+                            }
+                          }
+                        }
+                      },
+                      child: const Text('Update Email'),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        final controller = TextEditingController();
+                        final result = await showDialog<String?>(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text("Update Phone Number"),
+                            content: TextField(
+                              controller: controller,
+                              decoration: const InputDecoration(hintText: "Enter phone number"),
+                            ),
+                            actions: [
+                              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
+                              ElevatedButton(onPressed: () => Navigator.pop(ctx, controller.text.trim()), child: const Text("Update")),
+                            ],
+                          ),
+                        );
+
+                        if (result != null && result.isNotEmpty) {
+                          await _firestore.collection('users').doc(_auth.currentUser!.uid).update({'phone': result});
+                          await _loadUser();
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text("Phone number updated")),
+                            );
+                          }
+                        }
+                      },
+                      child: const Text('Update Phone Number'),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        final confirm = await showDialog<bool>(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text("Delete Account"),
+                            content: const Text("Are you sure you want to delete your account? This action cannot be undone."),
+                            actions: [
+                              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancel")),
+                              ElevatedButton(
+                                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                                onPressed: () => Navigator.pop(ctx, true),
+                                child: const Text("Delete"),
+                              ),
+                            ],
+                          ),
+                        );
+
+                        if (confirm == true) {
+                          final uid = _auth.currentUser?.uid;
+                          if (uid != null) {
+                            await _firestore.collection('users').doc(uid).delete();
+                            await _auth.currentUser?.delete();
+                            if (mounted) {
+                              Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+                            }
+                          }
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                      child: const Text('Delete Account'),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -127,6 +282,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       final doc = await _firestore.collection('users').doc(user.uid).get();
       _userDoc = doc.exists ? doc.data() : null;
+      _activeRole = _userDoc?['activeRole'] ?? 'user';
     } catch (e) {
       debugPrint('Failed to load user doc: $e');
       _userDoc = null;
@@ -156,6 +312,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(displayName.isNotEmpty ? displayName : 'No name', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontSize: 22, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 4),
+              Text(
+                _activeRole == 'user' ? 'User Account' : 'Owner Account',
+                style: const TextStyle(fontSize: 13, color: Colors.grey),
+              ),
               const SizedBox(height: 6),
               if (email.isNotEmpty) Text(email, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 14)),
               if (phone.isNotEmpty) Text(phone, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 14)),
@@ -220,6 +381,110 @@ class _ProfileScreenState extends State<ProfileScreen> {
           },
         ),
       ],
+    );
+  }
+
+  Widget _buildRoleSwitch() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        color: Colors.white,
+        border: Border.all(color: const Color.fromARGB(255, 41, 70, 92)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "Switch Account",
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: Color.fromARGB(255, 41, 70, 92),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "User Account",
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: _activeRole == 'user'
+                            ? const Color.fromARGB(255, 41, 70, 92)
+                            : Colors.grey,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      "Book properties",
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ),
+              Switch(
+                value: _activeRole != 'user',
+                onChanged: (value) async {
+                  final user = _auth.currentUser;
+                  if (user == null) return;
+
+                  final newRole = value ? 'owner' : 'user';
+
+                  await _firestore
+                      .collection('users')
+                      .doc(user.uid)
+                      .update({'activeRole': newRole});
+
+                  if (!mounted) return;
+
+                  setState(() {
+                    _activeRole = newRole;
+                  });
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        newRole == 'owner'
+                            ? 'Switched to Owner mode'
+                            : 'Switched to User mode',
+                      ),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                },
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      "Owner Account",
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: _activeRole == 'owner'
+                            ? const Color.fromARGB(255, 41, 70, 92)
+                            : Colors.grey,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      "List your properties",
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 

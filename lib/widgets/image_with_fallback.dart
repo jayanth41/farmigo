@@ -30,9 +30,12 @@ class ImageWithFallback extends StatelessWidget {
         alignment: Alignment.center,
         child: Padding(
           padding: const EdgeInsets.all(8.0),
-          child: Image.asset(
-            'assets/images/fallback.png',
-            fit: BoxFit.contain,
+          // Avoid throwing if asset is missing on some dev environments
+          // — show a simple icon placeholder instead of requiring an image
+          child: Icon(
+            Icons.image_not_supported,
+            size: (height != null ? (height! * 0.4) : 36),
+            color: Colors.grey[500],
           ),
         ),
       );
@@ -74,13 +77,14 @@ class ImageWithFallback extends StatelessWidget {
           width: width,
           color: Theme.of(context).cardColor,
           alignment: Alignment.center,
-          child: Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Image.asset(
-              'assets/images/fallback.png',
-              fit: BoxFit.contain,
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Icon(
+                Icons.broken_image,
+                size: (height != null ? (height! * 0.4) : 36),
+                color: Colors.grey[500],
+              ),
             ),
-          ),
         );
       },
     );

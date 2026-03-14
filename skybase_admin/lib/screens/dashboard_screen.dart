@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'property_approvals_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
@@ -101,21 +102,40 @@ class DashboardScreen extends StatelessWidget {
             const SizedBox(height: 10),
 
             Expanded(
-              child: ListView(
-                children: const [
-                  ListTile(
-                    leading: Icon(Icons.notifications),
-                    title: Text("New owner registered"),
-                  ),
-                  ListTile(
-                    leading: Icon(Icons.notifications),
-                    title: Text("Booking confirmed"),
-                  ),
-                  ListTile(
-                    leading: Icon(Icons.notifications),
-                    title: Text("Payment received"),
-                  ),
-                ],
+              child: StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('admin_notifications')
+                    .orderBy('createdAt', descending: true)
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                    return const Center(
+                      child: Text(
+                        "No notifications yet",
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    );
+                  }
+
+                  final notifications = snapshot.data!.docs;
+
+                  return ListView.builder(
+                    itemCount: notifications.length,
+                    itemBuilder: (context, index) {
+                      final data = notifications[index].data() as Map<String, dynamic>;
+
+                      return ListTile(
+                        leading: const Icon(Icons.notifications),
+                        title: Text(data['message'] ?? 'Notification'),
+                        subtitle: Text(data['userName'] ?? ''),
+                      );
+                    },
+                  );
+                },
               ),
             )
           ],

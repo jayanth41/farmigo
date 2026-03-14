@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
-import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:firebase_messaging/firebase_messaging.dart' show FirebaseMessaging, RemoteMessage;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart' as env;
 
 import 'filters/filters_provider.dart';
 import 'navigation/app_routes.dart';
@@ -33,6 +33,7 @@ import 'controllers/auth_controller.dart';
 import 'controllers/settings_controller.dart';
 import 'settings/theme_provider.dart';
 import 'services/firebase_helper.dart';
+import 'services/airport_service.dart';
 import 'firebase_options.dart';
 import 'screens/admin_chat_screen.dart';
 
@@ -54,13 +55,11 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Load environment variables from .env (optional). Keep silent if missing.
-  try {
-    await dotenv.load();
-    debugPrint('[Main] Loaded .env');
-  } catch (e) {
-    debugPrint('[Main] .env load failed or not present: $e');
-  }
+  // Load environment variables before anything uses them.
+  // If this fails we WANT to see the error instead of silently continuing,
+  // because services like DuffelService depend on these values.
+  await env.dotenv.load(fileName: "assets/.env");
+  debugPrint('[Main] .env successfully loaded');
 
   debugPrint("🚨🚨🚨 MAIN() STARTED — CHECKING APP CHECK 🚨🚨🚨");
 
@@ -85,6 +84,14 @@ Future<void> main() async {
 
   // Request notification permission from FirebaseMessaging
   await _requestNotificationPermission();
+
+  // Load airport database for flight autocomplete
+  try {
+    await AirportService.loadAirports();
+    debugPrint('[Main] Airport database loaded');
+  } catch (e) {
+    debugPrint('[Main] Failed to load airport database: $e');
+  }
 
   // ❌ REMOVE App Check activation in debug
 // We'll enable it properly later for release builds only
@@ -173,6 +180,7 @@ class MyApp extends StatelessWidget {
             GetPage(name: '/login', page: () => const LoginScreen()),
             GetPage(name: '/signup', page: () => const SignupPage()),
             GetPage(name: AppRoutes.home, page: () => const HomeScreen()),
+            GetPage(name: '/home', page: () => const HomeScreen()),
             GetPage(name: AppRoutes.favorites, page: () => const FavoritesScreen()),
             GetPage(name: AppRoutes.bookings, page: () => const BookingsScreen()),
             GetPage(name: AppRoutes.profile, page: () => const ProfileScreen()),
@@ -184,6 +192,7 @@ class MyApp extends StatelessWidget {
             GetPage(name: AppRoutes.carRentals, page: () => const CarRentalsScreen()),
             GetPage(name: '/owner',page: () => const CarOwnerDashboard(),transition: Transition.rightToLeft,),
             GetPage(name:  '/adminChat',page: () => const AdminChatScreen(),),
+            GetPage(name: '/owner-dashboard', page: () => const OwnerDashboard(), transition: Transition.rightToLeft),
           ],
         );
       }),

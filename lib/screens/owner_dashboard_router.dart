@@ -117,6 +117,35 @@ class _OwnerDashboardRouterState extends State<OwnerDashboardRouter> {
       // Check if pending approval (most important - must be checked first)
       if (model.verificationStatus == 'pending_verification') {
         debugPrint('[Router] Owner pending approval');
+
+        // If the user already has an activeRole chosen, allow access to the
+        // corresponding owner dashboard even while verification is pending.
+        // This lets owners manage their properties while admin approval for
+        // the onboarding is still in progress.
+        if (model.activeRole != null && model.activeRole != 'null') {
+          debugPrint('[Router] activeRole present during pending verification: ${model.activeRole} — routing to owner dashboard');
+          if (model.activeRole == 'farmhouse' || model.activeRole == 'farmhouse_owner') {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (_) => const FarmhouseOwnerDashboardNew()),
+            );
+            return;
+          }
+
+          if (model.activeRole == 'cOwner' || model.activeRole == 'coowner' || model.activeRole == 'co_owner') {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (_) => const CoOwnerDashboardNew()),
+            );
+            return;
+          }
+
+          // Fallback: if we don't know the exact role, route to farmhouse dashboard
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const FarmhouseOwnerDashboardNew()),
+          );
+          return;
+        }
+
+        // No active role yet — show the pending approval screen as before
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const OwnerPendingApprovalScreen()),
         );
@@ -138,7 +167,7 @@ class _OwnerDashboardRouterState extends State<OwnerDashboardRouter> {
           // Show role selection
           debugPrint('[Router] Showing role selection');
           Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const OwnerRoleSelectionScreen()),
+            MaterialPageRoute(builder: (_) => const RoleSelectionScreen()),
           );
           return;
         }

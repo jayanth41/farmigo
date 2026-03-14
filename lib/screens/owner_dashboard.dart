@@ -1,14 +1,9 @@
-// NOTE: place logo at: assets/skybase_logo.png
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-// import 'package:firebase_messaging/firebase_messaging.dart';
-
-// Adjust these paths if your files are in a different folder
 import 'add_property_screen.dart';
 import 'owner_onboarding_screen.dart';
 import 'manage_bookings.dart';
-import 'owner_analytics_screen.dart';
 import 'owner_settings_screen.dart';
 import 'home_screen.dart';
 import 'car_owner_dashboard_new.dart';
@@ -32,6 +27,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
   String? _ownerCategory; // farmhouse | villa | hotel | hourly | car
   List<String>? _roles; // store user roles for conditional menu
   String? _ownerName; // owner's display name
+  int _dashboardTabIndex = 0; // 0 = Active | 1 = Inactive | 2 = Pending
 
   int get _totalProperties => _properties.length;
   int get _activeProperties => _properties.where((p) {
@@ -51,6 +47,25 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
   @override
   void initState() {
     super.initState();
+
+    // Pre-fill owner name from auth (so UI shows a name immediately while Firestore loads)
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        var initial = user.displayName;
+        if (initial == null || initial.trim().isEmpty) {
+          final email = user.email;
+          if (email != null && email.isNotEmpty) {
+            final local = email.split('@').first;
+            final pretty = local.replaceAll(RegExp(r'[._]'), ' ');
+            initial = pretty.split(' ').map((s) => s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}').join(' ');
+          }
+        }
+        if (initial != null && initial.isNotEmpty) {
+          _ownerName = initial;
+        }
+      }
+    } catch (_) {}
 
     // Run after first frame so navigation is safe
     WidgetsBinding.instance.addPostFrameCallback((_) => _routeUser());
@@ -85,17 +100,42 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
 
     try {
       // Step 1: Get user roles and activeRole
-      final userSnap = await firestore.collection('users').doc(uid).get();
-      final roles = List<String>.from(userSnap.data()?['roles'] ?? []);
-      final activeRole = userSnap.data()?['activeRole'] as String?;
-      final displayName = userSnap.data()?['displayName'] as String? ?? userSnap.data()?['fullName'] as String? ?? 'Owner';
-      
-      if (mounted) setState(() => _ownerName = displayName);
-      debugPrint('[OwnerDashboard] Owner name: $_ownerName');
+        final userSnap = await firestore.collection('users').doc(uid).get();
+        final data = userSnap.data();
+        debugPrint('USER DOC DATA: ${userSnap.data()}');
+        final roles = List<String>.from(data?['roles'] ?? []);
+        final activeRole = data?['activeRole'] as String?;
+        // Normalize older/ambiguous role values to the canonical role keys used
+        // across the app. Some accounts use 'owner' while the code expects
+        // 'farmhouse_owner' or 'car_owner'. Normalize here to avoid routing
+        // fall-throughs.
+        String? normalizedActiveRole = activeRole;
+        if (activeRole != null) {
+          final a = activeRole.toString().toLowerCase();
+          if (a == 'owner' || a == 'farmhouse') normalizedActiveRole = 'farmhouse_owner';
+          if (a == 'cowner' || a == 'coowner' || a == 'co_owner') normalizedActiveRole = 'coowner';
+        }
+
+        var displayName = data?['displayName'] ?? data?['fullName'] ?? data?['name'] ?? data?['username'] ?? FirebaseAuth.instance.currentUser?.displayName ?? 'Owner';
+
+        // If Firestore/auth didn't provide a name, try deriving from email
+        if ((displayName == null || (displayName is String && displayName.toString().trim().isEmpty) || displayName == 'Owner')) {
+          final email = FirebaseAuth.instance.currentUser?.email;
+          if (email != null && email.isNotEmpty) {
+            final local = email.split('@').first;
+            final pretty = local.replaceAll(RegExp(r'[._]'), ' ');
+            final prettyCap = pretty.split(' ').map((s) => s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}').join(' ');
+            displayName = prettyCap;
+          }
+        }
+
+        if (mounted) setState(() => _ownerName = displayName as String?);
+        debugPrint('OWNER NAME FETCHED: $displayName (email:${FirebaseAuth.instance.currentUser?.email})');
+        debugPrint('[OwnerDashboard] Owner name: $_ownerName');
 
       // NEW RULE: if activeRole is null AND the user has at least one owner role,
       // always ask them to select a role first.
-      if (activeRole == null && roles.isNotEmpty) {
+      if (normalizedActiveRole == null && roles.isNotEmpty) {
         debugPrint('[OwnerDashboard] activeRole is null — forcing RoleSelectionScreen');
         if (mounted) {
           Navigator.of(context).pushReplacement(
@@ -118,7 +158,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
       }
 
       if (mounted) setState(() => _roles = roles);
-      debugPrint('[OwnerDashboard] User roles: $roles, activeRole: $activeRole');
+  debugPrint('[OwnerDashboard] User roles: $roles, activeRole: $activeRole (normalized: $normalizedActiveRole)');
 
       if (!mounted) return;
 
@@ -136,13 +176,18 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
       // CASE-2: If user is ONLY farmhouse_owner, check for properties
       if (roles.length == 1 && roles.contains('farmhouse_owner')) {
         debugPrint('[OwnerDashboard] CASE-2: Single farmhouse_owner role');
-        
-        // Check if user has properties
+
+        // Owner properties are stored in: Firestore → collection("properties")
+        // Each document must contain: ownerId = current user's uid
+        debugPrint('[OwnerDashboard] Checking properties in collection: properties where ownerId=$uid');
+
         final propsSnap = await firestore
-            .collection('properties')
+            .collection('properties') // <-- Firestore path where owner properties exist
             .where('ownerId', isEqualTo: uid)
             .limit(1)
             .get();
+
+        debugPrint('[OwnerDashboard] Properties found: ${propsSnap.docs.length}');
         final hasProperty = propsSnap.docs.isNotEmpty;
         debugPrint('[OwnerDashboard] farmhouse_owner has property: $hasProperty');
 
@@ -165,7 +210,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
       // CASE-4: If user has MULTIPLE roles
       if (roles.length > 1) {
         // 4B: If activeRole is car_owner, go to CarOwnerDashboard
-        if (activeRole == 'car_owner') {
+        if (normalizedActiveRole == 'car_owner') {
           debugPrint('[OwnerDashboard] CASE-4B: Multiple roles, activeRole=car_owner, redirecting to CarOwnerDashboard');
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (_) => const CarOwnerDashboard()),
@@ -174,15 +219,19 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
         }
 
         // 4C: If activeRole is farmhouse_owner, check for properties then load dashboard
-        if (activeRole == 'farmhouse_owner') {
+        if (normalizedActiveRole == 'farmhouse_owner') {
           debugPrint('[OwnerDashboard] CASE-4C: Multiple roles, activeRole=farmhouse_owner');
-          
-          // Check if user has properties
+
+          // Checking owner properties again for multi-role users
+          debugPrint('[OwnerDashboard] (multi-role) checking properties where ownerId=$uid');
+
           final propsSnap = await firestore
-              .collection('properties')
+              .collection('properties') // Firestore main properties collection
               .where('ownerId', isEqualTo: uid)
               .limit(1)
               .get();
+
+          debugPrint('[OwnerDashboard] (multi-role) properties found: ${propsSnap.docs.length}');
           final hasProperty = propsSnap.docs.isNotEmpty;
           debugPrint('[OwnerDashboard] farmhouse_owner has property: $hasProperty');
 
@@ -229,6 +278,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
     try {
       // Try ordered query first (preferred), fall back to unordered if Firestore rejects ordering
       try {
+        debugPrint('[OwnerDashboard] Loading all owner properties from collection: properties (ownerId=$uid)');
         final snap = await FirebaseFirestore.instance
             .collection('properties')
             .where('ownerId', isEqualTo: uid)
@@ -562,7 +612,11 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
                       // --- Welcome header ---
                       Builder(
                         builder: (context) {
-                          final name = (_ownerName ?? 'Owner').split(' ').first;
+              final name = (_ownerName != null && _ownerName!.trim().isNotEmpty)
+                ? _ownerName!
+                : (FirebaseAuth.instance.currentUser?.displayName != null && FirebaseAuth.instance.currentUser!.displayName!.trim().isNotEmpty)
+                  ? FirebaseAuth.instance.currentUser!.displayName!
+                  : 'Owner';
 
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -583,6 +637,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
                                   color: Color(0xFF64748B),
                                 ),
                               ),
+                          
                             ],
                           );
                         },
@@ -623,7 +678,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
                         childAspectRatio: 1.9,
                         children: [
                           _StatCard(title: 'Total Properties', value: _totalProperties.toString()),
-                          _StatCard(title: 'Active', value: _activeProperties.toString(), highlight: true),
+                          _StatCard(title: 'Active', value: _activeProperties.toString()),
                           _StatCard(title: 'Total Bookings', value: _totalBookings.toString()),
                           _StatCard(title: 'Total Earnings', value: '₹${_totalEarnings.toStringAsFixed(0)}'),
                         ],
@@ -717,113 +772,354 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
                         },
                       ),
 
-                      const SizedBox(height: 20),
-                      _QuickActionsSection(),
-                      const SizedBox(height: 20),
 
                       // --- Properties grid (1 card on small screens, 3 on wide) ---
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text('Your Properties', style: Theme.of(context).textTheme.titleSmall),
-                          TextButton(
-                            onPressed: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => MyPropertiesScreen(
-                                    properties: _properties,
-                                    category: _ownerCategory,
+                      const Text(
+                        'Manage Properties',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: Color.fromARGB(255, 41, 70, 92),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'View, edit and track the status of all your listed properties',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF64748B),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      // ===== PROPERTY STATUS TABS =====
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE3F2FD),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () => setState(() => _dashboardTabIndex = 0),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 10),
+                                  decoration: BoxDecoration(
+                                    color: _dashboardTabIndex == 0
+                                        ? const Color.fromARGB(255, 41, 70, 92)
+                                        : Colors.transparent,
+                                    borderRadius:
+                                        const BorderRadius.horizontal(left: Radius.circular(20)),
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      'Active',
+                                      style: TextStyle(
+                                        color: _dashboardTabIndex == 0
+                                            ? Colors.white
+                                            : const Color.fromARGB(255, 41, 70, 92),
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
                                   ),
                                 ),
-                              );
-                            },
-                            child: const Text(
-                              'View All',
-                              style: TextStyle(
-                                color: Color.fromARGB(255, 41, 70, 92),
-                                fontWeight: FontWeight.w600,
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      GridView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: isWide ? 3 : 1,
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 12,
-                          childAspectRatio: 1.1,
-                        ),
-                        itemCount: _properties.length > 3 ? 3 : _properties.length,
-                        itemBuilder: (context, index) {
-                          final p = _properties[index];
-                          final photos = (p['photoUrls'] as List<dynamic>?)?.cast<String>() ?? [];
-                          final firstPhoto = photos.isNotEmpty ? photos.first : null;
-                          final address = '${p['city'] ?? ''}, ${p['state'] ?? ''}'.trim();
-                          final rating = (p['rating'] as num?)?.toDouble() ?? 0.0;
-                          final views = (p['views'] as num?)?.toInt() ?? 0;
-
-                          return InkWell(
-                            borderRadius: BorderRadius.circular(18),
-                            onTap: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => OwnerPropertyDetailScreen(property: p),
-                                ),
-                              );
-                            },
-                            child: Card(
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-                              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                ClipRRect(
-                                  borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
-                                  child: firstPhoto != null
-                                      ? Image.network(firstPhoto, height: 160, width: double.infinity, fit: BoxFit.cover)
-                                      : Container(height: 160, color: Colors.grey[200], child: const Icon(Icons.home, size: 48)),
-                                ),
-                                Padding(
-                                  padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
-                                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFE3F2FD),
-                                        borderRadius: BorderRadius.circular(20),
-                                        border: Border.all(color: const Color.fromARGB(255, 41, 70, 92)),
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () => setState(() => _dashboardTabIndex = 1),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 10),
+                                  color: _dashboardTabIndex == 1
+                                      ? const Color.fromARGB(255, 41, 70, 92)
+                                      : Colors.transparent,
+                                  child: Center(
+                                    child: Text(
+                                      'Inactive',
+                                      style: TextStyle(
+                                        color: _dashboardTabIndex == 1
+                                            ? Colors.white
+                                            : const Color.fromARGB(255, 41, 70, 92),
+                                        fontWeight: FontWeight.w600,
                                       ),
-                                      child: Text(p['propertyType'] ?? '', style: const TextStyle(fontSize: 12, color: Color.fromARGB(255, 41, 70, 92), fontWeight: FontWeight.w600,)),
                                     ),
-                                    const SizedBox(height: 6),
-                                    Text(p['propertyName'] ?? 'Unnamed property', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, ), maxLines: 2, overflow: TextOverflow.ellipsis),
-                                    const SizedBox(height: 6),
-                                    Row(children: [const Icon(Icons.location_on, size: 14), const SizedBox(width: 4), Expanded(child: Text(address, style: const TextStyle(fontSize: 13, ), maxLines: 1, overflow: TextOverflow.ellipsis))]),
-                                    const SizedBox(height: 8),
-                                    Wrap(
-                                      spacing: 8,
-                                      runSpacing: 6,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () => setState(() => _dashboardTabIndex = 2),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 10),
+                                  decoration: BoxDecoration(
+                                    color: _dashboardTabIndex == 2
+                                        ? const Color.fromARGB(255, 41, 70, 92)
+                                        : Colors.transparent,
+                                    borderRadius:
+                                        const BorderRadius.horizontal(right: Radius.circular(20)),
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      'Pending',
+                                      style: TextStyle(
+                                        color: _dashboardTabIndex == 2
+                                            ? Colors.white
+                                            : const Color.fromARGB(255, 41, 70, 92),
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      Builder(
+                        builder: (context) {
+                          final filtered = _properties.where((p) {
+                            final status = (p['status'] ?? '').toString().toLowerCase();
+                            final approved = p['adminApproved'] == true;
+
+                            if (_dashboardTabIndex == 0) {
+                              return approved && status == 'active';
+                            }
+                            if (_dashboardTabIndex == 1) {
+                              return approved && status == 'inactive';
+                            }
+                            if (_dashboardTabIndex == 2) {
+                              return !approved;
+                            }
+                            return true;
+                          }).toList();
+
+                          if (filtered.isEmpty) {
+                            String message = 'No properties found';
+                            if (_dashboardTabIndex == 0) message = 'No active properties';
+                            if (_dashboardTabIndex == 1) message = 'No inactive properties';
+                            if (_dashboardTabIndex == 2) message = 'No pending properties';
+
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 40),
+                              child: Center(
+                                child: Text(
+                                  message,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    color: Color(0xFF64748B),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            );
+                          }
+
+                          return GridView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: isWide ? 3 : 1,
+                              crossAxisSpacing: 12,
+                              mainAxisSpacing: 12,
+                              childAspectRatio: 1.1,
+                            ),
+                            itemCount: filtered.length,
+                            itemBuilder: (context, index) {
+                              final p = filtered[index];
+                              final photos = (p['photoUrls'] as List<dynamic>?)?.cast<String>() ?? [];
+                              final firstPhoto = photos.isNotEmpty ? photos.first : null;
+                              final address = '${p['city'] ?? ''}, ${p['state'] ?? ''}'.trim();
+                              final rating = (p['rating'] as num?)?.toDouble() ?? 0.0;
+                              final views = (p['views'] as num?)?.toInt() ?? 0;
+
+                              return InkWell(
+                                borderRadius: BorderRadius.circular(18),
+                                onTap: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => OwnerPropertyDetailScreen(property: p),
+                                    ),
+                                  );
+                                },
+                                child: Card(
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                    Stack(
                                       children: [
-                                        Row(mainAxisSize: MainAxisSize.min, children: [
-                                          const Icon(Icons.calendar_today, size: 14, color: Colors.blue),
-                                          const SizedBox(width: 4),
-                                          Text('${p['totalBookings'] ?? 0} bookings', style: const TextStyle(fontSize: 12, fontFamily: 'Inter')),
-                                        ]),
-                                        Row(mainAxisSize: MainAxisSize.min, children: [
-                                          const Icon(Icons.remove_red_eye, size: 14, color: Colors.purple),
-                                          Text(' $views', style: const TextStyle(fontSize: 12, fontFamily: 'Inter')),
-                                        ]),
-                                        Row(mainAxisSize: MainAxisSize.min, children: [
-                                          const Icon(Icons.star, size: 14, color: Colors.amber),
-                                          Text(' ${rating.toStringAsFixed(1)}', style: const TextStyle(fontSize: 12, fontFamily: 'Inter')),
-                                        ]),
+                                        ClipRRect(
+                                          borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+                                          child: firstPhoto != null
+                                              ? Image.network(firstPhoto, height: 160, width: double.infinity, fit: BoxFit.cover)
+                                              : Container(height: 160, color: Colors.grey[200], child: const Icon(Icons.home, size: 48)),
+                                        ),
+                                        Positioned(
+                                          top: 10,
+                                          right: 10,
+                                          child: Card(
+                                            elevation: 3,
+                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                            child: IconButton(
+                                              icon: const Icon(Icons.more_vert, color: Colors.black87),
+                                              onPressed: () {
+                                                showModalBottomSheet(
+                                                  context: context,
+                                                  shape: const RoundedRectangleBorder(
+                                                    borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                                                  ),
+                                                  builder: (ctx) {
+                                                    return SafeArea(
+                                                      child: Column(
+                                                        mainAxisSize: MainAxisSize.min,
+                                                        children: [
+                                                          ListTile(
+                                                            leading: const Icon(Icons.remove_red_eye_outlined),
+                                                            title: const Text('View Details'),
+                                                            onTap: () {
+                                                              Navigator.pop(ctx);
+                                                              Navigator.of(context).push(
+                                                                MaterialPageRoute(
+                                                                  builder: (_) => OwnerPropertyDetailScreen(property: p),
+                                                                ),
+                                                              );
+                                                            },
+                                                          ),
+                                                          const Divider(height: 1),
+                                                          ListTile(
+                                                            leading: const Icon(Icons.edit_outlined),
+                                                            title: const Text('Edit Property'),
+                                                            onTap: () async {
+                                                              Navigator.pop(ctx);
+
+                                                              final confirm = await showDialog<bool>(
+                                                                context: context,
+                                                                builder: (c) => AlertDialog(
+                                                                  title: const Text('Edit Property'),
+                                                                  content: const Text(
+                                                                    'Are you sure you want to edit this property? Changes will require admin approval before becoming visible.',
+                                                                  ),
+                                                                  actions: [
+                                                                    TextButton(
+                                                                      onPressed: () => Navigator.pop(c, false),
+                                                                      child: const Text('Cancel'),
+                                                                    ),
+                                                                    ElevatedButton(
+                                                                      onPressed: () => Navigator.pop(c, true),
+                                                                      child: const Text('Edit'),
+                                                                    ),
+                                                                  ],
+                                                                ),
+                                                              );
+
+                                                              if (confirm == true) {
+                                                                Navigator.of(context).push(
+                                                                  MaterialPageRoute(
+                                                                    builder: (_) => const AddPropertyScreen(),
+                                                                  ),
+                                                                );
+                                                              }
+                                                            },
+                                                          ),
+                                                          const Divider(height: 1),
+                                                          ListTile(
+                                                            leading: const Icon(Icons.delete_outline, color: Colors.red),
+                                                            title: const Text(
+                                                              'Delete Property',
+                                                              style: TextStyle(color: Colors.red),
+                                                            ),
+                                                            onTap: () async {
+                                                              Navigator.pop(ctx);
+
+                                                              final confirm = await showDialog<bool>(
+                                                                context: context,
+                                                                builder: (c) => AlertDialog(
+                                                                  title: const Text('Delete Property'),
+                                                                  content: const Text('This action cannot be undone.'),
+                                                                  actions: [
+                                                                    TextButton(
+                                                                      onPressed: () => Navigator.pop(c, false),
+                                                                      child: const Text('Cancel'),
+                                                                    ),
+                                                                    ElevatedButton(
+                                                                      onPressed: () => Navigator.pop(c, true),
+                                                                      child: const Text('Delete'),
+                                                                    ),
+                                                                  ],
+                                                                ),
+                                                              );
+
+                                                              if (confirm == true) {
+                                                                final id = p['id'];
+                                                                if (id != null) {
+                                                                  await FirebaseFirestore.instance
+                                                                      .collection('properties')
+                                                                      .doc(id)
+                                                                      .delete();
+
+                                                                  setState(() {
+                                                                    _properties.removeWhere((prop) => prop['id'] == id);
+                                                                  });
+                                                                }
+                                                              }
+                                                            },
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    );
+                                                  },
+                                                );
+                                              },
+                                            ),
+                                          ),
+                                        ),
                                       ],
+                                    ),
+                                    Padding(
+                                      padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+                                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFE3F2FD),
+                                            borderRadius: BorderRadius.circular(20),
+                                            border: Border.all(color: const Color.fromARGB(255, 41, 70, 92)),
+                                          ),
+                                          child: Text(p['propertyType'] ?? '', style: const TextStyle(fontSize: 12, color: Color.fromARGB(255, 41, 70, 92), fontWeight: FontWeight.w600,)),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Text(p['propertyName'] ?? 'Unnamed property', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, ), maxLines: 2, overflow: TextOverflow.ellipsis),
+                                        const SizedBox(height: 6),
+                                        Row(children: [const Icon(Icons.location_on, size: 14), const SizedBox(width: 4), Expanded(child: Text(address, style: const TextStyle(fontSize: 13, ), maxLines: 1, overflow: TextOverflow.ellipsis))]),
+                                        const SizedBox(height: 8),
+                                        Wrap(
+                                          spacing: 8,
+                                          runSpacing: 6,
+                                          children: [
+                                            Row(mainAxisSize: MainAxisSize.min, children: [
+                                              const Icon(Icons.calendar_today, size: 14, color: Colors.blue),
+                                              const SizedBox(width: 4),
+                                              Text('${p['totalBookings'] ?? 0} bookings', style: const TextStyle(fontSize: 12, fontFamily: 'Inter')),
+                                            ]),
+                                            Row(mainAxisSize: MainAxisSize.min, children: [
+                                              const Icon(Icons.remove_red_eye, size: 14, color: Colors.purple),
+                                              Text(' $views', style: const TextStyle(fontSize: 12, fontFamily: 'Inter')),
+                                            ]),
+                                            Row(mainAxisSize: MainAxisSize.min, children: [
+                                              const Icon(Icons.star, size: 14, color: Colors.amber),
+                                              Text(' ${rating.toStringAsFixed(1)}', style: const TextStyle(fontSize: 12, fontFamily: 'Inter')),
+                                            ]),
+                                          ],
+                                        ),
+                                      ]),
                                     ),
                                   ]),
                                 ),
-                              ]),
-                            ),
+                              );
+                            },
                           );
                         },
                       ),
@@ -860,6 +1156,10 @@ class _StatCard extends StatelessWidget {
             : null,
         color: highlight ? null : Colors.white,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: const Color.fromARGB(255, 41, 70, 92),
+          width: 1.2,
+        ),
         boxShadow: const [
           BoxShadow(color: Color(0x0F000000), blurRadius: 12, offset: Offset(0, 6)),
         ],
@@ -889,51 +1189,6 @@ class _StatCard extends StatelessWidget {
 }
 
 
-class _QuickActionsSection extends StatelessWidget {
-  const _QuickActionsSection();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(color: const Color.fromARGB(255, 41, 70, 92), borderRadius: BorderRadius.circular(16)),
-      padding: const EdgeInsets.all(10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Quick Actions', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 6),
-        ],
-      ),
-    );
-  }
-}
-
-class _QuickActionTile extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-  const _QuickActionTile({required this.icon, required this.label, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white.withOpacity(0.15),
-      borderRadius: BorderRadius.circular(10),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(10),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          child: Row(children: [
-            Icon(icon, color: Colors.white, size: 18),
-            const SizedBox(width: 8),
-            Flexible(child: Text(label, style: const TextStyle(color: Colors.white), maxLines: 1, overflow: TextOverflow.ellipsis)),
-          ]),
-        ),
-      ),
-    );
-  }
-}
 
 class _DrawerTile extends StatelessWidget {
   final IconData icon;

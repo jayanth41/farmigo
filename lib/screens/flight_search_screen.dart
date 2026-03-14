@@ -1,6 +1,8 @@
+// Updated Flight Search Screen with advanced autocomplete UI
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:skybase/services/duffel_service.dart';
+import '../services/duffel_service.dart';
+import '../services/airport_service.dart';
 import 'order_creation_screen.dart';
 
 class FlightSearchScreen extends StatefulWidget {
@@ -12,39 +14,23 @@ class FlightSearchScreen extends StatefulWidget {
 
 class _FlightSearchScreenState extends State<FlightSearchScreen> {
   late DuffelService _duffelService;
-  
+
   final TextEditingController _departureController = TextEditingController();
   final TextEditingController _arrivalController = TextEditingController();
   final TextEditingController _departureDateController = TextEditingController();
-  final TextEditingController _returnDateController = TextEditingController();
   final TextEditingController _passengersController = TextEditingController(text: '1');
 
   bool _isLoading = false;
   List<Offer> _offers = [];
-  String? _sessionId;
   String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
     _duffelService = DuffelService();
-    // Check token early so user knows why flights may not load
-    if (_duffelService.accessToken.isEmpty) {
-      _errorMessage = 'Duffel token missing. Run app with --dart-define=DUFFEL_ACCESS_TOKEN=YOUR_TOKEN';
-    }
   }
 
-  @override
-  void dispose() {
-    _departureController.dispose();
-    _arrivalController.dispose();
-    _departureDateController.dispose();
-    _returnDateController.dispose();
-    _passengersController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _selectDate(TextEditingController controller) async {
+  Future<void> _selectDate() async {
     final date = await showDatePicker(
       context: context,
       initialDate: DateTime.now().add(const Duration(days: 1)),
@@ -53,241 +39,157 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
     );
 
     if (date != null) {
-      controller.text = DateFormat('yyyy-MM-dd').format(date);
+      _departureDateController.text = DateFormat('yyyy-MM-dd').format(date);
     }
   }
 
   Future<void> _searchFlights() async {
-    debugPrint('🔎 Search button pressed');
-    debugPrint('Token empty? ${_duffelService.accessToken.isEmpty}');
     if (_departureController.text.isEmpty ||
         _arrivalController.text.isEmpty ||
         _departureDateController.text.isEmpty) {
       setState(() {
-        _errorMessage = 'Please fill in all required fields';
+        _errorMessage = 'Please fill all fields';
       });
       return;
     }
 
     setState(() {
       _isLoading = true;
+      _offers.clear();
       _errorMessage = null;
-      _offers = [];
     });
 
     try {
-      if (_duffelService.accessToken.isEmpty) {
-        setState(() {
-          _isLoading = false;
-          _errorMessage = 'Duffel token missing. Flights cannot be loaded.';
-        });
-        return;
-      }
-      // Call Duffel offers API directly (new service API)
       final response = await _duffelService.searchOffers(
-        origin: _departureController.text.toUpperCase(),
-        destination: _arrivalController.text.toUpperCase(),
+        origin: AirportService.getIata(_departureController.text),
+        destination: AirportService.getIata(_arrivalController.text),
         departureDate: _departureDateController.text,
         adults: int.parse(_passengersController.text),
       );
 
-      debugPrint('Duffel response: $response');
-
-      // Extract offers from Duffel response
       final data = response['data'];
-      final offersJson = data != null ? data['offers'] as List<dynamic>? : null;
+      List<dynamic>? offersJson;
 
-      if (offersJson != null && offersJson.isNotEmpty) {
+      if (data is Map && data['offers'] != null) {
+        offersJson = data['offers'];
+      } else if (data is List) {
+        offersJson = data;
+      }
+
+      if (offersJson != null) {
         setState(() {
-          _offers = offersJson
+          _offers = offersJson!
               .map((o) => Offer.fromJson(o as Map<String, dynamic>))
               .toList();
         });
-      } else {
-        setState(() {
-          _offers = [];
-          _errorMessage = 'No flights returned by Duffel';
-        });
       }
-
-      _sessionId = 'done';
     } catch (e) {
       setState(() {
-        _errorMessage = 'Error: ${e.toString()}';
+        _errorMessage = e.toString();
       });
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-
-  Future<void> _pollForOffers(String sessionId) async {
-    // Poll for up to 30 seconds for results
-    int attempts = 0;
-    const maxAttempts = 30;
-
-    while (attempts < maxAttempts) {
-      try {
-        final offers = await _duffelService.getSearchResults(sessionId);
-        
-        if (offers.isNotEmpty) {
-          setState(() {
-            _offers = offers;
-          });
-          return;
-        }
-
-        // Wait before next poll
-        await Future.delayed(const Duration(seconds: 1));
-        attempts++;
-      } catch (e) {
-        // Continue polling even if there's an error
-        attempts++;
-      }
     }
 
     setState(() {
-      _errorMessage = 'No results found. Please try again.';
+      _isLoading = false;
     });
   }
 
-  void _selectOffer(Offer offer) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => OrderCreationScreen(
-          offer: offer,
-          duffelService: _duffelService,
-        ),
-      ),
+  Widget _airportField(TextEditingController controller, String label, IconData icon) {
+    return Autocomplete<String>(
+      optionsBuilder: (textEditingValue) {
+        if (textEditingValue.text.isEmpty) {
+          return const Iterable<String>.empty();
+        }
+        return AirportService.search(textEditingValue.text)
+            .map((a) => "${a.city} (${a.iata})");
+      },
+      onSelected: (selection) {
+        controller.text = selection.split('(').first.trim();
+      },
+      fieldViewBuilder: (context, textController, focusNode, onSubmit) {
+        controller.text = textController.text;
+        return TextField(
+          controller: textController,
+          focusNode: focusNode,
+          decoration: InputDecoration(
+            labelText: label,
+            prefixIcon: Icon(icon),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+      },
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Flight Search'),
-        elevation: 0,
-      ),
+      appBar: AppBar(title: const Text('Search Flights')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Search Form
             Card(
-              elevation: 2,
+              elevation: 3,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Text(
-                      'Search Flights',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                    _airportField(
+                        _departureController, 'From City / Airport', Icons.flight_takeoff),
+                    const SizedBox(height: 6),
+                    Center(
+                      child: IconButton(
+                        icon: const Icon(Icons.swap_vert, size: 28),
+                        onPressed: () {
+                          final temp = _departureController.text;
+                          _departureController.text = _arrivalController.text;
+                          _arrivalController.text = temp;
+                          setState(() {});
+                        },
                       ),
                     ),
-                    const SizedBox(height: 16),
-
-                    // Departure Airport
-                    TextField(
-                      controller: _departureController,
-                      decoration: InputDecoration(
-                        labelText: 'Departure Airport (IATA)',
-                        hintText: 'e.g., LAX',
-                        prefixIcon: const Icon(Icons.flight_takeoff),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      textCapitalization: TextCapitalization.characters,
-                    ),
+                    const SizedBox(height: 6),
+                    _airportField(
+                        _arrivalController, 'To City / Airport', Icons.flight_land),
                     const SizedBox(height: 12),
-
-                    // Arrival Airport
-                    TextField(
-                      controller: _arrivalController,
-                      decoration: InputDecoration(
-                        labelText: 'Arrival Airport (IATA)',
-                        hintText: 'e.g., JFK',
-                        prefixIcon: const Icon(Icons.flight_land),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      textCapitalization: TextCapitalization.characters,
-                    ),
-                    const SizedBox(height: 12),
-
-                    // Departure Date
                     TextField(
                       controller: _departureDateController,
+                      readOnly: true,
+                      onTap: _selectDate,
                       decoration: InputDecoration(
                         labelText: 'Departure Date',
-                        hintText: 'YYYY-MM-DD',
                         prefixIcon: const Icon(Icons.calendar_today),
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(10),
                         ),
                       ),
-                      readOnly: true,
-                      onTap: () => _selectDate(_departureDateController),
                     ),
                     const SizedBox(height: 12),
-
-                    // Return Date (Optional)
-                    TextField(
-                      controller: _returnDateController,
-                      decoration: InputDecoration(
-                        labelText: 'Return Date (Optional)',
-                        hintText: 'YYYY-MM-DD',
-                        prefixIcon: const Icon(Icons.calendar_today),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      readOnly: true,
-                      onTap: () => _selectDate(_returnDateController),
-                    ),
-                    const SizedBox(height: 12),
-
-                    // Passengers
                     TextField(
                       controller: _passengersController,
+                      keyboardType: TextInputType.number,
                       decoration: InputDecoration(
-                        labelText: 'Number of Passengers',
-                        prefixIcon: const Icon(Icons.person),
+                        labelText: 'Passengers',
+                        prefixIcon: const Icon(Icons.people),
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(10),
                         ),
                       ),
-                      keyboardType: TextInputType.number,
                     ),
                     const SizedBox(height: 20),
-
-                    // Search Button
                     ElevatedButton(
                       onPressed: _isLoading ? null : _searchFlights,
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
                       ),
                       child: _isLoading
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                              ),
-                            )
+                          ? const CircularProgressIndicator()
                           : const Text('Search Flights'),
                     ),
                   ],
@@ -295,138 +197,77 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
               ),
             ),
             const SizedBox(height: 20),
-
-            // Error Message
             if (_errorMessage != null)
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.red.shade100,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.red),
-                ),
-                child: Text(
-                  _errorMessage!,
-                  style: TextStyle(color: Colors.red.shade800),
-                ),
-              ),
-            const SizedBox(height: 20),
-
-            // Results
-            if (_offers.isNotEmpty) ...[
-              Text(
-                'Found ${_offers.length} flight(s)',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 12),
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: _offers.length,
-                itemBuilder: (context, index) {
-                  final offer = _offers[index];
-                  return OfferCard(
-                    offer: offer,
-                    onSelect: () => _selectOffer(offer),
-                  );
-                },
-              ),
-            ] else if (!_isLoading && _sessionId != null) ...[
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.blue),
-                ),
-                child: const Text(
-                  'No flights found for your search criteria.',
-                  style: TextStyle(color: Colors.blue),
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class OfferCard extends StatelessWidget {
-  final Offer offer;
-  final VoidCallback onSelect;
-
-  const OfferCard({
-    super.key,
-    required this.offer,
-    required this.onSelect,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Price
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  offer.displayPrice,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.green,
+              Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _offers.length,
+              itemBuilder: (context, index) {
+                final offer = _offers[index];
+                return Card(
+                  elevation: 3,
+                  margin: const EdgeInsets.symmetric(vertical: 8),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                ),
-                Text(
-                  'Offer ID: ${offer.id.substring(0, 8)}...',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade600,
+                  child: Padding(
+                    padding: const EdgeInsets.all(14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Row(
+                              children: [
+                                Icon(Icons.flight, size: 20),
+                                SizedBox(width: 6),
+                                Text(
+                                  "Flight Offer",
+                                  style: TextStyle(fontWeight: FontWeight.w600),
+                                ),
+                              ],
+                            ),
+                            Text(
+                              offer.displayPrice,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          "Offer ID: ${offer.id}",
+                          style: const TextStyle(fontSize: 12, color: Colors.grey),
+                        ),
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => OrderCreationScreen(
+                                    offer: offer,
+                                    duffelService: _duffelService,
+                                  ),
+                                ),
+                              );
+                            },
+                            child: const Text("Select Flight"),
+                          ),
+                        )
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-
-            // Route info
-            if (offer.slices.isNotEmpty) ...[
-              Text(
-                'Outbound: ${offer.slices[0].toString()}',
-                style: const TextStyle(fontSize: 14),
-              ),
-              const SizedBox(height: 8),
-              if (offer.slices.length > 1)
-                Text(
-                  'Return: ${offer.slices[1].toString()}',
-                  style: const TextStyle(fontSize: 14),
-                ),
-            ],
-            const SizedBox(height: 16),
-
-            // Select button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: onSelect,
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-                child: const Text('Select & Continue'),
-              ),
-            ),
+                );
+              },
+            )
           ],
         ),
       ),
