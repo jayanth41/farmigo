@@ -394,12 +394,14 @@ class BookingItemCard extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-    _buildDetailRow('Booking ID', booking['id']?.toString() ?? ''),
+    _buildDetailRow('Booking ID', booking['bookingId']?.toString() ?? booking['id']?.toString() ?? ''),
     _buildDetailRow('Property', booking['propertyName'] ?? ''),
     _buildDetailRow('Location', booking['location'] ?? ''),
     _buildDetailRow('Check-in', booking['checkIn'] ?? ''),
     _buildDetailRow('Check-out', booking['checkOut'] ?? ''),
     _buildDetailRow('Guests', booking['guests']?.toString() ?? ''),
+    _buildDetailRow('Booking Type', booking['bookingType']?.toString() ?? ''),
+    _buildDetailRow('Payment Status', booking['paymentStatus']?.toString().toUpperCase() ?? ''),
   _buildDetailRow('Total Price', booking['totalAmount'] != null ? '₹${booking['totalAmount']}' : ''),
     _buildDetailRow('Status', booking['status']?.toString().toUpperCase() ?? ''),
               const SizedBox(height: 12),
@@ -435,7 +437,7 @@ class BookingItemCard extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Booking ID: ${booking['id']?.toString() ?? ''}'),
+            Text('Booking ID: ${booking['bookingId']?.toString() ?? booking['id']?.toString() ?? ''}'),
             const SizedBox(height: 12),
             const Text(
               'Are you sure you want to cancel this booking?',

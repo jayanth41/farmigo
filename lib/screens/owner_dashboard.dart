@@ -3,11 +3,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'add_property_screen.dart';
 import 'owner_onboarding_screen.dart';
-import 'manage_bookings.dart';
 import 'owner_settings_screen.dart';
 import 'home_screen.dart';
 import 'car_owner_dashboard_new.dart';
 import 'role_selection_screen.dart';
+import 'owner/owner_main_scaffold.dart';
 
 /// OwnerDashboard now acts as a smart router:
 /// It briefly shows a loader, checks Firestore, and then
@@ -330,164 +330,337 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
       drawer: Drawer(
         backgroundColor: const Color(0xFFF8FAFC),
         child: SafeArea(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: ListView(
+            padding: EdgeInsets.zero,
             children: [
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(16, 28, 16, 28),
+                decoration: const BoxDecoration(
+                  color: Color.fromARGB(255, 41, 70, 92),
+                  borderRadius: BorderRadius.vertical(
+                    bottom: Radius.circular(16),
+                  ),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
-                      child: Image.asset('assets/images/skybase_logo.png', height: 28, fit: BoxFit.cover, alignment: Alignment.center),
-                    ),
-                    const SizedBox(width: 8),
-                    const Text('Skybase',
+                    RichText(
+                      text: TextSpan(
                         style: TextStyle(
-                          color:  Color.fromARGB(255, 41, 70, 92),
-                          fontSize: 18,
+                          fontSize: 30,
                           fontWeight: FontWeight.bold,
-                        )),
+                          letterSpacing: 0.5,
+                        ),
+                        children: [
+                          TextSpan(
+                            text: 'SKY',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                          TextSpan(
+                            text: 'BASE',
+                            style: TextStyle(color: Color(0xFFB9C5CC)),
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(height: 6),
+                    Text(
+                      ' "Host smarter. Earn better." ',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.white70,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
                   ],
                 ),
               ),
               const Divider(height: 1),
               const SizedBox(height: 8),
-              _DrawerTile(
-                icon: Icons.home_outlined,
-                label: 'Home',
-                selected: true,
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(builder: (_) => const HomeScreen()),
-                  );
-                },
+              Container(
+                margin: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color.fromARGB(255, 41, 70, 92), width: 0.8),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'ACCOUNT MODE',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: Color.fromARGB(255, 41, 70, 92),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'User Mode',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                          ),
+                        ),
+
+                        Switch(
+                          value: true,
+                          onChanged: (val) async {
+                            final uid = FirebaseAuth.instance.currentUser?.uid;
+                            if (uid != null) {
+                              await FirebaseFirestore.instance
+                                  .collection('users')
+                                  .doc(uid)
+                                  .update({'activeRole': val ? 'farmhouse_owner' : 'user'});
+                            }
+
+                            if (context.mounted) {
+                              Navigator.of(context).pushAndRemoveUntil(
+                                MaterialPageRoute(builder: (_) => const HomeScreen()),
+                                (route) => false,
+                              );
+                            }
+                          },
+                        ),
+
+                        const Text(
+                          'Owner Mode',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Color.fromARGB(255, 41, 70, 92),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-              _DrawerTile(
-                icon: Icons.calendar_today_outlined,
-                label: 'Bookings',
-                selected: false,
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const ManageBookingsScreen()),
-                  );
-                },
-              ),
-              _DrawerTile(
-                icon: Icons.message_outlined,
-                label: 'Messages',
-                selected: false,
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const MessagesScreen()),
-                  );
-                },
-              ),
-              _DrawerTile(
-                icon: Icons.star_outline,
-                label: 'Guest Reviews',
-                selected: false,
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const GuestReviewsScreen()),
-                  );
-                },
-              ),
-              _DrawerTile(
-                icon: Icons.settings_outlined,
-                label: 'Settings',
-                selected: false,
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const OwnerSettingsScreen()),
-                  );
-                },
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color.fromARGB(255, 41, 70, 92), width: 0.8),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x0F000000),
+                      blurRadius: 10,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(16, 4, 16, 8),
+                      child: Text(
+                        'MENU',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: Color.fromARGB(255, 41, 70, 92),
+                        ),
+                      ),
+                    ),
+
+                    _DrawerTile(
+                      icon: Icons.dashboard_outlined,
+                      label: 'Dashboard',
+                      selected: true,
+                      onTap: () {
+                        Navigator.pop(context);
+                      },
+                    ),
+
+                    _DrawerTile(
+                      icon: Icons.calendar_today_outlined,
+                      label: 'Bookings',
+                      selected: false,
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.of(context).pushReplacement(
+                          MaterialPageRoute(
+                            builder: (_) => OwnerMainScaffold(initialIndex: 1),
+                          ),
+                        );
+                      },
+                    ),
+
+                    _DrawerTile(
+                      icon: Icons.star_outline,
+                      label: 'Guest Reviews',
+                      selected: false,
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.of(context).pushReplacement(
+                          MaterialPageRoute(builder: (_) => OwnerMainScaffold(initialIndex: 2)),
+                        );
+                      },
+                    ),
+
+                    _DrawerTile(
+                      icon: Icons.settings_outlined,
+                      label: 'Settings',
+                      selected: false,
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const OwnerSettingsScreen()),
+                        );
+                      },
+                    ),
+                  ],
+                ),
               ),
               if (_roles != null && _roles!.length > 1) ...[
-                const Divider(height: 1),
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(16, 12, 16, 6),
-                  child: Text('OWNER ACTIONS', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                ),
+                const SizedBox(height: 10),
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color.fromARGB(255, 41, 70, 92), width: 0.8),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x0F000000),
+                        blurRadius: 10,
+                        offset: Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Padding(
+                        padding: EdgeInsets.fromLTRB(16, 4, 16, 8),
+                        child: Text(
+                          'OWNER ACTIONS',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: Color.fromARGB(255, 41, 70, 92),
+                          ),
+                        ),
+                      ),
 
-                _DrawerTile(
-                  icon: Icons.directions_car_outlined,
-                  label: 'Switch to Car Owner',
-                  selected: false,
-                  onTap: () async {
-                    Navigator.pop(context);
-                    final uid = FirebaseAuth.instance.currentUser?.uid;
-                    if (uid != null) {
-                      await FirebaseFirestore.instance.collection('users').doc(uid).update({
-                        'activeRole': 'car_owner',
-                      });
-                    }
-                    if (context.mounted) {
-                      Navigator.of(context).pushReplacement(
-                        MaterialPageRoute(builder: (_) => const CarOwnerDashboard()),
-                      );
-                    }
-                  },
-                ),
+                      Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        decoration: const BoxDecoration(),
+                        child: _DrawerTile(
+                          icon: Icons.directions_car_outlined,
+                          label: 'Switch to Car Owner',
+                          selected: false,
+                          onTap: () async {
+                            Navigator.pop(context);
+                            final uid = FirebaseAuth.instance.currentUser?.uid;
+                            if (uid != null) {
+                              await FirebaseFirestore.instance.collection('users').doc(uid).update({
+                                'activeRole': 'car_owner',
+                              });
+                            }
+                            if (context.mounted) {
+                              Navigator.of(context).pushReplacement(
+                                MaterialPageRoute(builder: (_) => const CarOwnerDashboard()),
+                              );
+                            }
+                          },
+                        ),
+                      ),
 
-                _DrawerTile(
-                  icon: Icons.house_outlined,
-                  label: 'Switch to Farmhouse Owner',
-                  selected: false,
-                  onTap: () async {
-                    Navigator.pop(context);
-                    final uid = FirebaseAuth.instance.currentUser?.uid;
-                    if (uid != null) {
-                      await FirebaseFirestore.instance.collection('users').doc(uid).update({
-                        'activeRole': 'farmhouse_owner',
-                      });
-                    }
-                    if (context.mounted) {
-                      Navigator.of(context).pushReplacement(
-                        MaterialPageRoute(builder: (_) => const OwnerDashboard()),
-                      );
-                    }
-                  },
+                      Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        decoration: const BoxDecoration(),
+                        child: _DrawerTile(
+                          icon: Icons.house_outlined,
+                          label: 'Switch to Farmhouse Owner',
+                          selected: false,
+                          onTap: () async {
+                            Navigator.pop(context);
+                            final uid = FirebaseAuth.instance.currentUser?.uid;
+                            if (uid != null) {
+                              await FirebaseFirestore.instance.collection('users').doc(uid).update({
+                                'activeRole': 'farmhouse_owner',
+                              });
+                            }
+                            if (context.mounted) {
+                              Navigator.of(context).pushReplacement(
+                                MaterialPageRoute(builder: (_) => const OwnerDashboard()),
+                              );
+                            }
+                          },
+                        ),
+                      ),
+
+                      Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        decoration: const BoxDecoration(),
+                        child: _DrawerTile(
+                          icon: Icons.person_add_outlined,
+                          label: 'Enroll as another owner',
+                          selected: false,
+                          onTap: () {
+                            Navigator.pop(context);
+                            Navigator.of(context).push(
+                              MaterialPageRoute(builder: (_) => const OwnerOnboardingScreen()),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
 
-              _DrawerTile(
-                icon: Icons.person_add_outlined,
-                label: 'Enroll as another owner',
-                selected: false,
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const OwnerOnboardingScreen()),
-                  );
-                },
-              ),
-
-              _DrawerTile(
-                icon: Icons.logout_outlined,
-                label: 'Logout',
-                selected: false,
-                onTap: () async {
-                  Navigator.pop(context);
-                  await FirebaseAuth.instance.signOut();
-                  if (context.mounted) {
-                    Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(builder: (_) => const HomeScreen()),
-                      (route) => false,
-                    );
-                  }
-                },
-              ),
-              const Spacer(),
-              const Divider(height: 1),
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Text('Version 1.0', style: TextStyle(color: Colors.grey)),
+              
+              Container(
+                margin: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.red.withOpacity(0.4)),
+                ),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    await FirebaseAuth.instance.signOut();
+                    if (context.mounted) {
+                      Navigator.of(context).pushAndRemoveUntil(
+                        MaterialPageRoute(builder: (_) => const HomeScreen()),
+                        (route) => false,
+                      );
+                    }
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    child: Row(
+                      children: const [
+                        Icon(Icons.logout, color: Colors.red),
+                        SizedBox(width: 12),
+                        Text(
+                          'Logout',
+                          style: TextStyle(
+                            color: Colors.red,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
             ],
           ),
@@ -520,11 +693,11 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
                       onPressed: () => Scaffold.of(context).openDrawer(),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const Spacer(),
                   RichText(
                     text: TextSpan(
                       style: const TextStyle(
-                        fontSize: 22,
+                        fontSize: 30,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 0.5,
                       ),
@@ -540,29 +713,29 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
                       ],
                     ),
                   ),
-                
                   const Spacer(),
-                  GestureDetector(
-                    onTap: () {
+                  IconButton(
+                    icon: const Icon(Icons.chat_bubble_outline, color: Colors.white),
+                    onPressed: () {
                       Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const EditProfileScreen(),
-                        ),
+                        MaterialPageRoute(builder: (_) => const MessagesScreen()),
                       );
                     },
-                    child: CircleAvatar(
-                      radius: 16,
-                      backgroundColor: Colors.white,
-                      child: Icon(
-                        Icons.person,
-                        size: 18,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                    ),
                   ),
                 ],
               ),
               const SizedBox(height: 4),
+              const Center(
+                child: Text(
+                  ' "Host smarter. Earn better." ',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.white70,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -1140,7 +1313,11 @@ class _StatCard extends StatelessWidget {
   final String value;
   final bool highlight;
 
-  const _StatCard({required this.title, required this.value, this.highlight = false});
+  const _StatCard({
+    required this.title,
+    required this.value,
+    this.highlight = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1206,21 +1383,28 @@ class _DrawerTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: selected ? const Color(0xFFE3F2FD) : Colors.transparent,
+      color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        child: Padding(
+        child: Container(
+          decoration: BoxDecoration(
+            color: selected ? const Color.fromARGB(255, 41, 70, 92) : Colors.white,
+          ),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(
             children: [
-              Icon(icon, color: selected ? const Color.fromARGB(255, 41, 70, 92) : Colors.black54),
+              Icon(icon, color: selected ? Colors.white : Colors.black54),
               const SizedBox(width: 12),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                  color: selected ? const Color.fromARGB(255, 41, 70, 92) : Colors.black87,
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                    color: selected ? Colors.white : Colors.black87,
+                  ),
                 ),
               ),
             ],

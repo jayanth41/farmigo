@@ -27,7 +27,7 @@ class DuffelService {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
     'Authorization': 'Bearer $accessToken',
-    'Duffel-Version': '2023-12-01',
+    'Duffel-Version': 'v2',
   };
 
   /// Search flights between two airports

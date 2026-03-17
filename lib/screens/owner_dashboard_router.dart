@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/owner_onboarding_model.dart';
 import '../services/owner_onboarding_service.dart';
 import 'owner_onboarding_screen_1.dart';

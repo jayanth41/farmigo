@@ -6,13 +6,14 @@ import 'package:firebase_messaging/firebase_messaging.dart' show FirebaseMessagi
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart' as env;
+import 'package:provider/provider.dart';
 
 import 'filters/filters_provider.dart';
 import 'navigation/app_routes.dart';
 import 'theme/app_theme.dart';
 import 'helpers/test_data_helper.dart';
 import 'helpers/seed_farmhouse_data.dart';
-import 'screens/splash_screen.dart';
+import 'core/mode_router.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/favorites_screen.dart';
@@ -36,6 +37,7 @@ import 'services/firebase_helper.dart';
 import 'services/airport_service.dart';
 import 'firebase_options.dart';
 import 'screens/admin_chat_screen.dart';
+import 'screens/splash_screen.dart';
 
 final GlobalKey<NavigatorState> rootNavKey = GlobalKey<NavigatorState>();
 
@@ -160,14 +162,21 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AppLocationController()..initialize()),
       ],
       child: Builder(builder: (context) {
-        final themeProvider = Provider.of<ThemeProvider>(context);
+        final themeProvider = context.watch<ThemeProvider>();
         return GetMaterialApp(
           navigatorKey: rootNavKey,
           debugShowCheckedModeBanner: false,
           title: 'Skybase',
-
-          theme: AppTheme.lightTheme(),
-          darkTheme: AppTheme.darkTheme(),
+          theme: AppTheme.lightTheme().copyWith(
+            textTheme: AppTheme.lightTheme().textTheme.apply(
+              fontFamily: 'Poppins',
+            ),
+          ),
+          darkTheme: AppTheme.darkTheme().copyWith(
+            textTheme: AppTheme.darkTheme().textTheme.apply(
+              fontFamily: 'Poppins',
+            ),
+          ),
           themeMode: themeProvider.themeMode,
 
           // Use a one-time splash check instead of switching the app root on

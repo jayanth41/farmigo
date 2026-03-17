@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../navigation/app_routes.dart';
-import 'app_drawer.dart';
+import '../widgets/app_drawer.dart';
 
 /// Enum for bottom navigation tabs.
 enum BottomTab { home, favorites, bookings, profile }
@@ -20,6 +20,8 @@ class MainScaffold extends StatefulWidget {
   /// four entries in the following order: home, favorites, bookings, profile.
   final Map<BottomTab, Widget> tabs;
 
+  final bool isOwner;
+
   /// Optional initial tab shown when the scaffold first appears.
   final BottomTab initialTab;
 
@@ -27,7 +29,8 @@ class MainScaffold extends StatefulWidget {
     super.key,
     required this.tabs,
     this.initialTab = BottomTab.home,
-  }) : assert(tabs.length == 4, 'tabs must contain 4 BottomTab entries');
+    this.isOwner = false,
+  });
 
   @override
   State<MainScaffold> createState() => _MainScaffoldState();
@@ -79,7 +82,9 @@ class _MainScaffoldState extends State<MainScaffold> {
 
   @override
   Widget build(BuildContext context) {
-    final children = BottomTab.values.map((t) => widget.tabs[t]!).toList();
+    final children = BottomTab.values
+        .map((t) => widget.tabs[t] ?? const SizedBox.shrink())
+        .toList();
 
     return Scaffold(
       appBar: AppBar(
@@ -98,11 +103,14 @@ class _MainScaffoldState extends State<MainScaffold> {
         currentIndex: _selectedIndex,
         type: BottomNavigationBarType.fixed,
         onTap: (idx) => _selectTab(BottomTab.values[idx]),
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.favorite_border), label: 'Favorites'),
-          BottomNavigationBarItem(icon: Icon(Icons.calendar_today), label: 'Bookings'),
-          BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profile'),
+        items: [
+          const BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+          BottomNavigationBarItem(
+            icon: Icon(widget.isOwner ? Icons.star : Icons.favorite_border),
+            label: widget.isOwner ? 'Reviews' : 'Favorites',
+          ),
+          const BottomNavigationBarItem(icon: Icon(Icons.calendar_today), label: 'Bookings'),
+          const BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profile'),
         ],
       ),
     );

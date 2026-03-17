@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'login_screen.dart';
-import 'home_screen.dart';
+import '../core/mode_router.dart';
 // Note: keep imports minimal for the splash's one-shot auth check.
 // splash uses named navigation; don't import HomeScreen directly to avoid
 // accidental direct widget pushes.
@@ -57,18 +57,18 @@ class _SplashScreenState extends State<SplashScreen>
         return;
       }
 
-      // Signed in -> ALWAYS go to Home first (correct behavior)
+      // Signed in -> route based on activeRole using ModeRouter
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
+        MaterialPageRoute(builder: (_) => const ModeRouter()),
       );
     } catch (e) {
       debugPrint('[SplashScreen] Navigation error: $e');
       if (mounted) {
-        // Safe fallback: still go to Home
+        // Safe fallback: still route through ModeRouter
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
+          MaterialPageRoute(builder: (_) => const ModeRouter()),
         );
       }
     }

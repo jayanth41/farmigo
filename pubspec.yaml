@@ -73,6 +73,7 @@ dev_dependencies:
 
 dependency_overrides:
   fluttertoast: 8.2.10
+  # http override removed — keep original http ^1.1.0 from dependencies (restore default behavior)
 
 
 flutter:
@@ -81,6 +82,24 @@ flutter:
   assets:
     - assets/
     - assets/data/airports.json
+
+
+  fonts:
+    - family: Poppins
+      fonts:
+        - asset: assets/fonts/Poppins-Regular.ttf
+        - asset: assets/fonts/Poppins-Medium.ttf
+        - asset: assets/fonts/Poppins-SemiBold.ttf
+        - asset: assets/fonts/Poppins-Bold.ttf
+    - family: Manrope
+      fonts:
+        - asset: assets/fonts/Manrope-Regular.ttf
+        - asset: assets/fonts/Manrope-Medium.ttf
+        - asset: assets/fonts/Manrope-SemiBold.ttf
+        - asset: assets/fonts/Manrope-Bold.ttf
+
+
+
 
 
 

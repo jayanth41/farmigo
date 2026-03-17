@@ -9,9 +9,6 @@ import '../screens/owner_dashboard.dart';
 import '../screens/add_property_screen.dart';
 import '../screens/filters_screen.dart';
 import '../models/category.dart';
-// Navigation is performed via named routes (GetX) or delegated to parent
-// `MainScaffold`. Avoid importing screen widgets directly to prevent unused
-// import warnings when using named navigation.
 import '../navigation/app_routes.dart';
 
 /// Check owner verification status and route accordingly.
@@ -444,6 +441,104 @@ class AppDrawer extends StatelessWidget {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
+                  // ===== SWITCH ACCOUNT =====
+                  FutureBuilder<DocumentSnapshot>(
+                    future: FirebaseFirestore.instance
+                        .collection('users')
+                        .doc(fb.FirebaseAuth.instance.currentUser?.uid)
+                        .get(),
+                    builder: (context, snap) {
+                      String activeRole = 'user';
+                      bool isOwner = false;
+
+                      if (snap.hasData && snap.data?.data() != null) {
+                        final data = snap.data!.data() as Map<String, dynamic>;
+                        activeRole = (data['activeRole'] ?? 'user').toString();
+
+                        final role = (data['role'] ?? 'user').toString();
+                        final roles = (data['roles'] ?? []) as List?;
+
+                        // Show switch only if user has owner capability
+                        isOwner = role == 'owner' || (roles != null && roles.contains('farmhouse_owner')) || (roles != null && roles.contains('car_owner'));
+                      }
+
+                      // If user is not owner, don't render this section
+                      if (!isOwner) {
+                        return const SizedBox.shrink();
+                      }
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 16),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: colorScheme.primary,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.swap_horiz, color: colorScheme.onPrimary),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "Switch Account",
+                                    style: TextStyle(
+                                      color: colorScheme.onPrimary,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                  Text(
+                                    activeRole == 'owner'
+                                        ? "Owner Mode"
+                                        : "User Mode",
+                                    style: TextStyle(
+                                      color: colorScheme.onPrimary.withOpacity(0.8),
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Switch(
+                              value: activeRole == 'owner',
+                              activeThumbColor: colorScheme.onPrimary,
+                              onChanged: (val) async {
+                                final uid = fb.FirebaseAuth.instance.currentUser?.uid;
+                                if (uid == null) return;
+
+                                final newRole = val ? 'owner' : 'user';
+
+                                await FirebaseFirestore.instance
+                                    .collection('users')
+                                    .doc(uid)
+                                    .update({'activeRole': newRole});
+
+                                if (context.mounted) {
+                                  showAppSnack(
+                                    context,
+                                    newRole == 'owner'
+                                        ? 'Switched to Owner mode'
+                                        : 'Switched to User mode',
+                                    isSuccess: true,
+                                  );
+
+                                  // Reload app root so ModeRouter decides which UI to show
+                                  Navigator.pushNamedAndRemoveUntil(
+                                    context,
+                                    '/',
+                                    (route) => false,
+                                  );
+                                }
+                              },
+                            )
+                          ],
+                        ),
+                      );
+                    },
+                  ),
                   _sectionTitle("Navigation", muted),
                   ListTile(
                     leading: Icon(Icons.home_outlined, color: onSurface),
@@ -534,21 +629,49 @@ class AppDrawer extends StatelessWidget {
                     },
                   ),
 
-                  ListTile(
-                    leading: Icon(Icons.dashboard_outlined, color: onSurface),
-                    title: Text('Owner Dashboard', style: TextStyle(color: onSurface)),
-                    onTap: () async {
-                      // Close drawer first
-                      try {
-                        Navigator.of(context).pop();
-                      } catch (_) {}
+                  FutureBuilder<DocumentSnapshot>(
+                    future: FirebaseFirestore.instance
+                        .collection('users')
+                        .doc(fb.FirebaseAuth.instance.currentUser?.uid)
+                        .get(),
+                    builder: (context, snap) {
+                      bool isOwner = false;
 
-                      // Direct navigation to OwnerDashboard (no extra verification routing)
-                      if (context.mounted) {
-                        Navigator.of(context, rootNavigator: true).push(
-                          MaterialPageRoute(builder: (_) => const OwnerDashboard()),
+                      if (snap.hasData && snap.data?.data() != null) {
+                        final data = snap.data!.data() as Map<String, dynamic>;
+                        final role = (data['role'] ?? '').toString();
+                        final roles = (data['roles'] ?? []) as List?;
+
+                        isOwner = role == 'owner' ||
+                            (roles != null && roles.contains('farmhouse_owner')) ||
+                            (roles != null && roles.contains('car_owner'));
+                      }
+
+                      if (isOwner) {
+                        return ListTile(
+                          leading: Icon(Icons.dashboard_outlined, color: onSurface),
+                          title: Text('Owner Dashboard', style: TextStyle(color: onSurface)),
+                          onTap: () {
+                            try {
+                              Navigator.of(context).pop();
+                            } catch (_) {}
+
+                            Navigator.of(context, rootNavigator: true).push(
+                              MaterialPageRoute(builder: (_) => const OwnerDashboard()),
+                            );
+                          },
                         );
                       }
+
+                      return ListTile(
+                        leading: Icon(Icons.person_add_alt_1_outlined, color: colorScheme.primary),
+                        title: Text('Become an Owner', style: TextStyle(color: onSurface)),
+                        subtitle: const Text('Start earning from your property'),
+                        onTap: () async {
+                          // Use the centralized owner routing logic
+                          await checkOwnerVerificationStatus(context: context);
+                        },
+                      );
                     },
                   ),
 
