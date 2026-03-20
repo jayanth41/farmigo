@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart' as env;
+import 'package:intl/intl.dart';
 
 class DuffelService {
   static const String baseUrl = 'https://api.duffel.com';
@@ -49,8 +50,8 @@ class DuffelService {
             },
             if (returnDate.isNotEmpty)
               {
-                'origin_airport_iata': arrivalAirportIata,
-                'destination_airport_iata': departureAirportIata,
+                'origin': arrivalAirportIata,
+                'destination': departureAirportIata,
                 'departure_date': returnDate,
               },
           ],
@@ -114,38 +115,51 @@ class DuffelService {
     try {
       final body = {
         'data': {
+          'type': 'instant',
           'selected_offers': [offerId],
           'passengers': [
             {
-              'id': 'passenger_1',
+              'type': 'adult',
               'title': passengerData.title,
-              'first_name': passengerData.firstName,
-              'last_name': passengerData.lastName,
-              'email': passengerData.email,
-              'phone_number': passengerData.phoneNumber,
-              'born_at': passengerData.dateOfBirth, // Format: YYYY-MM-DD
-              'gender': passengerData.gender,
+              'given_name': passengerData.firstName,
+              'family_name': passengerData.lastName,
+              'born_on': passengerData.dateOfBirth,
             }
           ],
-          'type': 'instant',
-          'contact': {
-            'email': contactEmail,
-            'phone_number': contactPhoneNumber,
-          },
+          'payments': [
+            {
+              'type': 'balance',
+              'currency': 'INR',
+              'amount': '0.00'
+            }
+          ],
+          'contacts': [
+            {
+              'email_address': contactEmail,
+              'phone_number': contactPhoneNumber,
+            }
+          ],
         }
       };
 
+      print('📦 CREATE ORDER REQUEST: ${jsonEncode(body)}');
+
       final response = await http.post(
         Uri.parse('$baseUrl/air/orders'),
-        headers: _headers,
+        headers: {
+          ..._headers,
+          'Duffel-Version': '2024-03-01',
+        },
         body: jsonEncode(body),
       ).timeout(const Duration(seconds: 30));
+
+      print('📩 CREATE ORDER RESPONSE: ${response.body}');
 
       if (response.statusCode == 201) {
         final jsonResponse = jsonDecode(response.body);
         return OrderResponse.fromJson(jsonResponse);
       } else {
-        throw Exception('Failed to create order: ${response.body}');
+        throw Exception('Duffel Order Error: ${response.body}');
       }
     } catch (e) {
       throw Exception('Error creating order: $e');
@@ -282,23 +296,32 @@ class Offer {
     final baseData = json['attributes'] ?? json;
     
     List<Slice> slices = [];
-    if (baseData['slices'] != null) {
-      slices = (baseData['slices'] as List<dynamic>)
-          .map((s) => Slice.fromJson(s as Map<String, dynamic>))
+    final rawSlices = baseData['slices'];
+
+    if (rawSlices is List) {
+      slices = rawSlices
+          .whereType<Map<String, dynamic>>() // prevent type crash
+          .map((s) => Slice.fromJson(s))
           .toList();
     }
 
     List<Airline> airlines = [];
-    if (baseData['airlines'] != null) {
-      airlines = (baseData['airlines'] as List<dynamic>)
-          .map((a) => Airline.fromJson(a as Map<String, dynamic>))
+    final rawAirlines = baseData['airlines'];
+
+    if (rawAirlines is List) {
+      airlines = rawAirlines
+          .whereType<Map<String, dynamic>>()
+          .map((a) => Airline.fromJson(a))
           .toList();
     }
 
     List<Airport> airports = [];
-    if (baseData['airports'] != null) {
-      airports = (baseData['airports'] as List<dynamic>)
-          .map((a) => Airport.fromJson(a as Map<String, dynamic>))
+    final rawAirports = baseData['airports'];
+
+    if (rawAirports is List) {
+      airports = rawAirports
+          .whereType<Map<String, dynamic>>()
+          .map((a) => Airport.fromJson(a))
           .toList();
     }
 
@@ -314,7 +337,43 @@ class Offer {
     );
   }
 
-  String get displayPrice => '$totalCurrency $totalAmount';
+  String get currencySymbol {
+    switch (totalCurrency) {
+      case 'INR':
+        return '₹';
+      case 'GBP':
+        return '£';
+      case 'USD':
+        return '\$';
+      case 'EUR':
+        return '€';
+      default:
+        return totalCurrency;
+    }
+  }
+
+  /// Converts price to INR for Indian users (approx rates)
+  double get priceInINR {
+    switch (totalCurrency) {
+      case 'INR':
+        return totalAmount;
+      case 'GBP':
+        return totalAmount * 105;
+      case 'USD':
+        return totalAmount * 83;
+      case 'EUR':
+        return totalAmount * 90;
+      default:
+        return totalAmount;
+    }
+  }
+
+  /// Display price formatted for UI (INR preferred)
+  String get displayPrice {
+    final price = priceInINR;
+    final formatter = NumberFormat('#,##,###');
+    return '₹${formatter.format(price.round())}';
+  }
   
   String get departureInfo {
     if (slices.isEmpty) return 'N/A';
@@ -350,6 +409,7 @@ class Offer {
   /// Duration estimate
   String get duration {
     if (slices.isEmpty) return '--';
+
     final segs = slices.first.segments;
     if (segs.isEmpty) return '--';
 
@@ -359,22 +419,114 @@ class Offer {
     if (dep == null || arr == null) return '--';
 
     final diff = arr.difference(dep);
-    final hours = diff.inHours;
-    final minutes = diff.inMinutes.remainder(60);
 
-    return '${hours}h ${minutes}m';
+    final h = diff.inHours;
+    final m = diff.inMinutes % 60;
+
+    final stops = segs.length - 1;
+
+    if (stops == 0) {
+      return '${h}h ${m}m • Non-stop';
+    } else {
+      return '${h}h ${m}m • $stops stop';
+    }
+  }
+
+  /// Duration in minutes (used for sorting / fastest filter)
+  int get durationMinutes {
+    if (slices.isEmpty) return 0;
+
+    final segs = slices.first.segments;
+    if (segs.isEmpty) return 0;
+
+    final dep = DateTime.tryParse(segs.first.departureAt);
+    final arr = DateTime.tryParse(segs.last.arrivalAt);
+
+    if (dep == null || arr == null) return 0;
+
+    return arr.difference(dep).inMinutes;
   }
 
   /// Airline name if available
   String get airlineName {
-    if (airlines.isEmpty) return 'Airline';
-    return airlines.first.name;
+    if (airlines.isNotEmpty) return airlines.first.name;
+
+    if (slices.isNotEmpty && slices.first.segments.isNotEmpty) {
+      final code = slices.first.segments.first.operatingCarrierCode;
+      if (code.isNotEmpty) return code;
+    }
+
+    return 'Airline';
   }
 
   /// Airline IATA code
   String get airlineCode {
     if (airlines.isEmpty) return '';
     return airlines.first.iataCode;
+  }
+
+  /// Flight number (from first segment)
+  String get flightNumber {
+    if (slices.isEmpty || slices.first.segments.isEmpty) return '';
+    final seg = slices.first.segments.first;
+    if (seg.operatingCarrierCode.isEmpty) return '';
+
+    return '${seg.operatingCarrierCode}${seg.id.isNotEmpty ? '' : ''}';
+  }
+
+  /// Number of stops
+  int get stops {
+    if (slices.isEmpty) return 0;
+    final segs = slices.first.segments;
+    if (segs.isEmpty) return 0;
+    return segs.length - 1;
+  }
+
+  /// True if flight has no layovers
+  bool get isNonStop {
+    return stops == 0;
+  }
+
+  /// Stops label for UI
+  String get stopsLabel {
+    if (stops == 0) return 'Non-stop';
+    if (stops == 1) return '1 stop';
+    return '$stops stops';
+  }
+
+  /// Layover time between first and second segment
+  String get layoverInfo {
+    if (slices.isEmpty) return '';
+
+    final segs = slices.first.segments;
+    if (segs.length < 2) return '';
+
+    final arr = DateTime.tryParse(segs.first.arrivalAt);
+    final dep = DateTime.tryParse(segs[1].departureAt);
+
+    if (arr == null || dep == null) return '';
+
+    final diff = dep.difference(arr);
+    final h = diff.inHours;
+    final m = diff.inMinutes % 60;
+
+    return '${h}h ${m}m layover';
+  }
+
+  /// Airline logo URL (uses IATA code)
+  /// Example source: https://content.airhex.com/content/logos/airlines_<IATA>_200_200_s.png
+  String get airlineLogo {
+    String code = airlineCode;
+
+    if (code.isEmpty &&
+        slices.isNotEmpty &&
+        slices.first.segments.isNotEmpty) {
+      code = slices.first.segments.first.operatingCarrierCode;
+    }
+
+    if (code.isEmpty) return '';
+
+    return 'https://content.airhex.com/content/logos/airlines_${code}_200_200_s.png';
   }
 
   /// Helper to convert ISO time to HH:MM

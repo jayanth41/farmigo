@@ -36,7 +36,6 @@ class _OwnerSettingsScreenState extends State<OwnerSettingsScreen>
   final confirmPassCtrl = TextEditingController();
 
   bool loadingProfile = true;
-  bool isEditingProfile = false;
 
   // Notification toggles
   bool notifyNewBooking = true;
@@ -363,29 +362,65 @@ class _OwnerSettingsScreenState extends State<OwnerSettingsScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Settings', style: TextStyle(fontWeight: FontWeight.w600)),
-        centerTitle: true,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: Icon(isEditingProfile ? Icons.check : Icons.edit),
-            tooltip: isEditingProfile ? 'Save & lock' : 'Edit profile',
-            onPressed: () async {
-              if (isEditingProfile) {
-                await _saveProfile();
-              }
-              setState(() => isEditingProfile = !isEditingProfile);
-            },
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(140),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(16, 40, 16, 10),
+          decoration: const BoxDecoration(
+            color: Color.fromARGB(255, 41, 70, 92),
+            borderRadius: BorderRadius.vertical(
+              bottom: Radius.circular(16),
+            ),
           ),
-        ],
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(text: 'Notifications'),
-            Tab(text: 'Payment'),
-            Tab(text: 'Security'),
-          ],
+          child: Column(
+            children: [
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  Positioned(
+                    left: 0,
+                    child: IconButton(
+                      icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
+                    ),
+                  ),
+                  const Center(
+                    child: Text(
+                      'Settings',
+                      style: TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                '"Manage your account & preferences."',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.white70,
+                ),
+              ),
+              const SizedBox(height: 8),
+              TabBar(
+                controller: _tabController,
+                labelColor: Colors.white,
+                unselectedLabelColor: Colors.white70,
+                indicatorColor: Colors.white,
+                tabs: const [
+                  Tab(text: 'Notifications'),
+                  Tab(text: 'Payment'),
+                  Tab(text: 'Security'),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
       body: loadingProfile

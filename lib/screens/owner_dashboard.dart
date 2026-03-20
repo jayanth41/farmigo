@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'add_property_screen.dart';
 import 'owner_onboarding_screen.dart';
 import 'owner_settings_screen.dart';
 import 'home_screen.dart';
 import 'car_owner_dashboard_new.dart';
 import 'role_selection_screen.dart';
 import 'owner/owner_main_scaffold.dart';
+import 'owner_messages_screen.dart';
+import 'add_property_screen.dart' as add_screen;
+import 'edit_property_screen.dart' as edit_screen;
 
 /// OwnerDashboard now acts as a smart router:
 /// It briefly shows a loader, checks Firestore, and then
@@ -28,6 +31,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
   List<String>? _roles; // store user roles for conditional menu
   String? _ownerName; // owner's display name
   int _dashboardTabIndex = 0; // 0 = Active | 1 = Inactive | 2 = Pending
+  String? _activeRole;
 
   int get _totalProperties => _properties.length;
   int get _activeProperties => _properties.where((p) {
@@ -90,8 +94,14 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please log in to access owner dashboard')),
       );
-      // Pop back to previous screen (Home) instead of staying
-      Navigator.of(context).pop();
+      // If there is no previous route to pop to (this screen may be the
+      // app's initial route), avoid calling pop() which can leave the
+      // Navigator in an invalid state. Instead, navigate to HomeScreen and
+      // remove this route from the stack.
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+        (route) => false,
+      );
       return;
     }
 
@@ -113,8 +123,9 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
         if (activeRole != null) {
           final a = activeRole.toString().toLowerCase();
           if (a == 'owner' || a == 'farmhouse') normalizedActiveRole = 'farmhouse_owner';
-          if (a == 'cowner' || a == 'coowner' || a == 'co_owner') normalizedActiveRole = 'coowner';
+          if (a == 'cowner' || a == 'coowner' || a == 'co_owner') normalizedActiveRole = 'car_owner';
         }
+        _activeRole = normalizedActiveRole;
 
         var displayName = data?['displayName'] ?? data?['fullName'] ?? data?['name'] ?? data?['username'] ?? FirebaseAuth.instance.currentUser?.displayName ?? 'Owner';
 
@@ -138,9 +149,12 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
       if (normalizedActiveRole == null && roles.isNotEmpty) {
         debugPrint('[OwnerDashboard] activeRole is null — forcing RoleSelectionScreen');
         if (mounted) {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => RoleSelectionScreen(roles: roles)),
-          );
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (_) => RoleSelectionScreen(roles: roles)),
+            );
+          });
         }
         return;
       }
@@ -150,9 +164,12 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
       if (userRole == 'user' || roles.isEmpty) {
         debugPrint('[OwnerDashboard] New/normal user — redirecting to onboarding');
         if (mounted) {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const OwnerOnboardingScreen()),
-          );
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (_) => const OwnerOnboardingScreen()),
+            );
+          });
         }
         return;
       }
@@ -167,9 +184,12 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
       // CASE-3: If user is ONLY car_owner (single role), go to CarOwnerDashboard
       if (roles.length == 1 && roles.contains('car_owner')) {
         debugPrint('[OwnerDashboard] CASE-3: Single car_owner role, redirecting to CarOwnerDashboard');
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const CarOwnerDashboard()),
-        );
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const CarOwnerDashboard()),
+          );
+        });
         return;
       }
 
@@ -179,31 +199,61 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
 
         // Owner properties are stored in: Firestore → collection("properties")
         // Each document must contain: ownerId = current user's uid
-        debugPrint('[OwnerDashboard] Checking properties in collection: properties where ownerId=$uid');
 
-        final propsSnap = await firestore
-            .collection('properties') // <-- Firestore path where owner properties exist
-            .where('ownerId', isEqualTo: uid)
-            .limit(1)
-            .get();
+    debugPrint('[OwnerDashboard] Checking properties in collection: properties where ownerId=$uid');
 
-        debugPrint('[OwnerDashboard] Properties found: ${propsSnap.docs.length}');
-        final hasProperty = propsSnap.docs.isNotEmpty;
-        debugPrint('[OwnerDashboard] farmhouse_owner has property: $hasProperty');
+    // Use a robust helper that checks multiple possible owner fields to
+    // handle documents that use different field names (ownerId, owner.uid,
+    // owner). This avoids false negatives when older documents used a
+    // different schema.
+    final ownerDocs = await _queryPropertyDocsForOwner(uid);
+    debugPrint('[OwnerDashboard] Properties found: ${ownerDocs.length}');
+    final hasProperty = ownerDocs.isNotEmpty;
+    debugPrint('[OwnerDashboard] farmhouse_owner has property: $hasProperty');
 
         if (!mounted) return;
 
-        if (!hasProperty) {
-          debugPrint('[OwnerDashboard] No properties, redirecting to AddPropertyScreen');
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const AddPropertyScreen()),
-          );
+        // Read onboarding/approval status from the user doc. Owner should
+        // only be routed to AddPropertyScreen when onboarding is complete
+        // AND admin has approved the account. If approval is pending, keep
+        // the owner on the dashboard (they'll see any pending properties).
+        final onboardingCompleted = userSnap.data()?['onboardingCompleted'] == true;
+        final approvalStatus = (userSnap.data()?['approvalStatus'] ?? '').toString().toLowerCase();
+
+        // If onboarding incomplete, send to onboarding screen
+        if (!onboardingCompleted) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (_) => const OwnerOnboardingScreen()),
+            );
+          });
           return;
         }
 
-        debugPrint('[OwnerDashboard] Loading dashboard');
-        setState(() => _checking = false);
-        await _loadProperties(uid);
+        // If approval is not 'approved', keep user on dashboard (don't send to AddProperty)
+        if (approvalStatus != 'approved') {
+          setState(() => _checking = false);
+          // Populate any properties we found (could be zero) so UI shows pending tab correctly
+          await _populatePropertiesFromDocs(ownerDocs);
+          return;
+        }
+
+        // At this point onboarding is complete and approval is 'approved'.
+        // Show dashboard if any property exists.
+        if (hasProperty) {
+          setState(() => _checking = false);
+          await _populatePropertiesFromDocs(ownerDocs);
+          return;
+        }
+
+        // Only go to AddProperty if ZERO properties and account is approved
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const add_screen.AddPropertyScreen()),
+          );
+        });
         return;
       }
 
@@ -212,9 +262,12 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
         // 4B: If activeRole is car_owner, go to CarOwnerDashboard
         if (normalizedActiveRole == 'car_owner') {
           debugPrint('[OwnerDashboard] CASE-4B: Multiple roles, activeRole=car_owner, redirecting to CarOwnerDashboard');
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const CarOwnerDashboard()),
-          );
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (_) => const CarOwnerDashboard()),
+            );
+          });
           return;
         }
 
@@ -226,9 +279,8 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
           debugPrint('[OwnerDashboard] (multi-role) checking properties where ownerId=$uid');
 
           final propsSnap = await firestore
-              .collection('properties') // Firestore main properties collection
+              .collection('properties')
               .where('ownerId', isEqualTo: uid)
-              .limit(1)
               .get();
 
           debugPrint('[OwnerDashboard] (multi-role) properties found: ${propsSnap.docs.length}');
@@ -237,16 +289,20 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
 
           if (!mounted) return;
 
-          if (!hasProperty) {
-            debugPrint('[OwnerDashboard] No properties, redirecting to AddPropertyScreen');
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (_) => const AddPropertyScreen()),
-            );
+          // Always show dashboard if ANY property exists (even pending)
+          if (hasProperty) {
+            setState(() => _checking = false);
+            await _loadProperties(uid);
             return;
           }
 
-          setState(() => _checking = false);
-          await _loadProperties(uid);
+          // Only go to AddProperty if ZERO properties
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (_) => const add_screen.AddPropertyScreen()),
+              );
+          });
           return;
         }
       }
@@ -254,9 +310,12 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
       // Fallback: if somehow we reach here, treat as verified owner with no properties
       debugPrint('[OwnerDashboard] Fallback reached — sending to AddPropertyScreen');
       if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const AddPropertyScreen()),
-        );
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const add_screen.AddPropertyScreen()),
+          );
+        });
       }
       return;
     } catch (e) {
@@ -276,33 +335,14 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
     });
 
     try {
-      // Try ordered query first (preferred), fall back to unordered if Firestore rejects ordering
-      try {
-        debugPrint('[OwnerDashboard] Loading all owner properties from collection: properties (ownerId=$uid)');
-        final snap = await FirebaseFirestore.instance
-            .collection('properties')
-            .where('ownerId', isEqualTo: uid)
-            .orderBy('createdAt', descending: true)
-            .get();
-
-        _properties = snap.docs.map((d) {
-          final data = d.data();
-          data['id'] = d.id;
-          return data;
-        }).toList();
-      } catch (e) {
-        debugPrint('Ordered query failed, retrying without orderBy: $e');
-        final snap = await FirebaseFirestore.instance
-            .collection('properties')
-            .where('ownerId', isEqualTo: uid)
-            .get();
-
-        _properties = snap.docs.map((d) {
-          final data = d.data();
-          data['id'] = d.id;
-          return data;
-        }).toList();
-      }
+      // Use the robust query helper so we pick up properties stored under
+      // different owner-field names (ownerId, owner.uid, owner).
+      final docs = await _queryPropertyDocsForOwner(uid);
+      _properties = docs.map((d) {
+        final data = Map<String, dynamic>.from((d.data() as Map<String, dynamic>?) ?? {});
+        data['id'] = d.id;
+        return data;
+      }).toList();
     } catch (e) {
       debugPrint('Failed to load properties: $e');
       _error = e.toString();
@@ -310,10 +350,108 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
       if (mounted) {
         setState(() {
           _loadingProperties = false;
-          // If an error happened but we still have properties, clear the error
           if (_properties.isNotEmpty) _error = null;
         });
       }
+    }
+  }
+
+  /// Query property documents for the given owner UID. This runs multiple
+  /// queries to cope with historical schema differences where owner could be
+  /// stored as 'ownerId', nested 'owner.uid' or as a top-level 'owner'.
+  Future<List<QueryDocumentSnapshot>> _queryPropertyDocsForOwner(String uid) async {
+    final firestore = FirebaseFirestore.instance;
+    final Map<String, QueryDocumentSnapshot> byId = {};
+
+    try {
+      // Preferred: ownerId with orderBy
+      try {
+        final snap = await firestore
+            .collection('properties')
+            .where('ownerId', isEqualTo: uid)
+            .orderBy('createdAt', descending: true)
+            .get();
+        for (var d in snap.docs) byId[d.id] = d;
+      } catch (_) {
+        // Fallback to ownerId without orderBy
+        try {
+          final snap = await firestore
+              .collection('properties')
+              .where('ownerId', isEqualTo: uid)
+              .get();
+          for (var d in snap.docs) byId[d.id] = d;
+        } catch (_) {}
+      }
+
+      // Query nested owner.uid (documents that store owner as object)
+      try {
+        final snap2 = await firestore
+            .collection('properties')
+            .where('owner.uid', isEqualTo: uid)
+            .get();
+        debugPrint('[OwnerDashboard] query owner.uid -> ${snap2.docs.length}');
+        for (var d in snap2.docs) byId[d.id] = d;
+      } catch (_) {}
+
+      // Query top-level owner field (string form)
+      try {
+        final snap3 = await firestore
+            .collection('properties')
+            .where('owner', isEqualTo: uid)
+            .get();
+        debugPrint('[OwnerDashboard] query owner -> ${snap3.docs.length}');
+        for (var d in snap3.docs) byId[d.id] = d;
+      } catch (_) {}
+
+      // Some older/alternate schemas use 'userId' or 'createdBy' or 'hostId'
+      for (final field in ['userId', 'createdBy', 'hostId']) {
+        try {
+          final snapX = await firestore.collection('properties').where(field, isEqualTo: uid).get();
+          if (snapX.docs.isNotEmpty) debugPrint('[OwnerDashboard] query $field -> ${snapX.docs.length}');
+          for (var d in snapX.docs) byId[d.id] = d;
+        } catch (_) {}
+      }
+
+      // Some documents store owners as an array field 'owners'
+      try {
+        final snapArr = await firestore.collection('properties').where('owners', arrayContains: uid).get();
+        debugPrint('[OwnerDashboard] query owners arrayContains -> ${snapArr.docs.length}');
+        for (var d in snapArr.docs) byId[d.id] = d;
+      } catch (_) {}
+    } catch (e) {
+      debugPrint('[OwnerDashboard] _queryPropertyDocsForOwner failed: $e');
+    }
+
+    return byId.values.toList();
+  }
+
+  Future<void> _populatePropertiesFromDocs(List<QueryDocumentSnapshot> docs) async {
+    final list = docs.map((d) {
+      final data = Map<String, dynamic>.from((d.data() as Map<String, dynamic>?) ?? {});
+      data['id'] = d.id;
+      return data;
+    }).toList();
+
+    if (mounted) {
+      setState(() {
+        _properties = list;
+        _loadingProperties = false;
+        if (_properties.isNotEmpty) _error = null;
+      });
+
+      // Debug: show a SnackBar in debug builds listing detected property ids
+      if (kDebugMode) {
+        final ids = _properties.map((p) => p['id']?.toString() ?? '').where((s) => s.isNotEmpty).toList();
+        final preview = ids.take(5).join(', ');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Detected properties: ${_properties.length} (${preview}${ids.length>5? ', ...':''})'),
+            duration: const Duration(seconds: 6),
+          ),
+        );
+      }
+    } else {
+      _properties = list;
     }
   }
 
@@ -555,53 +693,54 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
                         ),
                       ),
 
-                      Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                        decoration: const BoxDecoration(),
-                        child: _DrawerTile(
-                          icon: Icons.directions_car_outlined,
-                          label: 'Switch to Car Owner',
-                          selected: false,
-                          onTap: () async {
-                            Navigator.pop(context);
-                            final uid = FirebaseAuth.instance.currentUser?.uid;
-                            if (uid != null) {
-                              await FirebaseFirestore.instance.collection('users').doc(uid).update({
-                                'activeRole': 'car_owner',
-                              });
-                            }
-                            if (context.mounted) {
-                              Navigator.of(context).pushReplacement(
-                                MaterialPageRoute(builder: (_) => const CarOwnerDashboard()),
-                              );
-                            }
-                          },
+                      if (_roles != null && _roles!.contains('car_owner') && _activeRole != 'car_owner')
+                        Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          decoration: const BoxDecoration(),
+                          child: _DrawerTile(
+                            icon: Icons.directions_car_outlined,
+                            label: 'Switch to Car Owner',
+                            selected: false,
+                            onTap: () async {
+                              Navigator.pop(context);
+                              final uid = FirebaseAuth.instance.currentUser?.uid;
+                              if (uid != null) {
+                                await FirebaseFirestore.instance.collection('users').doc(uid).update({
+                                  'activeRole': 'car_owner',
+                                });
+                              }
+                              if (context.mounted) {
+                                Navigator.of(context).pushReplacement(
+                                  MaterialPageRoute(builder: (_) => const CarOwnerDashboard()),
+                                );
+                              }
+                            },
+                          ),
                         ),
-                      ),
-
-                      Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                        decoration: const BoxDecoration(),
-                        child: _DrawerTile(
-                          icon: Icons.house_outlined,
-                          label: 'Switch to Farmhouse Owner',
-                          selected: false,
-                          onTap: () async {
-                            Navigator.pop(context);
-                            final uid = FirebaseAuth.instance.currentUser?.uid;
-                            if (uid != null) {
-                              await FirebaseFirestore.instance.collection('users').doc(uid).update({
-                                'activeRole': 'farmhouse_owner',
-                              });
-                            }
-                            if (context.mounted) {
-                              Navigator.of(context).pushReplacement(
-                                MaterialPageRoute(builder: (_) => const OwnerDashboard()),
-                              );
-                            }
-                          },
+                      if (_roles != null && _roles!.contains('farmhouse_owner') && _activeRole != 'farmhouse_owner')
+                        Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          decoration: const BoxDecoration(),
+                          child: _DrawerTile(
+                            icon: Icons.house_outlined,
+                            label: 'Switch to Farmhouse Owner',
+                            selected: false,
+                            onTap: () async {
+                              Navigator.pop(context);
+                              final uid = FirebaseAuth.instance.currentUser?.uid;
+                              if (uid != null) {
+                                await FirebaseFirestore.instance.collection('users').doc(uid).update({
+                                  'activeRole': 'farmhouse_owner',
+                                });
+                              }
+                              if (context.mounted) {
+                                Navigator.of(context).pushReplacement(
+                                  MaterialPageRoute(builder: (_) => const OwnerDashboard()),
+                                );
+                              }
+                            },
+                          ),
                         ),
-                      ),
 
                       Container(
                         margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -743,11 +882,36 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
       body: SafeArea(
         child: Builder(
           builder: (context) {
-            // If we reach here with no properties, treat it as "no properties" state
-            // rather than a broken screen — route back through _routeUser().
+            // ❌ REMOVE auto re-routing when properties list is empty
+            // Instead show empty state UI
             if (!_checking && !_loadingProperties && _error == null && _properties.isEmpty) {
-              WidgetsBinding.instance.addPostFrameCallback((_) => _routeUser());
-              return const Center(child: CircularProgressIndicator());
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.home_outlined, size: 48, color: Colors.grey),
+                    const SizedBox(height: 10),
+                    const Text(
+                      'No properties yet',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Add your first property to get started',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const add_screen.AddPropertyScreen()),
+                        );
+                      },
+                      child: const Text('Add Property'),
+                    ),
+                  ],
+                ),
+              );
             }
 
             if (_checking) {
@@ -759,14 +923,12 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
             }
 
             if (_error != null) {
-              // If there's an error loading properties, treat it as "no properties" and go to AddPropertyScreen
-              debugPrint('[OwnerDashboard] Error loading properties, redirecting to AddPropertyScreen');
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(builder: (_) => const AddPropertyScreen()),
-                );
-              });
-              return const SizedBox.shrink();
+              return Center(
+                child: Text(
+                  'Something went wrong. Please try again.',
+                  style: TextStyle(color: Colors.red),
+                ),
+              );
             }
 
             // FALL THROUGH to real dashboard below
@@ -826,7 +988,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
                           ),
                           onPressed: () async {
   final result = await Navigator.of(context).push<bool>(
-    MaterialPageRoute(builder: (_) => const AddPropertyScreen()),
+    MaterialPageRoute(builder: (_) => const add_screen.AddPropertyScreen()),
   );
 
   // If property was added, reload dashboard
@@ -1168,32 +1330,60 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
                                                             onTap: () async {
                                                               Navigator.pop(ctx);
 
-                                                              final confirm = await showDialog<bool>(
-                                                                context: context,
-                                                                builder: (c) => AlertDialog(
-                                                                  title: const Text('Edit Property'),
-                                                                  content: const Text(
-                                                                    'Are you sure you want to edit this property? Changes will require admin approval before becoming visible.',
+                                                              final propertyId = p['id'];
+
+                                                              final result = await Navigator.of(context).push<Map<String, dynamic>?>(
+                                                                MaterialPageRoute(
+                                                                  builder: (_) => edit_screen.EditPropertyScreen(
+                                                                    existingData: p,
+                                                                    propertyId: propertyId,
                                                                   ),
-                                                                  actions: [
-                                                                    TextButton(
-                                                                      onPressed: () => Navigator.pop(c, false),
-                                                                      child: const Text('Cancel'),
-                                                                    ),
-                                                                    ElevatedButton(
-                                                                      onPressed: () => Navigator.pop(c, true),
-                                                                      child: const Text('Edit'),
-                                                                    ),
-                                                                  ],
                                                                 ),
                                                               );
 
-                                                              if (confirm == true) {
-                                                                Navigator.of(context).push(
-                                                                  MaterialPageRoute(
-                                                                    builder: (_) => const AddPropertyScreen(),
-                                                                  ),
-                                                                );
+                                                              if (result == null) return;
+
+                                                              final Map<String, dynamic> changedFields = result;
+
+                                                              if (changedFields.isEmpty) {
+                                                                if (context.mounted) {
+                                                                  ScaffoldMessenger.of(context).showSnackBar(
+                                                                    const SnackBar(content: Text('No changes detected')),
+                                                                  );
+                                                                }
+                                                                return;
+                                                              }
+
+                                                              final uid = FirebaseAuth.instance.currentUser?.uid;
+                                                              if (propertyId == null || uid == null) return;
+
+                                                              try {
+                                                                await FirebaseFirestore.instance.collection('property_edits').add({
+                                                                  'propertyId': propertyId,
+                                                                  'ownerId': uid,
+                                                                  'oldData': p,
+                                                                  'updatedData': changedFields, // ✅ only changed fields
+                                                                  'status': 'pending',
+                                                                  'createdAt': FieldValue.serverTimestamp(),
+                                                                });
+
+                                                                // mark property as pending update
+                                                                await FirebaseFirestore.instance
+                                                                    .collection('properties')
+                                                                    .doc(propertyId)
+                                                                    .update({'status': 'pending_update'});
+
+                                                                if (context.mounted) {
+                                                                  ScaffoldMessenger.of(context).showSnackBar(
+                                                                    const SnackBar(content: Text('Changes submitted for admin approval')),
+                                                                  );
+                                                                }
+                                                              } catch (e) {
+                                                                if (context.mounted) {
+                                                                  ScaffoldMessenger.of(context).showSnackBar(
+                                                                    SnackBar(content: Text('Failed: $e')),
+                                                                  );
+                                                                }
                                                               }
                                                             },
                                                           ),
@@ -1316,7 +1506,7 @@ class _StatCard extends StatelessWidget {
   const _StatCard({
     required this.title,
     required this.value,
-    this.highlight = false,
+    this.highlight=false,
   });
 
   @override
@@ -1496,9 +1686,13 @@ class _MyPropertiesScreenState extends State<MyPropertiesScreen> {
 
                   if (confirm != true) return;
 
-                  final result = await Navigator.of(context).push(
+                  final id = p['id'] as String?;
+                  final result = await Navigator.of(context).push<bool?>(
                     MaterialPageRoute(
-                      builder: (_) => AddPropertyScreen(),
+                      builder: (_) => edit_screen.EditPropertyScreen(
+                        existingData: p,
+                        propertyId: id ?? '',
+                      ),
                     ),
                   );
 
@@ -2120,9 +2314,10 @@ class OwnerPropertyDetailScreen extends StatelessWidget {
                     icon: const Icon(Icons.edit),
                     label: const Text("Edit this property"),
                     onPressed: () {
+                      final id = property['id'] as String? ?? '';
                       Navigator.of(context).push(
                         MaterialPageRoute(
-                          builder: (_) => AddPropertyScreen(),
+                          builder: (_) => edit_screen.EditPropertyScreen(existingData: property, propertyId: id),
                         ),
                       );
                     },
@@ -2147,466 +2342,7 @@ class OwnerPropertyDetailScreen extends StatelessWidget {
     );
   }
 }
-
-class MessagesScreen extends StatefulWidget {
-  const MessagesScreen({super.key});
-  @override
-  State<MessagesScreen> createState() => _MessagesScreenState();
-}
-
-class _MessagesScreenState extends State<MessagesScreen> {
-  @override
-  void initState() {
-    super.initState();
-    _listenForMessageNotifications();
-  }
-
-  void _listenForMessageNotifications() async {
-    // final messaging = FirebaseMessaging.instance;
-    // await messaging.requestPermission();
-
-    // FirebaseMessaging.onMessage.listen((dynamic message) {
-    //   if (message.data['type'] == 'new_message') {
-    //     ScaffoldMessenger.of(context).showSnackBar(
-    //       const SnackBar(content: Text('New message received')),
-    //     );
-    //     setState(() {});
-    //   }
-    // });
-  }
-  int _tabIndex = 0; // 0 = Active, 1 = Archived
-  final _firestore = FirebaseFirestore.instance;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF6FAF8),
-      appBar: AppBar(
-        title: const Text('Messages'),
-        foregroundColor: Colors.black87,
-        backgroundColor: Colors.white,
-        elevation: 0.5,
-        actions: const [
-          Padding(
-            padding: EdgeInsets.only(right: 16),
-            child: Icon(Icons.notifications_none, color: Colors.black54),
-          )
-        ],
-      ),
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Text(
-                'Chat with your guests and manage inquiries',
-                style: TextStyle(fontSize: 14, color: Color(0xFF64748B)),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: TextField(
-                decoration: InputDecoration(
-                  hintText: 'Search messages...',
-                  prefixIcon: const Icon(Icons.search, size: 20),
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(vertical: 0),
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () => setState(() => _tabIndex = 0),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: _tabIndex == 0 ? const Color(0xFFE3F2FD) : Colors.transparent,
-                            borderRadius: const BorderRadius.horizontal(left: Radius.circular(20)),
-                          ),
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          child: const Center(
-                            child: Text('Active (2)', style: TextStyle(fontWeight: FontWeight.w600)),
-                          ),
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () => setState(() => _tabIndex = 1),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: _tabIndex == 1 ? const Color(0xFFE3F2FD) : Colors.transparent,
-                            borderRadius: const BorderRadius.horizontal(right: Radius.circular(20)),
-                          ),
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          child: const Center(
-                            child: Text('Archived (1)', style: TextStyle(color: Colors.grey)),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Expanded(
-              child: _tabIndex == 0
-                  ? StreamBuilder<QuerySnapshot>(
-                      stream: _firestore
-                          .collection('conversations')
-                          .where('ownerId', isEqualTo: FirebaseAuth.instance.currentUser?.uid)
-                          .where('archived', isEqualTo: false)
-                          .orderBy('updatedAt', descending: true)
-                          .snapshots(),
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
-                          return const Center(child: CircularProgressIndicator());
-                        }
-                        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                          return const Center(child: Text('No active conversations'));
-                        }
-                        return ListView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          itemCount: snapshot.data!.docs.length,
-                          itemBuilder: (context, index) {
-                            final doc = snapshot.data!.docs[index];
-                            final data = doc.data() as Map<String, dynamic>;
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: _ConversationTile(
-                      name: data['guestName'] ?? 'Guest',
-                      conversationId: doc.id,
-                      subtitle: '${data['propertyName'] ?? ''}\n${data['lastMessage'] ?? ''}',
-                      time: data['lastSeenText'] ?? '',
-                      avatarUrl: '',
-                      activeTag: data['activeBooking'] == true,
-                      unreadCount: (data['unreadCount'] as num?)?.toInt() ?? 0,
-                    ),
-                  );
-                          },
-                        );
-                      },
-                    )
-                  : StreamBuilder<QuerySnapshot>(
-                      stream: _firestore
-                          .collection('conversations')
-                          .where('ownerId', isEqualTo: FirebaseAuth.instance.currentUser?.uid)
-                          .where('archived', isEqualTo: true)
-                          .orderBy('updatedAt', descending: true)
-                          .snapshots(),
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
-                          return const Center(child: CircularProgressIndicator());
-                        }
-                        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                          return const Center(child: Text('No archived conversations'));
-                        }
-                        return ListView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          itemCount: snapshot.data!.docs.length,
-                          itemBuilder: (context, index) {
-                            final doc = snapshot.data!.docs[index];
-                            final data = doc.data() as Map<String, dynamic>;
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: _ConversationTile(
-                      name: data['guestName'] ?? 'Guest',
-                      conversationId: doc.id,
-                      subtitle: data['propertyName'] ?? '',
-                      time: data['lastSeenText'] ?? '',
-                      avatarUrl: '',
-                      activeTag: false,
-                      unreadCount: 0,
-                    ),
-                  );
-                          },
-                        );
-                      },
-                    ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ConversationTile extends StatelessWidget {
-  final String name;
-  final String conversationId;
-  final String subtitle;
-  final String time;
-  final String avatarUrl;
-  final bool activeTag;
-  final int unreadCount;
-
-  const _ConversationTile({
-    required this.name,
-    required this.conversationId,
-    required this.subtitle,
-    required this.time,
-    required this.avatarUrl,
-    this.activeTag = false,
-    this.unreadCount = 0,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => ChatScreen(
-              contactName: name,
-              conversationId: conversationId,
-            ),
-          ),
-        );
-      },
-      child: Card(
-        elevation: 1,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              CircleAvatar(
-                radius: 22,
-                backgroundColor: const Color(0xFFE3F2FD),
-                child: const Icon(Icons.person_outline, color: Color.fromARGB(255, 41, 70, 92)),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(name, style: const TextStyle(fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 4),
-                    Text(subtitle, style: const TextStyle(fontSize: 13, color: Color(0xFF64748B))),
-                  ],
-                ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Row(
-                    children: [
-                      if (unreadCount > 0)
-                        Container(
-                          margin: const EdgeInsets.only(right: 6),
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color:const Color.fromARGB(255, 41, 70, 92),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            unreadCount.toString(),
-                            style: const TextStyle(color: Colors.white, fontSize: 10),
-                          ),
-                        ),
-                      Text(time, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  if (activeTag)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE8F5E9),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Text('Active Booking', style: TextStyle(fontSize: 10, color: Color(0xFF2E7D32))),
-                    ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class ChatScreen extends StatefulWidget {
-  final String contactName;
-  final String conversationId;
-  const ChatScreen({super.key, required this.contactName, required this.conversationId});
-
-  @override
-  State<ChatScreen> createState() => _ChatScreenState();
-}
-
-class _ChatScreenState extends State<ChatScreen> {
-  final TextEditingController _controller = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-    _listenForMessageNotifications();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.contactName),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
-        elevation: 0.5,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.archive_outlined),
-            tooltip: 'Archive conversation',
-            onPressed: () async {
-              await FirebaseFirestore.instance
-                  .collection('conversations')
-                  .doc(widget.conversationId)
-                  .update({'archived': true});
-              if (context.mounted) Navigator.pop(context);
-            },
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          StreamBuilder<DocumentSnapshot>(
-            stream: FirebaseFirestore.instance
-                .collection('conversations')
-                .doc(widget.conversationId)
-                .snapshots(),
-            builder: (context, snapshot) {
-              if (!snapshot.hasData) return const SizedBox.shrink();
-              final d = snapshot.data!.data() as Map<String, dynamic>? ?? {};
-              final photo = (d['propertyPhoto'] as String?) ?? '';
-              final start = d['checkIn'] ?? '';
-              final end = d['checkOut'] ?? '';
-              return Container(
-                margin: const EdgeInsets.fromLTRB(12, 12, 12, 8),
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  boxShadow: const [BoxShadow(color: Color(0x0F000000), blurRadius: 8, offset: Offset(0, 4))],
-                ),
-                child: Row(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: photo.isEmpty
-                          ? Container(width: 64, height: 64, color: Colors.grey[200], child: const Icon(Icons.home))
-                          : Image.network(photo, width: 64, height: 64, fit: BoxFit.cover),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(d['propertyName'] ?? '', style: const TextStyle(fontWeight: FontWeight.w700)),
-                          const SizedBox(height: 4),
-                          Text('Check-in: $start', style: const TextStyle(fontSize: 12)),
-                          Text('Check-out: $end', style: const TextStyle(fontSize: 12)),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-          Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('conversations')
-                  .doc(widget.conversationId)
-                  .collection('messages')
-                  .orderBy('createdAt')
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                final docs = snapshot.data?.docs ?? [];
-                return ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: docs.length,
-                  itemBuilder: (context, index) {
-                    final m = docs[index].data() as Map<String, dynamic>;
-                    final isOwner = m['from'] == 'owner';
-                    return Align(
-                      alignment: isOwner ? Alignment.centerRight : Alignment.centerLeft,
-                      child: Chip(label: Text(m['text'] ?? '')),
-                    );
-                  },
-                );
-              },
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    decoration: const InputDecoration(hintText: 'Type a message...'),
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.send, color: Color.fromARGB(255, 41, 70, 92)),
-                  onPressed: () async {
-                    final text = _controller.text.trim();
-                    if (text.isEmpty) return;
-                    await FirebaseFirestore.instance
-                        .collection('conversations')
-                        .doc(widget.conversationId)
-                        .collection('messages')
-                        .add({
-                      'text': text,
-                      'from': 'owner',
-                      'createdAt': FieldValue.serverTimestamp(),
-                    });
-                    await FirebaseFirestore.instance
-                        .collection('conversations')
-                        .doc(widget.conversationId)
-                        .update({
-                      'lastMessage': text,
-                      'updatedAt': FieldValue.serverTimestamp(),
-                      'unreadCount': 0,
-                    });
-                    _controller.clear();
-                  },
-                )
-              ],
-            ),
-          )
-        ],
-      ),
-    );
-  }
-
-  void _listenForMessageNotifications() {
-    // Placeholder for FCM: when a new message arrives for this conversation,
-    // increment unreadCount in Firestore and trigger a local notification.
-    // This will be wired to FirebaseMessaging later.
-  }
-}
+// Messages and chat UI moved to `lib/screens/owner_messages_screen.dart`.
 
 
 

@@ -12,6 +12,7 @@ import '../services/property_service.dart';
 import '../services/faq_service.dart';
 import '../services/review_service_complete.dart';
 import '../services/chat_service.dart';
+import 'edit_property_screen.dart' as edit_screen;
 
 class PropertyDetailsScreen extends StatefulWidget {
   final String propertyId;
@@ -265,6 +266,22 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Added to favorites!')),
             );
+          },
+        ),
+        // Edit Property Button (visible only for owners or admin, adjust as needed)
+        IconButton(
+          icon: const Icon(Icons.edit),
+          onPressed: () {
+            // TODO: Add proper permission check for owner/admin before allowing edit
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => edit_screen.EditPropertyScreen(
+                      existingData: property.toJson(),
+                      propertyId: property.id,
+                    ),
+                  ),
+                );
           },
         ),
       ],

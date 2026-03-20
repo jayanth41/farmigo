@@ -42,12 +42,11 @@ class ModeRouter extends StatelessWidget {
         }
 
         return MainScaffold(
-          tabs: {
-            BottomTab.home: const SizedBox.shrink(),
-            BottomTab.favorites: const SizedBox.shrink(),
-            BottomTab.bookings: const SizedBox.shrink(),
-            BottomTab.profile: const SizedBox.shrink(),
-          },
+          tabs: Map.fromEntries(
+            BottomTab.values.map(
+              (t) => MapEntry(t, const SizedBox.shrink()),
+            ),
+          ),
         );
       },
     );

@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../services/duffel_service.dart';
 import '../services/airport_service.dart';
 import 'order_creation_screen.dart';
+import '../widgets/flight_card.dart';
 
 class FlightSearchScreen extends StatefulWidget {
   const FlightSearchScreen({super.key});
@@ -22,7 +23,13 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
 
   bool _isLoading = false;
   List<Offer> _offers = [];
+  List<Offer> _allOffers = [];
   String? _errorMessage;
+
+  String _sortType = "cheapest";
+  bool _nonStopOnly = false;
+  final Set<String> _selectedAirlines = {};
+  String? _departurePeriodFilter;
 
   @override
   void initState() {
@@ -64,7 +71,7 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
         origin: AirportService.getIata(_departureController.text),
         destination: AirportService.getIata(_arrivalController.text),
         departureDate: _departureDateController.text,
-        adults: int.parse(_passengersController.text),
+        adults: int.tryParse(_passengersController.text) ?? 1,
       );
 
       final data = response['data'];
@@ -78,9 +85,12 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
 
       if (offersJson != null) {
         setState(() {
-          _offers = offersJson!
+          _allOffers = offersJson!
               .map((o) => Offer.fromJson(o as Map<String, dynamic>))
               .toList();
+
+          _offers = List.from(_allOffers);
+          _sortOffers();
         });
       }
     } catch (e) {
@@ -94,6 +104,64 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
     });
   }
 
+  void _sortOffers() {
+    _offers = List.from(_allOffers);
+
+    if (_nonStopOnly) {
+      _offers = _offers.where((o) => o.isNonStop).toList();
+    }
+
+    if (_selectedAirlines.isNotEmpty) {
+      _offers = _offers.where((o) => _selectedAirlines.contains(o.airlineName)).toList();
+    }
+
+    // departure period filter removed (field not available on Offer)
+
+    if (_sortType == "cheapest") {
+      _offers.sort((a, b) => a.priceInINR.compareTo(b.priceInINR));
+    } else if (_sortType == "fastest") {
+      _offers.sort((a, b) => a.durationMinutes.compareTo(b.durationMinutes));
+    } else if (_sortType == "best") {
+      // approximate best = cheapest + fastest (weighted)
+      _offers.sort((a, b) {
+        final aScore = a.priceInINR + a.durationMinutes;
+        final bScore = b.priceInINR + b.durationMinutes;
+        return aScore.compareTo(bScore);
+      });
+    }
+  }
+
+  Widget _buildSkeletonCard() {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 10),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [
+          BoxShadow(color: Colors.black12, blurRadius: 10),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(height: 16, width: 120, color: Colors.grey.shade300),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(height: 20, width: 40, color: Colors.grey.shade300),
+              Container(height: 14, width: 80, color: Colors.grey.shade300),
+              Container(height: 20, width: 40, color: Colors.grey.shade300),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Container(height: 36, color: Colors.grey.shade300),
+        ],
+      ),
+    );
+  }
+
   Widget _airportField(TextEditingController controller, String label, IconData icon) {
     return Autocomplete<String>(
       optionsBuilder: (textEditingValue) {
@@ -104,10 +172,9 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
             .map((a) => "${a.city} (${a.iata})");
       },
       onSelected: (selection) {
-        controller.text = selection.split('(').first.trim();
+        controller.text = selection;
       },
       fieldViewBuilder: (context, textController, focusNode, onSubmit) {
-        controller.text = textController.text;
         return TextField(
           controller: textController,
           focusNode: focusNode,
@@ -199,71 +266,143 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
             const SizedBox(height: 20),
             if (_errorMessage != null)
               Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
+
+            if (_isLoading)
+              Column(
+                children: List.generate(3, (_) => _buildSkeletonCard()),
+              ),
+
+            if (_offers.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    ChoiceChip(
+                      label: const Text("Cheapest"),
+                      selected: _sortType == "cheapest",
+                      onSelected: (_) {
+                        setState(() {
+                          _sortType = "cheapest";
+                          _sortOffers();
+                        });
+                      },
+                    ),
+                    ChoiceChip(
+                      label: const Text("Fastest"),
+                      selected: _sortType == "fastest",
+                      onSelected: (_) {
+                        setState(() {
+                          _sortType = "fastest";
+                          _sortOffers();
+                        });
+                      },
+                    ),
+                    ChoiceChip(
+                      label: const Text("Best Value"),
+                      selected: _sortType == "best",
+                      onSelected: (_) {
+                        setState(() {
+                          _sortType = "best";
+                          _sortOffers();
+                        });
+                      },
+                    ),
+                    ChoiceChip(
+                      label: const Text("Non‑stop"),
+                      selected: _nonStopOnly,
+                      onSelected: (_) {
+                        setState(() {
+                          _nonStopOnly = !_nonStopOnly;
+                          _sortOffers();
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            if (_offers.isNotEmpty)
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: _allOffers
+                    .map((o) => o.airlineName)
+                    .toSet()
+                    .map((airline) => FilterChip(
+                          label: Text(airline),
+                          selected: _selectedAirlines.contains(airline),
+                          onSelected: (_) {
+                            setState(() {
+                              if (_selectedAirlines.contains(airline)) {
+                                _selectedAirlines.remove(airline);
+                              } else {
+                                _selectedAirlines.add(airline);
+                              }
+                              _sortOffers();
+                            });
+                          },
+                        ))
+                    .toList(),
+              ),
+            if (_offers.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 8, bottom: 12),
+                child: Wrap(
+                  spacing: 8,
+                  children: ["Morning", "Afternoon", "Evening", "Night"]
+                      .map((period) => ChoiceChip(
+                            label: Text(period),
+                            selected: _departurePeriodFilter == period,
+                            onSelected: (_) {
+                              setState(() {
+                                if (_departurePeriodFilter == period) {
+                                  _departurePeriodFilter = null;
+                                } else {
+                                  _departurePeriodFilter = period;
+                                }
+                                _sortOffers();
+                              });
+                            },
+                          ))
+                      .toList(),
+                ),
+              ),
+
+            if (!_isLoading && _offers.isEmpty && _errorMessage == null)
+              const Padding(
+                padding: EdgeInsets.all(30),
+                child: Column(
+                  children: [
+                    Icon(Icons.flight_takeoff, size: 60, color: Colors.grey),
+                    SizedBox(height: 10),
+                    Text(
+                      "No flights found",
+                      style: TextStyle(fontSize: 18, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ),
+
             ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: _offers.length,
               itemBuilder: (context, index) {
                 final offer = _offers[index];
-                return Card(
-                  elevation: 3,
-                  margin: const EdgeInsets.symmetric(vertical: 8),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(14),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Row(
-                              children: [
-                                Icon(Icons.flight, size: 20),
-                                SizedBox(width: 6),
-                                Text(
-                                  "Flight Offer",
-                                  style: TextStyle(fontWeight: FontWeight.w600),
-                                ),
-                              ],
-                            ),
-                            Text(
-                              offer.displayPrice,
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.green,
-                              ),
-                            ),
-                          ],
+                return GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => OrderCreationScreen(
+                          offer: offer,
+                          duffelService: _duffelService,
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          "Offer ID: ${offer.id}",
-                          style: const TextStyle(fontSize: 12, color: Colors.grey),
-                        ),
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => OrderCreationScreen(
-                                    offer: offer,
-                                    duffelService: _duffelService,
-                                  ),
-                                ),
-                              );
-                            },
-                            child: const Text("Select Flight"),
-                          ),
-                        )
-                      ],
-                    ),
+                      ),
+                    );
+                  },
+                  child: FlightCard(
+                    offer: offer,
                   ),
                 );
               },
@@ -272,5 +411,14 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _departureController.dispose();
+    _arrivalController.dispose();
+    _departureDateController.dispose();
+    _passengersController.dispose();
+    super.dispose();
   }
 }

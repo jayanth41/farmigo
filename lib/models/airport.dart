@@ -9,6 +9,12 @@ class Airport {
     required this.iata,
   });
 
+  /// Display label for UI lists
+  String get displayLabel => "$city ($iata)";
+
+  /// Subtitle showing airport name
+  String get subtitle => name;
+
   factory Airport.fromJson(Map<String, dynamic> json) {
     return Airport(
       name: json['name'],
@@ -18,5 +24,5 @@ class Airport {
   }
 
   @override
-  String toString() => "$city ($iata)";
+  String toString() => displayLabel;
 }

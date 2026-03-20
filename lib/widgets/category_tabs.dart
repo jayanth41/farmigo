@@ -33,46 +33,54 @@ class CategoryTabs extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         child: Row(
           children: categories.map((c) {
-            // Make category tiles filled with app-blue and white text/icons
+            final isActive = c == activeCategory;
+            final primary = Theme.of(context).colorScheme.primary;
+
             return Padding(
               padding: const EdgeInsets.only(right: 8.0),
-              child: GestureDetector(
-                onTap: () => onCategoryChange(c),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary,
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(
-                      color: AppColors.primary,
+              child: Material(
+                color: isActive ? Colors.white : primary,
+                borderRadius: BorderRadius.circular(18),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(18),
+                  onTap: () => onCategoryChange(c),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: isActive ? Colors.white : primary,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                        color: isActive ? primary : Colors.transparent,
+                        width: isActive ? 1.5 : 0,
+                      ),
                     ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.only(right: 8.0),
-                        child: Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: Colors.white24,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            _iconForCategory(c),
-                            color: Colors.white,
-                            size: 18,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(right: 8.0),
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: isActive ? primary.withOpacity(0.06) : Colors.white24,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              _iconForCategory(c),
+                              color: isActive ? primary : Colors.white,
+                              size: 18,
+                            ),
                           ),
                         ),
-                      ),
-                      Text(
-                        c,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
+                        Text(
+                          c,
+                          style: TextStyle(
+                            color: isActive ? primary : Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -100,10 +108,16 @@ class CategoryGrid extends StatefulWidget {
   final void Function(String category)? onTap;
   final String selectedCategory;
 
+  /// Optional custom card builder for compatibility with callers that pass
+  /// a `cardBuilder` parameter (older HomeScreen code).
+  /// Signature: (context, label, iconData, selectedCategory, onTap)
+  final Widget Function(BuildContext, String, IconData, String, void Function(String))? cardBuilder;
+
   const CategoryGrid({
     super.key,
     this.onTap,
     this.selectedCategory = 'All',
+    this.cardBuilder,
   });
 
   @override
@@ -129,8 +143,7 @@ class _CategoryGridState extends State<CategoryGrid> {
 
   @override
   Widget build(BuildContext context) {
-    final bgColor = Theme.of(context).scaffoldBackgroundColor;
-    final textColor = Theme.of(context).colorScheme.onSurface;
+  // background and text colors are derived from theme where needed
 
     final List<Map<String, dynamic>> items = [
       {'label': 'Farmhouses', 'icon': Icons.agriculture},
@@ -159,22 +172,32 @@ class _CategoryGridState extends State<CategoryGrid> {
           final icon = item['icon'] as IconData;
           final isSelected = label == _localSelectedCategory;
 
-          return GestureDetector(
+          // If caller provided a custom builder (older HomeScreen expects
+          // `cardBuilder:`), use it for rendering the tile.
+          if (widget.cardBuilder != null) {
+            return widget.cardBuilder!(context, label, icon, _localSelectedCategory, (lbl) {
+              setState(() {
+                _localSelectedCategory = lbl;
+              });
+              widget.onTap?.call(lbl);
+            });
+          }
+
+          return InkWell(
             onTap: () {
               setState(() {
                 _localSelectedCategory = label;
               });
               widget.onTap?.call(label);
             },
+            borderRadius: BorderRadius.circular(18),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               decoration: BoxDecoration(
-                color: isSelected ? AppColors.primary : bgColor,
+                color: isSelected ? AppColors.primary : Colors.white,
                 borderRadius: BorderRadius.circular(18),
                 border: Border.all(
-                  color: isSelected
-                      ? AppColors.primary
-                      : Theme.of(context).dividerColor,
+                  color: AppColors.primary.withOpacity(0.2),
                   width: 1,
                 ),
                 boxShadow: [
@@ -191,16 +214,15 @@ class _CategoryGridState extends State<CategoryGrid> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color:
-                          isSelected ? Colors.white : AppColors.primary,
+                      color: isSelected ? Colors.white24 : Colors.transparent,
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
                       icon,
                       size: 26,
                       color: isSelected
-                          ? AppColors.primary
-                          : Colors.white,
+                          ? Theme.of(context).colorScheme.onPrimary
+                          : AppColors.primary,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -210,7 +232,9 @@ class _CategoryGridState extends State<CategoryGrid> {
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 13,
-                      color: isSelected ? Colors.white : textColor,
+                      color: isSelected
+                          ? Theme.of(context).colorScheme.onPrimary
+                          : AppColors.primary,
                     ),
                   ),
                 ],

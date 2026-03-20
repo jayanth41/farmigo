@@ -1247,14 +1247,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       onTap: (c) {
                         final cat = CategoryExt.fromLabel(c);
 
-                        // If Flights tapped → open real flight search screen (force navigation)
                         if (cat == Category.flights) {
                           debugPrint('[HomeScreen] Flights tapped → opening FlightSearchScreen');
                           Get.to(() => const FlightSearchScreen());
                           return;
                         }
 
-                        // Otherwise open normal category results
                         Navigator.push(
                           context,
                           MaterialPageRoute(

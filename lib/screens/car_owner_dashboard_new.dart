@@ -5,6 +5,7 @@ import '../models/car_booking.dart';
 import '../services/car_booking_service.dart';
 import 'add_vehicle_screen.dart';
 import '../widgets/app_drawer_with_roles.dart';
+import '../screens/owner_dashboard.dart';
 
 class CarOwnerDashboard extends StatefulWidget {
   const CarOwnerDashboard({super.key});
@@ -37,7 +38,24 @@ class _CarOwnerDashboardState extends State<CarOwnerDashboard> {
           children: [
             IconButton(
               icon: const Icon(Icons.arrow_back, color: Colors.black87),
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () async {
+                final uid = FirebaseAuth.instance.currentUser?.uid;
+
+                if (uid != null) {
+                  await FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(uid)
+                      .update({'activeRole': 'farmhouse_owner'});
+                }
+
+                if (!mounted) return;
+
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (_) => const OwnerDashboard()),
+                  (route) => false,
+                );
+              },
               tooltip: 'Back',
             ),
             Builder(
@@ -656,7 +674,13 @@ class NotificationsPanel extends StatelessWidget {
                 ),
                 IconButton(
                   icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () {
+                    if (Navigator.canPop(context)) {
+                      Navigator.pop(context);
+                    } else {
+                      Navigator.of(context).maybePop();
+                    }
+                  },
                 ),
               ],
             ),

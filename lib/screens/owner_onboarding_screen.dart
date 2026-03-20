@@ -92,10 +92,87 @@ class _OwnerOnboardingScreenState extends State<OwnerOnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final inputDecoration = InputDecoration(
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color.fromARGB(255, 41, 70, 92)),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color.fromARGB(255, 41, 70, 92), width: 1),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color.fromARGB(255, 41, 70, 92), width: 2),
+      ),
+    );
+
     final phone = FirebaseAuth.instance.currentUser?.phoneNumber ?? '';
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Owner Onboarding')),
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(120),
+        child: Container(
+          padding: EdgeInsets.fromLTRB(
+            16,
+            MediaQuery.of(context).padding.top + 10,
+            16,
+            16,
+          ),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Theme.of(context).colorScheme.primary,
+                Theme.of(context).colorScheme.primaryContainer,
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: const BorderRadius.vertical(
+              bottom: Radius.circular(18),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: const Icon(
+                      Icons.arrow_back_ios_new_rounded,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
+                  const Spacer(),
+                ],
+              ),
+              const SizedBox(height: 6),
+              const Center(
+                child: Text(
+                  'Owner Onboarding',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 4),
+              const Center(
+                child: Text(
+                  'Let your property start earning today',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.white70,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -107,20 +184,20 @@ class _OwnerOnboardingScreenState extends State<OwnerOnboardingScreen> {
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: _ownerNameController,
-                  decoration: const InputDecoration(labelText: 'Owner Full Name'),
+                  decoration: inputDecoration.copyWith(labelText: 'Owner Full Name'),
                   validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   initialValue: phone,
-                  decoration: const InputDecoration(labelText: 'Phone Number'),
+                  decoration: inputDecoration.copyWith(labelText: 'Phone Number'),
                   keyboardType: TextInputType.phone,
                 ),
                 const SizedBox(height: 12),
-                TextFormField(controller: _emailController, decoration: const InputDecoration(labelText: 'Email (optional)')),
+                TextFormField(controller: _emailController, decoration: inputDecoration.copyWith(labelText: 'Email (optional)')),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  decoration: const InputDecoration(labelText: 'City'),
+                  decoration: inputDecoration.copyWith(labelText: 'City'),
                   items: _cities.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
                   initialValue: _selectedCity,
                   onChanged: (v) => setState(() => _selectedCity = v),
@@ -128,7 +205,7 @@ class _OwnerOnboardingScreenState extends State<OwnerOnboardingScreen> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  decoration: const InputDecoration(labelText: 'Property Type'),
+                  decoration: inputDecoration.copyWith(labelText: 'Property Type'),
                   items: _propertyTypes.map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
                   initialValue: _selectedPropertyType,
                   onChanged: (v) {
@@ -150,7 +227,7 @@ class _OwnerOnboardingScreenState extends State<OwnerOnboardingScreen> {
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _bioController,
-                  decoration: const InputDecoration(labelText: 'Tell us about yourself'),
+                  decoration: inputDecoration.copyWith(labelText: 'Tell us about yourself'),
                   maxLines: 4,
                 ),
                 const SizedBox(height: 20),

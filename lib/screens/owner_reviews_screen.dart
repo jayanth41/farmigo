@@ -92,8 +92,9 @@ class _OwnerReviewsScreenState extends State<OwnerReviewsScreen> {
         respondedReviews++;
       }
 
-      if (rating >= 5) star5++;
-      else if (rating >= 4) star4++;
+      if (rating >= 5) {
+        star5++;
+      } else if (rating >= 4) star4++;
       else if (rating >= 3) star3++;
       else if (rating >= 2) star2++;
       else if (rating >= 1) star1++;
@@ -103,11 +104,40 @@ class _OwnerReviewsScreenState extends State<OwnerReviewsScreen> {
       avgRating = avgRating / totalReviews;
     }
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Guest Reviews'),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
-        elevation: 0.5,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(110),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(16, 40, 16, 24),
+          decoration: const BoxDecoration(
+            color: Color.fromARGB(255, 41, 70, 92),
+            borderRadius: BorderRadius.vertical(
+              bottom: Radius.circular(16),
+            ),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text(
+                'Reviews',
+                style: TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                '"Manage guest feedback smartly."',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.white70,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
       backgroundColor: const Color(0xFFF6FAF8),
       body: SafeArea(

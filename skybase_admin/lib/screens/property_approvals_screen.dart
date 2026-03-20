@@ -6,15 +6,13 @@ class PropertyApprovalsScreen extends StatelessWidget {
 
   Future<void> approveProperty(
       String propertyId, String ownerId, String propertyName) async {
-
-    await FirebaseFirestore.instance
-        .collection("properties")
-        .doc(propertyId)
-        .update({
+    // Approve a new property (mark as approved/active)
+    await FirebaseFirestore.instance.collection("properties").doc(propertyId).update({
       "status": "approved",
+      'updatedAt': FieldValue.serverTimestamp(),
     });
 
-    // Send notification
+    // Send notification to owner
     await FirebaseFirestore.instance.collection("notifications").add({
       "title": "Property Approved",
       "message": "Your property \"$propertyName\" has been approved.",
@@ -28,12 +26,10 @@ class PropertyApprovalsScreen extends StatelessWidget {
 
   Future<void> rejectProperty(
       String propertyId, String ownerId, String propertyName) async {
-
-    await FirebaseFirestore.instance
-        .collection("properties")
-        .doc(propertyId)
-        .update({
+    // Reject a new property submission
+    await FirebaseFirestore.instance.collection("properties").doc(propertyId).update({
       "status": "rejected",
+      'updatedAt': FieldValue.serverTimestamp(),
     });
 
     await FirebaseFirestore.instance.collection("notifications").add({
@@ -55,48 +51,86 @@ class PropertyApprovalsScreen extends StatelessWidget {
         title: const Text("Property Approvals"),
       ),
       body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection("properties")
-            .where("status", isEqualTo: "pending")
-            .snapshots(),
+        // Listen to all property documents and filter client-side for
+        // either new submissions (status == 'pending') or edit requests
+        // (editApprovalStatus == 'pending'). This keeps the admin able to
+        // approve both kinds of workflows.
+        stream: FirebaseFirestore.instance.collection("properties").snapshots(),
         builder: (context, snapshot) {
 
           if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          final properties = snapshot.data!.docs;
+          final allDocs = snapshot.data!.docs;
 
-          if (properties.isEmpty) {
-            return const Center(child: Text("No pending properties"));
+          final pendingDocs = allDocs.where((d) {
+            final data = d.data() as Map<String, dynamic>;
+            final status = (data['status'] ?? '').toString().toLowerCase();
+            final editStatus = (data['editApprovalStatus'] ?? '').toString().toLowerCase();
+            return status == 'pending' || editStatus == 'pending';
+          }).toList();
+
+          if (pendingDocs.isEmpty) {
+            return const Center(child: Text("No pending approvals"));
           }
 
           return ListView.builder(
-            itemCount: properties.length,
+            itemCount: pendingDocs.length,
             itemBuilder: (context, index) {
+              final snapshotDoc = pendingDocs[index];
+              final data = snapshotDoc.data() as Map<String, dynamic>;
 
-              final data =
-                  properties[index].data() as Map<String, dynamic>;
-
-              final propertyId = properties[index].id;
-              final propertyName = data["propertyName"] ?? "Property";
+              final propertyId = snapshotDoc.id;
+              final propertyName = data["propertyName"] ?? data['pendingEdits']?['propertyName'] ?? "Property";
               final ownerId = data["ownerId"];
+
+              final isNewSubmission = (data['status'] ?? '') == 'pending';
+              final isEditRequest = (data['editApprovalStatus'] ?? '') == 'pending';
 
               return Card(
                 margin: const EdgeInsets.all(12),
                 child: ListTile(
                   title: Text(propertyName),
-                  subtitle: Text(data["city"] ?? ""),
+                  subtitle: Text(isEditRequest ? 'Edit request — ${data["city"] ?? ""}' : (data["city"] ?? "")),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
 
                       ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green),
-                        onPressed: () {
-                          approveProperty(
-                              propertyId, ownerId, propertyName);
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                        onPressed: () async {
+                          // Approve either new submission or edit request
+                          if (isNewSubmission) {
+                            await approveProperty(propertyId, ownerId, propertyName);
+                          } else if (isEditRequest) {
+                            // Apply pending edits to the document
+                            final docRef = FirebaseFirestore.instance.collection('properties').doc(propertyId);
+                            final cur = await docRef.get();
+                            final map = cur.data() as Map<String, dynamic>? ?? {};
+                            final pending = map['pendingEdits'] as Map<String, dynamic>? ?? {};
+                            if (pending.isNotEmpty) {
+                              final updateMap = Map<String, dynamic>.from(pending);
+                              updateMap['updatedAt'] = FieldValue.serverTimestamp();
+                              await docRef.update(updateMap);
+                            }
+                            await docRef.update({
+                              'editApprovalStatus': 'approved',
+                              'editHandledAt': FieldValue.serverTimestamp(),
+                              'pendingEdits': FieldValue.delete(),
+                            });
+
+                            // Notify owner
+                            await FirebaseFirestore.instance.collection("notifications").add({
+                              "title": "Property Edit Approved",
+                              "message": "Your edits to \"$propertyName\" have been approved and applied.",
+                              "userId": ownerId,
+                              "type": "property_edit",
+                              "status": "approved",
+                              "isRead": false,
+                              "createdAt": FieldValue.serverTimestamp(),
+                            });
+                          }
                         },
                         child: const Text("Approve"),
                       ),
@@ -104,11 +138,28 @@ class PropertyApprovalsScreen extends StatelessWidget {
                       const SizedBox(width: 10),
 
                       ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red),
-                        onPressed: () {
-                          rejectProperty(
-                              propertyId, ownerId, propertyName);
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                        onPressed: () async {
+                          if (isNewSubmission) {
+                            await rejectProperty(propertyId, ownerId, propertyName);
+                          } else if (isEditRequest) {
+                            // mark edit as rejected
+                            await FirebaseFirestore.instance.collection('properties').doc(propertyId).update({
+                              'editApprovalStatus': 'rejected',
+                              'editHandledAt': FieldValue.serverTimestamp(),
+                            });
+
+                            // Notify owner
+                            await FirebaseFirestore.instance.collection("notifications").add({
+                              "title": "Property Edit Rejected",
+                              "message": "Sorry — your edits to \"$propertyName\" were not approved by admin.",
+                              "userId": ownerId,
+                              "type": "property_edit",
+                              "status": "rejected",
+                              "isRead": false,
+                              "createdAt": FieldValue.serverTimestamp(),
+                            });
+                          }
                         },
                         child: const Text("Reject"),
                       ),

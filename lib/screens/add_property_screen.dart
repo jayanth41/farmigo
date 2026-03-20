@@ -6,12 +6,23 @@ import 'package:firebase_storage/firebase_storage.dart' as fb_storage;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cross_file/cross_file.dart';
+import '../models/property_model.dart';
 import 'owner_dashboard.dart';
 import 'property_preview_screen.dart';
 
 class AddPropertyScreen extends StatefulWidget {
-  const AddPropertyScreen({super.key, this.propertyId});
-  final String? propertyId; // Optional: if provided, we can load existing data for editing (not implemented in this snippet)
+  const AddPropertyScreen({
+    super.key,
+    this.propertyId,
+    this.isEdit = false,
+    this.existingData,
+    // Backwards-compatible alias: some callers pass `existingProperty`.
+    this.existingProperty,
+  });
+  final String? propertyId;
+  final bool isEdit;
+  final dynamic existingData;
+  final dynamic existingProperty;
   @override
   State<AddPropertyScreen> createState() => _AddPropertyScreenState();
 }
@@ -115,6 +126,96 @@ final TextEditingController _hourlyPriceController = TextEditingController();
   // Availability
   bool _instantBooking = false;
   bool _activeListing = true;
+
+  @override
+  void initState() {
+    super.initState();
+
+    if (widget.isEdit) {
+      var src = widget.existingData ?? widget.existingProperty;
+      // Defensive: some callers/pages accidentally forward a List or other
+      // unexpected types. If a single-element List containing a Map is
+      // provided, unwrap it. Otherwise, skip prefill for unsupported types.
+      if (src is List && src.isNotEmpty && src.first is Map<String, dynamic>) {
+        src = src.first as Map<String, dynamic>;
+      }
+
+      if (src != null) {
+        try {
+          if (src is Map<String, dynamic>) {
+          _nameController.text = src['propertyName'] ?? src['name'] ?? '';
+          _descriptionController.text = src['description'] ?? '';
+          _streetController.text = src['street'] ?? '';
+          _cityController.text = src['city'] ?? '';
+          _stateController.text = src['state'] ?? '';
+          _zipController.text = src['zip'] ?? '';
+
+          _priceController.text = (src['pricePerNight'] ?? '').toString();
+          _bedroomsController.text = (src['bedrooms'] ?? '').toString();
+          _bathroomsController.text = (src['bathrooms'] ?? '').toString();
+          _guestsController.text = (src['maxGuests'] ?? '').toString();
+          _minStayController.text = (src['minStay'] ?? '').toString();
+
+          _propertyType = src['propertyType'] ?? src['category'] ?? 'Farmhouse';
+
+          // Amenities: some documents store amenities as a Map (name->bool)
+          // while others store a List of amenity names. Handle both cases.
+          final amenRaw = src['amenities'];
+          if (amenRaw is Map) {
+            final amenities = Map<String, dynamic>.from(amenRaw);
+            amenities.forEach((key, value) {
+              if (_amenities.containsKey(key)) {
+                _amenities[key] = value == true;
+              }
+            });
+          } else if (amenRaw is List) {
+            for (final a in amenRaw) {
+              if (a is String && _amenities.containsKey(a)) {
+                _amenities[a] = true;
+              }
+            }
+          }
+
+          // Photos (existing URLs): accept a List or a single string
+          final photosRaw = src['photoUrls'];
+          if (photosRaw is List) {
+            try {
+              _photos.addAll(List<String>.from(photosRaw));
+            } catch (_) {}
+          } else if (photosRaw is String) {
+            _photos.add(photosRaw);
+          }
+        } else if (src is PropertyModel) {
+          _nameController.text = src.name;
+          _descriptionController.text = src.description;
+          _streetController.text = '';
+          _cityController.text = src.city;
+          _stateController.text = src.state;
+          _zipController.text = '';
+
+          _priceController.text = src.pricePerNight.toString();
+          _bedroomsController.text = src.bedrooms.toString();
+          _bathroomsController.text = src.bathrooms.toString();
+          _guestsController.text = src.maxGuests.toString();
+          _minStayController.text = src.minStay.toString();
+
+          _propertyType = src.category;
+          _photos.addAll(src.imageUrls);
+          for (final k in _amenities.keys.toList()) {
+            _amenities[k] = src.amenities.contains(k);
+          }
+        } else {
+          // Unsupported / unexpected src type — log for debugging but don't crash.
+          debugPrint('[AddPropertyScreen] Unexpected existing data type: ${src.runtimeType}');
+        }
+        } catch (e, st) {
+          debugPrint('[AddPropertyScreen] Prefill failed: $e');
+          debugPrint('[AddPropertyScreen] src runtimeType: ${src.runtimeType}');
+          // Avoid crashing the widget; continue with empty form.
+        }
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -260,66 +361,73 @@ final TextEditingController _hourlyPriceController = TextEditingController();
       final firestore = FirebaseFirestore.instance;
       final storage = fb_storage.FirebaseStorage.instance;
 
-      // Create property document as DRAFT
-      final docRef = firestore.collection('properties').doc();
-      final propertyId = docRef.id;
+    // Create property document as DRAFT for new properties, or prepare
+    // to create a pending edit for existing properties. We don't apply
+    // owner edits directly - they must go through admin approval.
+    final docRef = widget.isEdit
+      ? firestore.collection('properties').doc(widget.propertyId)
+      : firestore.collection('properties').doc();
+    final propertyId = docRef.id;
 
-      await docRef.set({
-        'ownerId': uid,
-        'propertyName': _nameController.text.trim(),
-        'description': _descriptionController.text.trim(),
-        'street': _streetController.text.trim(),
-        'city': _cityController.text.trim(),
-        'state': _stateController.text.trim(),
-        'zip': _zipController.text.trim(),
+    if (!widget.isEdit) {
+    // New property creation (same as before)
+    await docRef.set({
+      'ownerId': uid,
+      'propertyName': _nameController.text.trim(),
+      'description': _descriptionController.text.trim(),
+      'street': _streetController.text.trim(),
+      'city': _cityController.text.trim(),
+      'state': _stateController.text.trim(),
+      'zip': _zipController.text.trim(),
 
-        // Location placeholders (can be updated later from a map picker)
-        'lat': 0.0,
-        'lng': 0.0,
+      // Location placeholders (can be updated later from a map picker)
+      'lat': 0.0,
+      'lng': 0.0,
 
-        // Pricing & capacity as numbers (not strings)
-        'pricePerNight': int.tryParse(_priceController.text.trim()) ?? 0,
-        'bedrooms': int.tryParse(_bedroomsController.text.trim()) ?? 0,
-        'bathrooms': int.tryParse(_bathroomsController.text.trim()) ?? 0,
-        'maxGuests': int.tryParse(_guestsController.text.trim()) ?? 0,
-        'minStay': int.tryParse(_minStayController.text.trim()) ?? 0,
+      // Pricing & capacity as numbers (not strings)
+      'pricePerNight': int.tryParse(_priceController.text.trim()) ?? 0,
+      'bedrooms': int.tryParse(_bedroomsController.text.trim()) ?? 0,
+      'bathrooms': int.tryParse(_bathroomsController.text.trim()) ?? 0,
+      'maxGuests': int.tryParse(_guestsController.text.trim()) ?? 0,
+      'minStay': int.tryParse(_minStayController.text.trim()) ?? 0,
 
-        'propertyType': _propertyType,
-        'carCategory': _propertyType == 'car' ? _carCategory : null,
-        'hourlyPrice': _propertyType == 'car'
-    ? int.tryParse(_hourlyPriceController.text.trim())
-    : null,
+      'propertyType': _propertyType,
+      'carCategory': _propertyType == 'car' ? _carCategory : null,
+      'hourlyPrice': _propertyType == 'car'
+        ? int.tryParse(_hourlyPriceController.text.trim())
+        : null,
 
-        // Car-specific saved fields
-'carSeats': _propertyType == 'car'
-    ? int.tryParse(_seatsController.text.trim()) ?? 0
-    : null,
-'fuelType': _propertyType == 'car' ? _fuelType : null,
-'transmission': _propertyType == 'car' ? _transmission : null,
-'driverAvailable': _propertyType == 'car' ? _driverAvailable : null,
-'numberPlate': _propertyType == 'car'
-    ? _plateController.text.trim()
-    : null,
-'kmDriven': _propertyType == 'car'
-    ? int.tryParse(_kmController.text.trim()) ?? 0
-    : null,
-        'amenities': _amenities,
-        'instantBooking': _instantBooking,
-        'activeListing': _activeListing,
+      // Car-specific saved fields
+      'carSeats': _propertyType == 'car'
+        ? int.tryParse(_seatsController.text.trim()) ?? 0
+        : null,
+      'fuelType': _propertyType == 'car' ? _fuelType : null,
+      'transmission': _propertyType == 'car' ? _transmission : null,
+      'driverAvailable': _propertyType == 'car' ? _driverAvailable : null,
+      'numberPlate': _propertyType == 'car'
+        ? _plateController.text.trim()
+        : null,
+      'kmDriven': _propertyType == 'car'
+        ? int.tryParse(_kmController.text.trim()) ?? 0
+        : null,
+      'amenities': _amenities,
+      'instantBooking': _instantBooking,
+      'activeListing': _activeListing,
 
-        // Start as draft; will become active after images upload
-        'status': 'draft',
+      // New listings start as draft; admin approves to make active
+      'status': 'draft',
 
-        // Dashboard analytics defaults (VERY IMPORTANT)
-        'rating': 0.0,
-        'reviewCount': 0,
-        'views': 0,
-        'totalBookings': 0,
+      // Dashboard analytics defaults (VERY IMPORTANT)
+      'rating': 0.0,
+      'reviewCount': 0,
+      'views': 0,
+      'totalBookings': 0,
 
-        // Timestamps
-        'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
+      // Timestamps
+      'createdAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+    }
 
       // STEP 3️⃣: Sync selected amenities to global collection after property doc creation
       // Extract selected amenities
@@ -362,14 +470,61 @@ final TextEditingController _hourlyPriceController = TextEditingController();
           documentUrl = await snap.ref.getDownloadURL();
         }
 
-        // Final update — make property ACTIVE
-        await docRef.update({
-          'photoUrls': finalImageUrls,
-          'documentUrl': documentUrl,
-          'status': 'active',
-          'publishedAt': FieldValue.serverTimestamp(),
-          'updatedAt': FieldValue.serverTimestamp(),
-        });
+        if (widget.isEdit) {
+          // For edits, save the proposed changes under `pendingEdits`
+          final Map<String, dynamic> pending = {
+            'ownerId': uid,
+            'propertyName': _nameController.text.trim(),
+            'description': _descriptionController.text.trim(),
+            'street': _streetController.text.trim(),
+            'city': _cityController.text.trim(),
+            'state': _stateController.text.trim(),
+            'zip': _zipController.text.trim(),
+            'lat': 0.0,
+            'lng': 0.0,
+            'pricePerNight': int.tryParse(_priceController.text.trim()) ?? 0,
+            'bedrooms': int.tryParse(_bedroomsController.text.trim()) ?? 0,
+            'bathrooms': int.tryParse(_bathroomsController.text.trim()) ?? 0,
+            'maxGuests': int.tryParse(_guestsController.text.trim()) ?? 0,
+            'minStay': int.tryParse(_minStayController.text.trim()) ?? 0,
+            'propertyType': _propertyType,
+            'carCategory': _propertyType == 'car' ? _carCategory : null,
+            'hourlyPrice': _propertyType == 'car'
+                ? int.tryParse(_hourlyPriceController.text.trim())
+                : null,
+            'carSeats': _propertyType == 'car'
+                ? int.tryParse(_seatsController.text.trim()) ?? 0
+                : null,
+            'fuelType': _propertyType == 'car' ? _fuelType : null,
+            'transmission': _propertyType == 'car' ? _transmission : null,
+            'driverAvailable': _propertyType == 'car' ? _driverAvailable : null,
+            'numberPlate': _propertyType == 'car' ? _plateController.text.trim() : null,
+            'kmDriven': _propertyType == 'car' ? int.tryParse(_kmController.text.trim()) ?? 0 : null,
+            'amenities': _amenities,
+            'instantBooking': _instantBooking,
+            'activeListing': _activeListing,
+            // include uploaded images/doc urls as part of pending edits
+            'photoUrls': finalImageUrls,
+            'documentUrl': documentUrl,
+          };
+
+          await docRef.update({
+            'pendingEdits': pending,
+            'editApprovalStatus': 'pending',
+            'editRequestedAt': FieldValue.serverTimestamp(),
+            'editRequestedBy': uid,
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+        } else {
+          // Final update — make property ACTIVE
+          await docRef.update({
+            'photoUrls': finalImageUrls,
+            'documentUrl': documentUrl,
+            'status': 'active',
+            'publishedAt': FieldValue.serverTimestamp(),
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+        }
       } catch (uploadError) {
         // Attempt cleanup of uploaded files to avoid orphaned storage items
         try {
@@ -390,16 +545,30 @@ final TextEditingController _hourlyPriceController = TextEditingController();
         rethrow;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Property published successfully')),
-      );
+      // SUCCESS UI
+      if (widget.isEdit) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Waiting for admin approval. Changes will be reviewed within 24 hours.'),
+            duration: Duration(seconds: 5),
+          ),
+        );
+        if (!mounted) return;
+        Navigator.of(context).pop(true);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Property published successfully'),
+          ),
+        );
+        if (!mounted) return;
+        Navigator.of(context).pop(true);
+      }
 
-      if (!mounted) return;
-      // Return to the previous screen and signal success
-      Navigator.of(context).pop(true);
     } catch (e, st) {
       debugPrint('Publish error: $e');
       debugPrint('STACKTRACE: $st');
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Upload failed: ${e.toString()}')),
       );
@@ -423,20 +592,68 @@ final TextEditingController _hourlyPriceController = TextEditingController();
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Add New Property'),
-        bottom: const PreferredSize(
-          preferredSize: Size.fromHeight(28),
-          child: Padding(
-            padding: EdgeInsets.only(bottom: 8.0),
-            child: Text(
-              '“Don’t let your property sit idle — let it earn.”',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w900,
-                color: Colors.white,
-              ),
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(130),
+        child: Container(
+          padding: EdgeInsets.fromLTRB(
+            16,
+            MediaQuery.of(context).padding.top + 10,
+            16,
+            16,
+          ),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Theme.of(context).colorScheme.primary,
+                Theme.of(context).colorScheme.primaryContainer,
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
+            borderRadius: const BorderRadius.vertical(
+              bottom: Radius.circular(18),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: const Icon(
+                      Icons.arrow_back_ios_new_rounded,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
+                  const Spacer(),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Center(
+                child: Text(
+                  widget.isEdit ? 'Edit Property' : 'Add Property',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 26,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Center(
+                child: Text(
+                  widget.isEdit
+                      ? 'Update details and submit for admin approval'
+                      : 'Don’t let your property sit idle — let it earn',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Colors.white70,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -475,6 +692,10 @@ final TextEditingController _hourlyPriceController = TextEditingController();
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: const Color.fromARGB(255, 41, 70, 92).withOpacity(0.2),
+                      width: 1,
+                    ),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withOpacity(0.05),
@@ -567,13 +788,17 @@ final TextEditingController _hourlyPriceController = TextEditingController();
                 const SizedBox(height: 24),
 
                 // 2) Location
-                // 2️⃣ Location
+// 2️⃣ Location
 Container(
   width: double.infinity,
   padding: const EdgeInsets.all(20),
   decoration: BoxDecoration(
     color: Colors.white,
     borderRadius: BorderRadius.circular(20),
+    border: Border.all(
+      color: const Color.fromARGB(255, 41, 70, 92).withOpacity(0.2),
+      width: 1,
+    ),
     boxShadow: [
       BoxShadow(
         color: Colors.black.withOpacity(0.05),
@@ -705,6 +930,10 @@ Container(
   decoration: BoxDecoration(
     color: Colors.white,
     borderRadius: BorderRadius.circular(20),
+    border: Border.all(
+      color: const Color.fromARGB(255, 41, 70, 92).withOpacity(0.2),
+      width: 1,
+    ),
     boxShadow: [
       BoxShadow(
         color: Colors.black.withOpacity(0.05),
@@ -845,6 +1074,10 @@ Container(
   decoration: BoxDecoration(
     color: Colors.white,
     borderRadius: BorderRadius.circular(20),
+    border: Border.all(
+      color: const Color.fromARGB(255, 41, 70, 92).withOpacity(0.2),
+      width: 1,
+    ),
     boxShadow: [
       BoxShadow(
         color: Colors.black.withOpacity(0.05),
@@ -913,6 +1146,10 @@ Container(
   decoration: BoxDecoration(
     color: Colors.white,
     borderRadius: BorderRadius.circular(20),
+    border: Border.all(
+      color: const Color.fromARGB(255, 41, 70, 92).withOpacity(0.2),
+      width: 1,
+    ),
     boxShadow: [
       BoxShadow(
         color: Colors.black.withOpacity(0.05),
@@ -988,13 +1225,17 @@ Container(
 const SizedBox(height: 24),
                 
 
-                // 7️⃣ Availability Settings
+// 7️⃣ Availability Settings
 Container(
   width: double.infinity,
   padding: const EdgeInsets.all(20),
   decoration: BoxDecoration(
     color: Colors.white,
     borderRadius: BorderRadius.circular(20),
+    border: Border.all(
+      color: const Color.fromARGB(255, 41, 70, 92).withOpacity(0.2),
+      width: 1,
+    ),
     boxShadow: [
       BoxShadow(
         color: Colors.black.withOpacity(0.05),
@@ -1046,33 +1287,40 @@ Container(
 const SizedBox(height: 24),
                
 
-                // Bottom actions
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
-                        child: const Text('Cancel'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: _isPublishing ? null : _openPreview,
-                        style: ElevatedButton.styleFrom(backgroundColor: Colors.green, padding: const EdgeInsets.symmetric(vertical: 14)),
-                        child: _isPublishing ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Text('Publish Property'),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 120),
               ],
             ),
           ),
         ),
       ),
-        );
+        bottomNavigationBar: SafeArea(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(color: Theme.of(context).scaffoldBackgroundColor, boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 6)]),
+            child: Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
+                    child: const Text('Cancel'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: _isPublishing ? null : _openPreview,
+                    style: ElevatedButton.styleFrom(backgroundColor: widget.isEdit ? Colors.blue : Colors.green, padding: const EdgeInsets.symmetric(vertical: 14)),
+                    child: _isPublishing
+                        ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                        : Text(widget.isEdit ? 'Save Changes' : 'Publish Property'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
       
   }
 }

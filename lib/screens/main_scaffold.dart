@@ -82,6 +82,15 @@ class _MainScaffoldState extends State<MainScaffold> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.tabs.length != BottomTab.values.length) {
+      // Don't crash the app; log a warning so we can trace callers passing
+      // an incorrect tabs map. We will gracefully substitute missing tabs
+      // with an empty widget.
+      // Example: MainScaffold requires 4 tabs (home,favorites,bookings,profile).
+      // If callers pass a different map, we'll still render but log this.
+      debugPrint('WARNING: MainScaffold expected ${BottomTab.values.length} tabs but got ${widget.tabs.length}');
+    }
+
     final children = BottomTab.values
         .map((t) => widget.tabs[t] ?? const SizedBox.shrink())
         .toList();

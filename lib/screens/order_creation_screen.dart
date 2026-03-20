@@ -115,7 +115,7 @@ class _OrderCreationScreenState extends State<OrderCreationScreen> {
           children: [
             Text('Order ID: ${order.id}'),
             const SizedBox(height: 8),
-            Text('Total: ${order.totalCurrency} ${order.totalAmount}'),
+            Text('Total: ${widget.offer.displayPrice}'),
             const SizedBox(height: 8),
             Text('Status: ${order.status}'),
             const SizedBox(height: 8),
@@ -213,7 +213,7 @@ class _OrderCreationScreenState extends State<OrderCreationScreen> {
                       _buildDetailRow('Type', _createdOrder!.type),
                       _buildDetailRow(
                         'Total',
-                        '${_createdOrder!.totalCurrency} ${_createdOrder!.totalAmount}',
+                        widget.offer.displayPrice,
                       ),
                       _buildDetailRow('Status', _createdOrder!.status),
                       _buildDetailRow('Created At', _createdOrder!.createdAt),
@@ -246,8 +246,12 @@ class _OrderCreationScreenState extends State<OrderCreationScreen> {
                       if (widget.offer.slices.isNotEmpty) ...[
                         _buildDetailRow(
                           'Route',
-                          widget.offer.slices[0].toString(),
+                          '${widget.offer.origin} → ${widget.offer.destination}',
                         ),
+                        _buildDetailRow(
+                          'Departure', widget.offer.departureTime),
+                        _buildDetailRow('Arrival', widget.offer.arrivalTime),
+                        _buildDetailRow('Duration', widget.offer.duration),
                       ],
                     ],
                   ),
@@ -301,20 +305,99 @@ class _OrderCreationScreenState extends State<OrderCreationScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Text(
-                      widget.offer.displayPrice,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.green,
-                      ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            if (widget.offer.airlineLogo.isNotEmpty)
+                              Image.network(
+                                widget.offer.airlineLogo,
+                                width: 36,
+                                height: 36,
+                                errorBuilder: (_, __, ___) => const Icon(Icons.flight),
+                              )
+                            else
+                              const Icon(Icons.flight),
+                            const SizedBox(width: 8),
+                            Text(
+                              widget.offer.airlineName,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Text(
+                          widget.offer.displayPrice,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green,
+                          ),
+                        ),
+                      ],
                     ),
+                    const SizedBox(height: 10),
+
+                    // Route row
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Departure',
+                              style: TextStyle(fontSize: 12, color: Colors.grey),
+                            ),
+                            Text(
+                              widget.offer.origin,
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                            ),
+                            Text(
+                              widget.offer.departureTime,
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                          ],
+                        ),
+                        Column(
+                          children: [
+                            const Icon(Icons.flight_takeoff, size: 18),
+                            const SizedBox(height: 4),
+                            Text(
+                              widget.offer.duration,
+                              style: const TextStyle(fontSize: 12, color: Colors.grey),
+                            ),
+                          ],
+                        ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            const Text(
+                              'Arrival',
+                              style: TextStyle(fontSize: 12, color: Colors.grey),
+                            ),
+                            Text(
+                              widget.offer.destination,
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                            ),
+                            Text(
+                              widget.offer.arrivalTime,
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+
                     const SizedBox(height: 8),
-                    if (widget.offer.slices.isNotEmpty)
-                      Text(
-                        'Route: ${widget.offer.slices[0].toString()}',
-                        style: const TextStyle(fontSize: 14),
-                      ),
+
+                    Text(
+                      'Stops: ${widget.offer.stopsLabel}',
+                      style: const TextStyle(fontSize: 13, color: Colors.grey),
+                    ),
                   ],
                 ),
               ),
