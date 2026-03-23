@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart' as env;
 import 'package:intl/intl.dart';
+import 'package:skybase/models/offer.dart' as ui;
 
 class DuffelService {
   static const String baseUrl = 'https://api.duffel.com';
@@ -241,6 +242,31 @@ class DuffelService {
 
     throw DuffelApiException(response.statusCode, message);
   }
+}
+
+/// Utility: convert a Duffel Offer (service model) to the UI model (UiOffer)
+ui.UiOffer duffelOfferToUi(Offer o) {
+  DateTime? departureDateTime;
+  if (o.slices.isNotEmpty && o.slices.first.departureAt.isNotEmpty) {
+    departureDateTime = DateTime.tryParse(o.slices.first.departureAt);
+  }
+
+  return ui.UiOffer(
+    id: o.id,
+    airlineName: o.airlines.isNotEmpty ? o.airlines.first.name : o.airlineName,
+    airlineLogo: o.airlineLogo,
+    flightNumber: o.flightNumber,
+    origin: o.origin,
+    destination: o.destination,
+    departureTime: o.departureTime,
+    arrivalTime: o.arrivalTime,
+    departureDateTime: departureDateTime,
+    duration: o.duration,
+    durationMinutes: o.durationMinutes,
+    stopsLabel: o.stopsLabel,
+    price: o.totalAmount,
+    currency: o.totalCurrency,
+  );
 }
 
 class DuffelApiException implements Exception {

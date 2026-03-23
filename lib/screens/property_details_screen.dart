@@ -13,6 +13,7 @@ import '../services/faq_service.dart';
 import '../services/review_service_complete.dart';
 import '../services/chat_service.dart';
 import 'edit_property_screen.dart' as edit_screen;
+import 'owner_dashboard.dart';
 
 class PropertyDetailsScreen extends StatefulWidget {
   final String propertyId;
@@ -271,17 +272,26 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
         // Edit Property Button (visible only for owners or admin, adjust as needed)
         IconButton(
           icon: const Icon(Icons.edit),
-          onPressed: () {
+          onPressed: () async {
             // TODO: Add proper permission check for owner/admin before allowing edit
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => edit_screen.EditPropertyScreen(
-                      existingData: property.toJson(),
-                      propertyId: property.id,
-                    ),
-                  ),
-                );
+            final result = await Navigator.push<Map<String, dynamic>?>(
+              context,
+              MaterialPageRoute(
+                builder: (_) => edit_screen.EditPropertyScreen(
+                  existingData: property.toJson(),
+                  propertyId: property.id,
+                ),
+              ),
+            );
+
+            // If edits were staged (owner confirmed publish for edit),
+            // take the owner back to their dashboard.
+            if (result != null) {
+              if (!mounted) return;
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (_) => const OwnerDashboard()),
+              );
+            }
           },
         ),
       ],

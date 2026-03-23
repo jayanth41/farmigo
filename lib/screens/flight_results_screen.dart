@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import '../models/offer.dart';
+import '../services/duffel_service.dart' as duffel;
 import '../widgets/flight_card.dart';
 
 class FlightResultsScreen extends StatefulWidget {
-  final List<Offer> offers;
+  final List<duffel.Offer> offers;
 
   const FlightResultsScreen({super.key, required this.offers});
 
@@ -16,19 +16,46 @@ class _FlightResultsScreenState extends State<FlightResultsScreen> {
   String _sortType = "price";
   bool _nonStopOnly = false;
 
-  List<Offer> get sortedOffers {
-    List<Offer> list = List.from(widget.offers);
+  List<duffel.Offer> get sortedOffers {
+    List<duffel.Offer> list = List.from(widget.offers);
 
     if (_nonStopOnly) {
-      list = list.where((o) => o.stops == 0).toList();
+      list = list.where((o) {
+        final stops = (o.slices.isNotEmpty ? o.slices.first.segments.length - 1 : 0);
+        return stops == 0;
+      }).toList();
     }
 
     if (_sortType == "price") {
-      list.sort((a, b) => a.price.compareTo(b.price));
+      list.sort((a, b) => a.priceInINR.compareTo(b.priceInINR));
     } else if (_sortType == "duration") {
-      list.sort((a, b) => a.durationMinutes.compareTo(b.durationMinutes));
+      int durationMinutes(duffel.Offer of) {
+        try {
+          if (of.slices.isEmpty) return 0;
+          final segs = of.slices.first.segments;
+          if (segs.isEmpty) return 0;
+          final dep = DateTime.tryParse(segs.first.departureAt);
+          final arr = DateTime.tryParse(segs.last.arrivalAt);
+          if (dep == null || arr == null) return 0;
+          return arr.difference(dep).inMinutes;
+        } catch (_) {
+          return 0;
+        }
+      }
+      list.sort((a, b) => durationMinutes(a).compareTo(durationMinutes(b)));
     } else if (_sortType == "departure") {
-      list.sort((a, b) => a.departureTimestamp.compareTo(b.departureTimestamp));
+      int depTs(duffel.Offer of) {
+        try {
+          if (of.slices.isEmpty) return 0;
+          final segs = of.slices.first.segments;
+          if (segs.isEmpty) return 0;
+          final dep = DateTime.tryParse(segs.first.departureAt);
+          return dep?.millisecondsSinceEpoch ?? 0;
+        } catch (_) {
+          return 0;
+        }
+      }
+      list.sort((a, b) => depTs(a).compareTo(depTs(b)));
     }
 
     return list;
@@ -36,8 +63,16 @@ class _FlightResultsScreenState extends State<FlightResultsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // 🔥 Defensive fix: remove broken offers
+    final safeOffers = widget.offers.where((o) {
+      try {
+        return o.priceInINR >= 0;
+      } catch (e) {
+        return false;
+      }
+    }).toList();
 
-    if (widget.offers.isEmpty) {
+    if (safeOffers.isEmpty) {
       return Scaffold(
         appBar: AppBar(title: const Text("Flights")),
         body: const Center(
@@ -59,43 +94,53 @@ class _FlightResultsScreenState extends State<FlightResultsScreen> {
           /// SORT BAR
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  const SizedBox(width: 8),
 
-                ChoiceChip(
-                  label: const Text("Cheapest"),
-                  selected: _sortType == "price",
-                  onSelected: (_) {
-                    setState(() => _sortType = "price");
-                  },
-                ),
+                  ChoiceChip(
+                    label: const Text("Cheapest"),
+                    selected: _sortType == "price",
+                    onSelected: (_) {
+                      setState(() => _sortType = "price");
+                    },
+                  ),
 
-                ChoiceChip(
-                  label: const Text("Fastest"),
-                  selected: _sortType == "duration",
-                  onSelected: (_) {
-                    setState(() => _sortType = "duration");
-                  },
-                ),
+                  const SizedBox(width: 8),
 
-                ChoiceChip(
-                  label: const Text("Departure"),
-                  selected: _sortType == "departure",
-                  onSelected: (_) {
-                    setState(() => _sortType = "departure");
-                  },
-                ),
+                  ChoiceChip(
+                    label: const Text("Fastest"),
+                    selected: _sortType == "duration",
+                    onSelected: (_) {
+                      setState(() => _sortType = "duration");
+                    },
+                  ),
 
-                ChoiceChip(
-                  label: const Text("Non‑stop"),
-                  selected: _nonStopOnly,
-                  onSelected: (_) {
-                    setState(() => _nonStopOnly = !_nonStopOnly);
-                  },
-                ),
+                  const SizedBox(width: 8),
 
-              ],
+                  ChoiceChip(
+                    label: const Text("Departure"),
+                    selected: _sortType == "departure",
+                    onSelected: (_) {
+                      setState(() => _sortType = "departure");
+                    },
+                  ),
+
+                  const SizedBox(width: 8),
+
+                  ChoiceChip(
+                    label: const Text("Non‑stop"),
+                    selected: _nonStopOnly,
+                    onSelected: (_) {
+                      setState(() => _nonStopOnly = !_nonStopOnly);
+                    },
+                  ),
+
+                  const SizedBox(width: 8),
+                ],
+              ),
             ),
           ),
 
@@ -105,10 +150,11 @@ class _FlightResultsScreenState extends State<FlightResultsScreen> {
           Expanded(
             child: ListView.builder(
               padding: const EdgeInsets.all(12),
-              itemCount: sortedOffers.length,
+              itemCount: sortedOffers.where((o) => o.priceInINR >= 0).length,
               itemBuilder: (context, index) {
 
-                final offer = sortedOffers[index];
+                final validOffers = sortedOffers.where((o) => o.priceInINR >= 0).toList();
+                final offer = validOffers[index];
 
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 12),

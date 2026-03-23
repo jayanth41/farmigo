@@ -10,11 +10,9 @@ class PropertyPreviewScreen extends StatelessWidget {
     required this.city,
     required this.state,
     required this.zip,
-    required this.pricePerNight,
     required this.bedrooms,
     required this.bathrooms,
     required this.guests,
-    required this.minStay,
     required this.amenities,
     required this.photoCount,
     required this.instantBooking,
@@ -29,11 +27,9 @@ class PropertyPreviewScreen extends StatelessWidget {
   final String city;
   final String state;
   final String zip;
-  final String pricePerNight;
   final String bedrooms;
   final String bathrooms;
   final String guests;
-  final String minStay;
   final List<String> amenities;
   final int photoCount;
   final bool instantBooking;
@@ -73,14 +69,6 @@ class PropertyPreviewScreen extends StatelessWidget {
                   Text(propertyName,
                       style: const TextStyle(
                           fontSize: 22, fontWeight: FontWeight.bold)),
-
-                  const SizedBox(height: 8),
-
-                  Text("₹ $pricePerNight / night",
-                      style: const TextStyle(
-                          fontSize: 18,
-                          color: Colors.green,
-                          fontWeight: FontWeight.w600)),
 
                   const SizedBox(height: 8),
 

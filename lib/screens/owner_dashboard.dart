@@ -9,6 +9,7 @@ import 'car_owner_dashboard_new.dart';
 import 'role_selection_screen.dart';
 import 'owner/owner_main_scaffold.dart';
 import 'owner_messages_screen.dart';
+import 'owner_notifications_screen.dart';
 import 'add_property_screen.dart' as add_screen;
 import 'edit_property_screen.dart' as edit_screen;
 
@@ -648,6 +649,18 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
                     ),
 
                     _DrawerTile(
+                      icon: Icons.notifications_none,
+                      label: 'Notifications',
+                      selected: false,
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const OwnerNotificationsScreen()),
+                        );
+                      },
+                    ),
+
+                    _DrawerTile(
                       icon: Icons.settings_outlined,
                       label: 'Settings',
                       selected: false,
@@ -853,6 +866,46 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
                     ),
                   ),
                   const Spacer(),
+                  // Notifications button with unread badge
+                  StreamBuilder<QuerySnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection('notifications')
+                        .where('userId', isEqualTo: FirebaseAuth.instance.currentUser?.uid)
+                        .where('isRead', isEqualTo: false)
+                        .snapshots(),
+                    builder: (context, snap) {
+                      int unread = 0;
+                      if (snap.hasData) unread = snap.data!.docs.length;
+                      return Stack(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.notifications_none, color: Colors.white),
+                            onPressed: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(builder: (_) => const OwnerNotificationsScreen()),
+                              );
+                            },
+                          ),
+                          if (unread > 0)
+                            Positioned(
+                              right: 6,
+                              top: 6,
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(12)),
+                                constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+                                child: Center(
+                                  child: Text(
+                                    unread > 9 ? '9+' : unread.toString(),
+                                    style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      );
+                    },
+                  ),
                   IconButton(
                     icon: const Icon(Icons.chat_bubble_outline, color: Colors.white),
                     onPressed: () {

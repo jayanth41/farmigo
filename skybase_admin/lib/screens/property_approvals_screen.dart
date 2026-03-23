@@ -58,8 +58,17 @@ class PropertyApprovalsScreen extends StatelessWidget {
         stream: FirebaseFirestore.instance.collection("properties").snapshots(),
         builder: (context, snapshot) {
 
-          if (!snapshot.hasData) {
+          // Surface Firestore errors instead of leaving the UI stuck on a spinner
+          if (snapshot.hasError) {
+            return Center(child: Text('Error loading properties: ${snapshot.error}'));
+          }
+
+          if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
+          }
+
+          if (!snapshot.hasData || snapshot.data == null) {
+            return const Center(child: Text("No data available"));
           }
 
           final allDocs = snapshot.data!.docs;

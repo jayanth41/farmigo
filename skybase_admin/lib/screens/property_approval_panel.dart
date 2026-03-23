@@ -214,14 +214,49 @@ class _PropertyApprovalPanelState extends State<PropertyApprovalPanel>
         children: [
           // NEW PROPERTIES
           StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance
-                .collection('properties')
-                .where('status', isEqualTo: 'pending')
-                .orderBy('createdAt', descending: true)
-                .snapshots(),
+      // NOTE: removed server-side orderBy because some deployments
+      // require a composite index for where()+orderBy combinations.
+      // We fetch the matches and perform client-side sorting instead.
+      stream: FirebaseFirestore.instance
+        .collection('properties')
+        .where('status', isEqualTo: 'pending')
+        .snapshots(),
             builder: (context, snap) {
-              if (!snap.hasData) return const Center(child: CircularProgressIndicator());
-              final docs = snap.data!.docs;
+              // Handle errors explicitly so the UI doesn't hang on a spinner
+              if (snap.hasError) {
+                return Center(child: Text('Error loading properties: ${snap.error}'));
+              }
+
+              if (snap.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              if (!snap.hasData || snap.data == null) {
+                return const Center(child: Text('No data available'));
+              }
+
+              final docs = List<DocumentSnapshot>.from(snap.data!.docs);
+
+              // Sort client-side by createdAt descending. Guard for missing types.
+              docs.sort((a, b) {
+                final ma = (a.data() as Map<String, dynamic>?)?['createdAt'];
+                final mb = (b.data() as Map<String, dynamic>?)?['createdAt'];
+                int ta = 0, tb = 0;
+                try {
+                  if (ma != null) {
+                    if (ma is Timestamp) ta = ma.toDate().millisecondsSinceEpoch;
+                    else if (ma is int) ta = ma;
+                    else if (ma is DateTime) ta = ma.millisecondsSinceEpoch;
+                  }
+                  if (mb != null) {
+                    if (mb is Timestamp) tb = mb.toDate().millisecondsSinceEpoch;
+                    else if (mb is int) tb = mb;
+                    else if (mb is DateTime) tb = mb.millisecondsSinceEpoch;
+                  }
+                } catch (_) {}
+                return tb.compareTo(ta);
+              });
+
               if (docs.isEmpty) return const Center(child: Text('No new properties pending approval'));
 
               return ListView.builder(
@@ -268,14 +303,38 @@ class _PropertyApprovalPanelState extends State<PropertyApprovalPanel>
 
           // EDITED PROPERTIES
           StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance
-                .collection('properties')
-                .where('editApprovalStatus', isEqualTo: 'pending')
-                .orderBy('editRequestedAt', descending: true)
-                .snapshots(),
+      // Fetch pending edits and sort by editRequestedAt client-side
+      stream: FirebaseFirestore.instance
+        .collection('properties')
+        .where('editApprovalStatus', isEqualTo: 'pending')
+        .snapshots(),
             builder: (context, snap) {
-              if (!snap.hasData) return const Center(child: CircularProgressIndicator());
-              final docs = snap.data!.docs;
+              if (snap.hasError) return Center(child: Text('Error loading edited properties: ${snap.error}'));
+              if (snap.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+              if (!snap.hasData || snap.data == null) return const Center(child: Text('No data available'));
+
+              final docs = List<DocumentSnapshot>.from(snap.data!.docs);
+
+              // Sort by editRequestedAt descending client-side
+              docs.sort((a, b) {
+                final ma = (a.data() as Map<String, dynamic>?)?['editRequestedAt'];
+                final mb = (b.data() as Map<String, dynamic>?)?['editRequestedAt'];
+                int ta = 0, tb = 0;
+                try {
+                  if (ma != null) {
+                    if (ma is Timestamp) ta = ma.toDate().millisecondsSinceEpoch;
+                    else if (ma is int) ta = ma;
+                    else if (ma is DateTime) ta = ma.millisecondsSinceEpoch;
+                  }
+                  if (mb != null) {
+                    if (mb is Timestamp) tb = mb.toDate().millisecondsSinceEpoch;
+                    else if (mb is int) tb = mb;
+                    else if (mb is DateTime) tb = mb.millisecondsSinceEpoch;
+                  }
+                } catch (_) {}
+                return tb.compareTo(ta);
+              });
+
               if (docs.isEmpty) return const Center(child: Text('No edited properties pending approval'));
 
               return ListView.builder(
@@ -298,20 +357,68 @@ class _PropertyApprovalPanelState extends State<PropertyApprovalPanel>
                         ]),
                         const SizedBox(height: 8),
 
-                        // Diff area
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(color: Colors.grey[50], borderRadius: BorderRadius.circular(8)),
-                          child: FutureBuilder<DocumentSnapshot>(
-                            future: FirebaseFirestore.instance.collection('properties').doc(d.id).get(),
-                            builder: (context, curSnap) {
-                              if (!curSnap.hasData) return const SizedBox(height: 80, child: Center(child: CircularProgressIndicator()));
-                              final cur = curSnap.data!.data() as Map<String, dynamic>? ?? {};
-                              final diff = _buildDiff(cur, pending);
-                              return Column(crossAxisAlignment: CrossAxisAlignment.start, children: diff);
-                            },
-                          ),
+                        // Diff summary + view button
+                        FutureBuilder<DocumentSnapshot>(
+                          future: FirebaseFirestore.instance.collection('properties').doc(d.id).get(),
+                          builder: (context, curSnap) {
+                            if (!curSnap.hasData) return const SizedBox(height: 80, child: Center(child: CircularProgressIndicator()));
+                            final cur = curSnap.data!.data() as Map<String, dynamic>? ?? {};
+                            // compute a short summary of changed fields
+                            final changedKeys = pending.keys.where((k) => pending[k] != null && (cur[k] != pending[k])).toList();
+                            final summary = changedKeys.isEmpty ? 'Owner updated fields.' : '${changedKeys.length} field(s) changed';
+
+                            return Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(color: Colors.grey[50], borderRadius: BorderRadius.circular(8)),
+                              child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                                Expanded(child: Text(summary, style: const TextStyle(color: Colors.black87))),
+                                TextButton(
+                                  onPressed: () {
+                                    // show detailed diff dialog
+                                    showDialog<void>(
+                                      context: context,
+                                      builder: (ctx) => AlertDialog(
+                                        title: Text('Changes for $name'),
+                                        content: SizedBox(
+                                          width: double.maxFinite,
+                                          child: SingleChildScrollView(
+                                            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: _buildDiff(cur, pending)),
+                                          ),
+                                        ),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () => Navigator.of(ctx).pop(),
+                                            child: const Text('Close'),
+                                          ),
+                                          ElevatedButton(
+                                            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                                            onPressed: () async {
+                                              Navigator.of(ctx).pop();
+                                              await _approveEdit(d.id, ownerId, name);
+                                              if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Edits approved')));
+                                            },
+                                            child: const Text('Approve'),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          ElevatedButton(
+                                            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                                            onPressed: () async {
+                                              Navigator.of(ctx).pop();
+                                              await _rejectEdit(d.id, ownerId, name);
+                                              if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Edits rejected')));
+                                            },
+                                            child: const Text('Reject'),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                  child: const Text('View Changes'),
+                                ),
+                              ]),
+                            );
+                          },
                         ),
 
                         const SizedBox(height: 12),

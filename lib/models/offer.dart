@@ -1,6 +1,6 @@
 import 'package:intl/intl.dart';
 
-class Offer {
+class UiOffer {
   final String id;
   final String airlineName;
   final String airlineLogo;
@@ -79,7 +79,7 @@ class Offer {
     return "Night";
   }
 
-  Offer({
+  UiOffer({
     required this.id,
     required this.airlineName,
     required this.airlineLogo,
@@ -101,19 +101,32 @@ class Offer {
     return "₹${formatter.format(priceInINR.round())}";
   }
 
+  /// Airline display name for UI (prevents crash if field missing)
+  String get airlineDisplay {
+    if (airlineName.isNotEmpty) return airlineName;
+    if (airlineCode.isNotEmpty) return airlineCode;
+    return "Airline";
+  }
+
   static String _safeTime(String? isoTime) {
     if (isoTime == null || isoTime.length < 16) return "";
     return isoTime.substring(11, 16);
   }
 
-  factory Offer.fromJson(Map<String, dynamic> json) {
-    final slices = json["slices"] ?? [];
+  factory UiOffer.fromJson(Map<String, dynamic> json) {
+    final slices = json["slices"] is List
+        ? List<Map<String, dynamic>>.from(json["slices"])
+        : [];
     final slice = slices.isNotEmpty ? slices[0] : null;
 
-    final segments = slice?["segments"] ?? [];
+    final segments = slice?["segments"] is List
+        ? List<Map<String, dynamic>>.from(slice?["segments"])
+        : [];
     final segment = segments.isNotEmpty ? segments[0] : null;
 
-    final airline = segment?["operating_carrier"] ?? {};
+  final airline = (segment?["operating_carrier"] is Map)
+    ? Map<String, dynamic>.from(segment!["operating_carrier"] as Map)
+    : <String, dynamic>{};
     final flightNumber = segment?["marketing_carrier_flight_number"] ??
         segment?["operating_carrier_flight_number"] ??
         "";
@@ -143,7 +156,7 @@ class Offer {
 
     final stops = segments.length - 1;
 
-    return Offer(
+  return UiOffer(
       id: json["id"] ?? "",
       airlineName: airline["name"] ?? "Airline",
       airlineLogo: airline["logo_symbol_url"] ??
@@ -170,8 +183,25 @@ class Offer {
               ? "1 stop"
               : "$stops stops",
 
-      price: double.tryParse(json["total_amount"] ?? "0") ?? 0,
-      currency: json["total_currency"] ?? "USD",
+      price: json["total_amount"] is String
+          ? double.tryParse(json["total_amount"]) ?? 0
+          : (json["total_amount"] is num
+              ? (json["total_amount"] as num).toDouble()
+              : 0),
+      currency: json["total_currency"] is String
+          ? json["total_currency"]
+          : "USD",
     );
   }
+  @override
+  dynamic noSuchMethod(Invocation invocation) {
+    if (invocation.isGetter) {
+      final member = invocation.memberName.toString();
+      if (member.contains('airlineDisplay')) {
+        return airlineName.isNotEmpty ? airlineName : 'Airline';
+      }
+    }
+    return super.noSuchMethod(invocation);
+  }
 }
+  

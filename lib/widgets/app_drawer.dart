@@ -456,10 +456,16 @@ class AppDrawer extends StatelessWidget {
                         activeRole = (data['activeRole'] ?? 'user').toString();
 
                         final role = (data['role'] ?? 'user').toString();
-                        final roles = (data['roles'] ?? []) as List?;
+                        final rolesRaw = data['roles'];
+                        List<String> roles = [];
+                        if (rolesRaw is List) {
+                          roles = List<String>.from(rolesRaw);
+                        } else if (rolesRaw is String) {
+                          roles = [rolesRaw];
+                        }
 
                         // Show switch only if user has owner capability
-                        isOwner = role == 'owner' || (roles != null && roles.contains('farmhouse_owner')) || (roles != null && roles.contains('car_owner'));
+                        isOwner = role == 'owner' || roles.contains('farmhouse_owner') || roles.contains('car_owner');
                       }
 
                       // If user is not owner, don't render this section
@@ -640,11 +646,17 @@ class AppDrawer extends StatelessWidget {
                       if (snap.hasData && snap.data?.data() != null) {
                         final data = snap.data!.data() as Map<String, dynamic>;
                         final role = (data['role'] ?? '').toString();
-                        final roles = (data['roles'] ?? []) as List?;
+                        final rolesRaw = data['roles'];
+                        List<String> roles = [];
+                        if (rolesRaw is List) {
+                          roles = List<String>.from(rolesRaw);
+                        } else if (rolesRaw is String) {
+                          roles = [rolesRaw];
+                        }
 
                         isOwner = role == 'owner' ||
-                            (roles != null && roles.contains('farmhouse_owner')) ||
-                            (roles != null && roles.contains('car_owner'));
+                            roles.contains('farmhouse_owner') ||
+                            roles.contains('car_owner');
                       }
 
                       if (isOwner) {
@@ -786,10 +798,27 @@ class AppDrawer extends StatelessWidget {
   Future<Map<String, dynamic>?> _fetchUserDoc(String? uid) async {
     if (uid == null || uid.isEmpty) return null;
     try {
-      // Add a short timeout so the UI doesn't hang waiting on network/firestore
-      final snap = await FirebaseFirestore.instance.collection('users').doc(uid).get().timeout(const Duration(seconds: 5));
+      final docRef = FirebaseFirestore.instance.collection('users').doc(uid);
+
+      // 🔥 FORCE SERVER FETCH (avoids OnePlus cache issue)
+      final snap = await docRef
+          .get(const GetOptions(source: Source.server))
+          .timeout(const Duration(seconds: 5));
+
       if (!snap.exists) return null;
-      return snap.data();
+
+      final data = snap.data();
+
+      if (data == null) return null;
+
+      // 🔥 AUTO-FIX BAD DATA (roles as String → List)
+      if (data['roles'] is String) {
+        final fixedRoles = [data['roles']];
+        await docRef.update({'roles': fixedRoles});
+        data['roles'] = fixedRoles; // update locally also
+      }
+
+      return data;
     } catch (e) {
       debugPrint('Failed to fetch user doc for $uid: $e');
       return null;

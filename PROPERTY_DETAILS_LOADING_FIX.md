@@ -252,7 +252,7 @@ FirebaseFirestore.instance
 
 1. **Create test data:**
    ```dart
-   await TestDataHelper.createTestProperty(
+   await TestDataHelper.(
      propertyName: 'Quick Test Farmhouse',
    );
    ```

@@ -3,7 +3,13 @@ import '../data/farmhouses_data.dart';
 
 /// Seeds the Firestore 'properties' collection with farmhouse data from farmhouses_data.dart
 class SeedFarmhouseData {
+  static bool _hasRun = false;
   static Future<void> seedAllProperties() async {
+    if (_hasRun) {
+      print('⏭️ Seed already executed, skipping...');
+      return;
+    }
+    _hasRun = true;
     final firestore = FirebaseFirestore.instance;
     
     for (var property in farmhousesData) {

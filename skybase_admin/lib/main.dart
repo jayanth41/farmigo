@@ -6,6 +6,7 @@ import 'screens/users_screen.dart';
 import 'screens/owners_screen.dart';
 import 'screens/admin_chat_list_screen.dart';
 import 'screens/property_approvals_screen.dart';
+import 'screens/property_approval_panel.dart';
 void main() async{
   WidgetsFlutterBinding.ensureInitialized();
   try {
@@ -21,8 +22,21 @@ void main() async{
     );
     debugPrint('[AdminApp] Firebase initialized successfully');
     if (FirebaseAuth.instance.currentUser == null) {
-      await FirebaseAuth.instance.signInAnonymously();
-      debugPrint('[AdminApp] Signed in anonymously');
+      try {
+        await FirebaseAuth.instance.signInAnonymously();
+        debugPrint('[AdminApp] Signed in anonymously');
+      } catch (e, st) {
+        // Log detailed error info but don't crash the app initialization.
+        debugPrint('[AdminApp] Anonymous sign-in FAILED: $e');
+        debugPrint('$st');
+        // If this is an auth exception with a code, log it for diagnosis.
+        try {
+          // ignore: avoid_dynamic_calls
+          final code = (e as dynamic).code;
+          final message = (e as dynamic).message;
+          debugPrint('[AdminApp] Auth error code: $code message: $message');
+        } catch (_) {}
+      }
     } else {
       debugPrint('[AdminApp] Admin already signed in');
     }
@@ -60,7 +74,7 @@ class _AdminHomeState extends State<AdminHome> {
     const UsersScreen(),
     const OwnersScreen(),
     const AdminChatListScreen(),
-    const PropertyApprovalsScreen(),
+    const PropertyApprovalPanel(),
     const Center(child: Text("Bookings Screen")),
     const Center(child: Text("Payments Screen")),
     const Center(child: Text("Complaints Screen")),

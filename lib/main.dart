@@ -6,7 +6,6 @@ import 'package:firebase_messaging/firebase_messaging.dart' show FirebaseMessagi
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart' as env;
-import 'package:provider/provider.dart';
 
 import 'filters/filters_provider.dart';
 import 'navigation/app_routes.dart';
@@ -53,6 +52,12 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Reduce unnecessary rebuild/jank on some devices (OnePlus fix)
+  WidgetsBinding.instance.platformDispatcher.onError = (error, stack) {
+    debugPrint('Global error: $error');
+    return true;
+  };
+
   // Load environment variables before anything uses them.
   // If this fails we WANT to see the error instead of silently continuing,
   // because services like DuffelService depend on these values.
@@ -65,6 +70,11 @@ Future<void> main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
+  // 🔥 Disable Firestore cache (fix OnePlus device issue)
+  FirebaseFirestore.instance.settings = const Settings(
+    persistenceEnabled: false,
+  );
+
   // Register background message handler for FCM. Handler must be a
   // top-level function (not a closure) so the Android background isolate
   // can invoke it.
@@ -74,11 +84,6 @@ Future<void> main() async {
     debugPrint('[Main] Failed to register onBackgroundMessage: $e');
   }
 
-  // Create test data for PropertyDetailsScreen
-  await TestDataHelper.addTestProperty();
-
-  // Seed farmhouse properties to Firestore
-  await SeedFarmhouseData.seedAllProperties();
 
   // Request notification permission from FirebaseMessaging
   await _requestNotificationPermission();

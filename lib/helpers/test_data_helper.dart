@@ -12,6 +12,17 @@ class TestDataHelper {
     String? category = 'Farmhouse',
   }) async {
     try {
+      // 🔥 Prevent duplicate properties
+      final existing = await _firestore
+          .collection('properties')
+          .where('name', isEqualTo: propertyName ?? 'Beautiful Farmhouse')
+          .limit(1)
+          .get();
+
+      if (existing.docs.isNotEmpty) {
+        debugPrint('⏭️ Property already exists: ${propertyName ?? 'Beautiful Farmhouse'}');
+        return existing.docs.first.id;
+      }
       final testProperty = {
         'name': propertyName ?? 'Beautiful Farmhouse',
         'description':
@@ -169,22 +180,6 @@ class TestDataHelper {
       debugPrint('Total: ${snapshot.docs.length} properties\n');
     } catch (e) {
       debugPrint('❌ Error printing properties: $e');
-    }
-  }
-
-  /// Alias for createMultipleTestProperties - creates test data on app startup
-  static Future<void> addTestProperty() async {
-    try {
-      // Check if properties already exist to avoid duplicates
-      final existing = await _firestore.collection('properties').limit(1).get();
-      if (existing.docs.isNotEmpty) {
-        debugPrint('ℹ️ Test properties already exist, skipping duplicate creation...');
-        return;
-      }
-      
-      await createMultipleTestProperties();
-    } catch (e) {
-      debugPrint('❌ Error in addTestProperty: $e');
     }
   }
 }

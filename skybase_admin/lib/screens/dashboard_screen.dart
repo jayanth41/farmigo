@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:skybase_admin/screens/property_approval_panel.dart';
 import 'property_approvals_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
@@ -39,7 +40,7 @@ class DashboardScreen extends StatelessWidget {
                 await Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const PropertyApprovalsScreen(),
+                    builder: (context) => const PropertyApprovalPanel(),
                   ),
                 );
               },
