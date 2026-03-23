@@ -7,9 +7,14 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cross_file/cross_file.dart';
 import 'package:reorderables/reorderables.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 import '../models/property_model.dart';
 import 'owner_dashboard.dart';
+
 import 'property_preview_screen.dart';
+
+enum PaymentType { advance, full, payAtProperty }
 
 class AddPropertyScreen extends StatefulWidget {
   const AddPropertyScreen({
@@ -161,13 +166,90 @@ final String _carCategory = 'SUV';
   bool _isPublishing = false;
 
   // Availability
-  bool _instantBooking = false;
   bool _activeListing = true;
   bool _eventsAllowed = false;
+  bool _commissionAccepted = false;
+
+  // Payment type state
+  PaymentType _paymentType = PaymentType.full;
+
+  Future<void> _saveDraft() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    final draft = {
+      'name': _nameController.text,
+      'description': _descriptionController.text,
+      'street': _streetController.text,
+      'city': _cityController.text,
+      'state': _stateController.text,
+      'zip': _zipController.text,
+      'bedrooms': _bedroomsController.text,
+      'bathrooms': _bathroomsController.text,
+      'guests': _guestsController.text,
+      'rules': _rulesController.text,
+      'propertyType': _propertyType,
+      'amenities': _amenities,
+      'eventsAllowed': _eventsAllowed,
+      'paymentType': _paymentType.name,
+      'commissionAccepted': _commissionAccepted,
+      'activeListing': _activeListing,
+    };
+
+    await prefs.setString('property_draft', jsonEncode(draft));
+  }
+
+  Future<void> _loadDraft() async {
+    final prefs = await SharedPreferences.getInstance();
+    final data = prefs.getString('property_draft');
+
+    if (data == null) return;
+
+    final draft = jsonDecode(data);
+
+    setState(() {
+      _nameController.text = draft['name'] ?? '';
+      _descriptionController.text = draft['description'] ?? '';
+      _streetController.text = draft['street'] ?? '';
+      _cityController.text = draft['city'] ?? '';
+      _stateController.text = draft['state'] ?? '';
+      _zipController.text = draft['zip'] ?? '';
+      _bedroomsController.text = draft['bedrooms'] ?? '';
+      _bathroomsController.text = draft['bathrooms'] ?? '';
+      _guestsController.text = draft['guests'] ?? '';
+      _rulesController.text = draft['rules'] ?? '';
+      _propertyType = draft['propertyType'] ?? 'Farmhouse';
+      _eventsAllowed = draft['eventsAllowed'] ?? false;
+      _activeListing = draft['activeListing'] ?? true;
+      _commissionAccepted = draft['commissionAccepted'] ?? false;
+      final type = draft['paymentType'];
+      if (type != null) {
+        _paymentType = PaymentType.values.firstWhere(
+          (e) => e.name == type,
+          orElse: () => PaymentType.full,
+        );
+      }
+
+      if (draft['amenities'] != null) {
+        final map = Map<String, dynamic>.from(draft['amenities']);
+        map.forEach((key, value) {
+          if (_amenities.containsKey(key)) {
+            _amenities[key] = value == true;
+          }
+        });
+      }
+    });
+  }
+
+  Future<void> _clearDraft() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('property_draft');
+  }
 
   @override
   void initState() {
     super.initState();
+
+    _loadDraft();
 
     if (widget.isEdit) {
       var src = widget.existingData ?? widget.existingProperty;
@@ -195,7 +277,16 @@ final String _carCategory = 'SUV';
 
             // Prefill eventsAllowed
             _eventsAllowed = src['eventsAllowed'] ?? false;
+            _commissionAccepted = src['commissionAccepted'] ?? false;
+            final type = src['paymentType'];
+            if (type != null) {
+              _paymentType = PaymentType.values.firstWhere(
+                (e) => e.name == type,
+                orElse: () => PaymentType.full,
+              );
+            }
             _rulesController.text = src['rules'] ?? '';
+            
 
             // Amenities: some documents store amenities as a Map (name->bool)
             // while others store a List of amenity names. Handle both cases.
@@ -357,6 +448,13 @@ final String _carCategory = 'SUV';
   void _openPreview() {
     if (!_formKey.currentState!.validate()) return;
 
+    if (!_commissionAccepted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please accept 10% commission to continue')),
+      );
+      return;
+    }
+
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -376,7 +474,6 @@ final String _carCategory = 'SUV';
               .map((e) => e.key)
               .toList(),
           photoCount: _photos.length + _pickedFiles.length,
-          instantBooking: _instantBooking,
           activeListing: _activeListing,
           onConfirm: _onPublish,
         ),
@@ -628,10 +725,11 @@ final String _carCategory = 'SUV';
               : null,
           'amenities': _amenities,
           'rules': _rulesController.text.trim(),
-          'instantBooking': _instantBooking,
           'activeListing': _activeListing,
           'eventsAllowed': _eventsAllowed,
           'timings': timingsData,
+          'paymentType': _paymentType.name,
+          'commissionAccepted': _commissionAccepted,
 
           // New listings start as draft; admin approves to make active
           'status': 'draft',
@@ -718,13 +816,14 @@ final String _carCategory = 'SUV';
             'kmDriven': _propertyType == 'car' ? int.tryParse(_kmController.text.trim()) ?? 0 : null,
             'amenities': _amenities,
             'rules': _rulesController.text.trim(),
-            'instantBooking': _instantBooking,
             'activeListing': _activeListing,
             'eventsAllowed': _eventsAllowed,
             'timings': timingsData,
             // include uploaded images/doc urls as part of pending edits
             'photoUrls': finalImageUrls,
             'documentUrl': documentUrl,
+            'paymentType': _paymentType.name,
+            'commissionAccepted': _commissionAccepted,
           };
 
           // keep a local copy so we can return it to callers
@@ -815,7 +914,12 @@ final String _carCategory = 'SUV';
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return WillPopScope(
+      onWillPop: () async {
+        await _saveDraft();
+        return true;
+      },
+      child: Scaffold(
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(130),
         child: Container(
@@ -2022,18 +2126,16 @@ Container(
       ),
       const SizedBox(height: 20),
       SwitchListTile.adaptive(
-        title: const Text('Instant Booking'),
-        value: _instantBooking,
-        onChanged: (v) => setState(() => _instantBooking = v),
-      ),
-      SwitchListTile.adaptive(
         title: const Text('Active Listing'),
         value: _activeListing,
         onChanged: (v) => setState(() => _activeListing = v),
       ),
       SwitchListTile.adaptive(
         title: const Text('Events Allowed'),
-        subtitle: const Text('Allow parties/events at this property'),
+        subtitle: const Text(
+          'Allow parties/events at this property',
+          style: TextStyle(fontSize: 12),
+        ),
         value: _eventsAllowed,
         onChanged: (v) => setState(() => _eventsAllowed = v),
       ),
@@ -2041,9 +2143,108 @@ Container(
   ),
 ),
 
-const SizedBox(height: 24),
-               
 
+const SizedBox(height: 24),
+
+// 11️⃣ Payment Options
+Container(
+  width: double.infinity,
+  padding: const EdgeInsets.all(20),
+  decoration: BoxDecoration(
+    color: Colors.white,
+    borderRadius: BorderRadius.circular(20),
+    border: Border.all(
+      color: const Color.fromARGB(255, 41, 70, 92).withOpacity(0.2),
+      width: 1,
+    ),
+    boxShadow: [
+      BoxShadow(
+        color: Colors.black.withOpacity(0.05),
+        blurRadius: 12,
+        offset: const Offset(0, 4),
+      ),
+    ],
+  ),
+  child: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Row(
+        children: [
+          Container(
+            height: 36,
+            width: 36,
+            decoration: const BoxDecoration(
+              color: Color.fromARGB(255, 41, 70, 92),
+              shape: BoxShape.circle,
+            ),
+            alignment: Alignment.center,
+            child: const Text(
+              '11',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+          ),
+          const SizedBox(width: 12),
+          const Text(
+            'Payment Options',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
+      const SizedBox(height: 20),
+
+      RadioListTile<PaymentType>(
+        title: const Text('Advance Payment'),
+        value: PaymentType.advance,
+        groupValue: _paymentType,
+        onChanged: (v) => setState(() => _paymentType = v!),
+      ),
+      RadioListTile<PaymentType>(
+        title: const Text('Full Payment'),
+        value: PaymentType.full,
+        groupValue: _paymentType,
+        onChanged: (v) => setState(() => _paymentType = v!),
+      ),
+      RadioListTile<PaymentType>(
+        title: const Text('Pay at Property'),
+        value: PaymentType.payAtProperty,
+        groupValue: _paymentType,
+        onChanged: (v) => setState(() => _paymentType = v!),
+      ),
+
+      const SizedBox(height: 12),
+
+      CheckboxListTile(
+        value: _commissionAccepted,
+        onChanged: (v) => setState(() => _commissionAccepted = v ?? false),
+        controlAffinity: ListTileControlAffinity.leading,
+        title: const Text(
+          'I agree to a 10% commission on each booking',
+          style: TextStyle(fontSize: 13),
+        ),
+      ),
+    ],
+  ),
+),
+               
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () async {
+                      await _clearDraft();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Draft cleared')),
+                      );
+                    },
+                    child: const Text(
+                      'Clear Draft',
+                      style: TextStyle(
+                        color: Colors.red,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
                 const SizedBox(height: 120),
               ],
             ),
@@ -2058,7 +2259,10 @@ const SizedBox(height: 24),
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () => Navigator.of(context).pop(),
+                    onPressed: () async {
+                      await _saveDraft();
+                      Navigator.of(context).pop();
+                    },
                     style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
                     child: const Text('Cancel'),
                   ),
@@ -2077,8 +2281,8 @@ const SizedBox(height: 24),
             ),
           ),
         ),
-      );
-      
+      ),
+    );
   }
 }
 

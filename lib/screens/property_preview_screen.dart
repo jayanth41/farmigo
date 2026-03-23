@@ -15,7 +15,6 @@ class PropertyPreviewScreen extends StatelessWidget {
     required this.guests,
     required this.amenities,
     required this.photoCount,
-    required this.instantBooking,
     required this.activeListing,
     required this.onConfirm,
   });
@@ -32,7 +31,6 @@ class PropertyPreviewScreen extends StatelessWidget {
   final String guests;
   final List<String> amenities;
   final int photoCount;
-  final bool instantBooking;
   final bool activeListing;
   final VoidCallback onConfirm;
 
