@@ -32,8 +32,16 @@ class DashboardScreen extends StatelessWidget {
             ),
 
             ListTile(
+              leading: const Icon(Icons.people),
+              title: const Text("Users"),
+              onTap: () {
+                Navigator.pop(context);
+              },
+            ),
+
+            ListTile(
               leading: const Icon(Icons.approval),
-              title: const Text("Property Approvals"),
+              title: const Text("Property Approval"),
               onTap: () async {
                 // Close the drawer first, then navigate to the approvals screen
                 Navigator.pop(context);
@@ -47,16 +55,8 @@ class DashboardScreen extends StatelessWidget {
             ),
 
             ListTile(
-              leading: const Icon(Icons.people),
-              title: const Text("Users"),
-              onTap: () {
-                Navigator.pop(context);
-              },
-            ),
-
-            ListTile(
               leading: const Icon(Icons.home_work),
-              title: const Text("Properties"),
+              title: const Text("Property Approval Screen"),
               onTap: () {
                 Navigator.pop(context);
               },
@@ -81,15 +81,17 @@ class DashboardScreen extends StatelessWidget {
             const SizedBox(height: 20),
 
             // KPI Cards Row
-            Row(
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
               children: [
-                _buildCard("Total Users", "1,240"),
-                const SizedBox(width: 16),
-                _buildCard("Total Owners", "85"),
-                const SizedBox(width: 16),
-                _buildCard("Active Bookings", "32"),
-                const SizedBox(width: 16),
+                _buildCard("Users", "1,240"),
+                _buildCard("Owners", "85"),
+                _buildCard("Properties", "320"),
                 _buildCard("Revenue", "₹2,45,000"),
+                _buildCard("Bookings", "32"),
+                _buildCard("Pending Approvals", "14"),
+                _buildCard("Withdrawals", "6"),
               ],
             ),
 
@@ -146,7 +148,8 @@ class DashboardScreen extends StatelessWidget {
   }
 
   Widget _buildCard(String title, String value) {
-    return Expanded(
+    return SizedBox(
+      width: 160,
       child: Card(
         elevation: 3,
         child: Padding(

@@ -1,8 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-class OwnersScreen extends StatelessWidget {
+class OwnersScreen extends StatefulWidget {
   const OwnersScreen({super.key});
+
+  @override
+  State<OwnersScreen> createState() => _OwnersScreenState();
+}
+
+class _OwnersScreenState extends State<OwnersScreen>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 3, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -16,6 +36,17 @@ class OwnersScreen extends StatelessWidget {
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 20),
+
+          TabBar(
+            controller: _tabController,
+            labelColor: Theme.of(context).colorScheme.primary,
+            tabs: const [
+              Tab(text: "Approved"),
+              Tab(text: "Pending"),
+              Tab(text: "Rejected"),
+            ],
+          ),
+          const SizedBox(height: 10),
 
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
@@ -93,59 +124,90 @@ class OwnersScreen extends StatelessWidget {
                   return Center(child: Text("No owners found (total users: ${snapshot.data!.docs.length})"));
                 }
 
-                return SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: DataTable(
-                    columns: const [
-                      DataColumn(label: Text("User ID")),
-                      DataColumn(label: Text("Name")),
-                      DataColumn(label: Text("Phone")),
-                      DataColumn(label: Text("Email")),
-                      DataColumn(label: Text("Roles")),
-                      DataColumn(label: Text("Action")),
-                    ],
-                    rows: owners.map((doc) {
-                      final data = doc.data() as Map<String, dynamic>;
+                final approved = owners.where((doc) {
+                  final data = doc.data() as Map<String, dynamic>;
+                  return data["approvalStatus"] == "approved";
+                }).toList();
 
-                      final name = data["displayName"]?.toString() ?? data["fullName"]?.toString() ?? "—";
-                      final phone = data["phone"]?.toString() ?? "—";
-                      final email = data["email"]?.toString() ?? "—";
-                      final roles = (data["roles"] as List?)?.join(", ") ?? data["role"]?.toString() ?? "user";
+                final rejected = owners.where((doc) {
+                  final data = doc.data() as Map<String, dynamic>;
+                  return data["approvalStatus"] == "rejected";
+                }).toList();
 
-                      return DataRow(cells: [
-                        DataCell(Text(doc.id)),
-                        DataCell(Text(name)),
-                        DataCell(Text(phone)),
-                        DataCell(Text(email)),
-                        DataCell(Text(roles)),
-                        DataCell(Row(
-                          children: [
-                            ElevatedButton(
-                              onPressed: () async {
-                                await FirebaseFirestore.instance
-                                    .collection("users")
-                                    .doc(doc.id)
-                                    .update({"approvalStatus": "approved"});
-                              },
-                              child: const Text("Approve"),
+                final pending = owners.where((doc) {
+                  final data = doc.data() as Map<String, dynamic>;
+                  return data["approvalStatus"] != "approved" &&
+                         data["approvalStatus"] != "rejected";
+                }).toList();
+
+                Widget buildTable(String title, List<QueryDocumentSnapshot> list) {
+                  return SizedBox(
+                    height: 250,
+                    child: list.isEmpty
+                        ? const Center(child: Text("No data"))
+                        : SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: DataTable(
+                              columns: const [
+                                DataColumn(label: Text("Name")),
+                                DataColumn(label: Text("Phone")),
+                                DataColumn(label: Text("Email")),
+                                DataColumn(label: Text("Action")),
+                              ],
+                              rows: list.map((doc) {
+                                final data = doc.data() as Map<String, dynamic>;
+
+                                final name = data["displayName"]?.toString() ??
+                                    data["fullName"]?.toString() ??
+                                    "—";
+                                final phone = data["phone"]?.toString() ?? "—";
+                                final email = data["email"]?.toString() ?? "—";
+
+                                return DataRow(cells: [
+                                  DataCell(Text(name)),
+                                  DataCell(Text(phone)),
+                                  DataCell(Text(email)),
+                                  DataCell(Row(
+                                    children: [
+                                      ElevatedButton(
+                                        onPressed: () async {
+                                          await FirebaseFirestore.instance
+                                              .collection("users")
+                                              .doc(doc.id)
+                                              .update(
+                                                  {"approvalStatus": "approved"});
+                                        },
+                                        child: const Text("Approve"),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      ElevatedButton(
+                                        style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.red),
+                                        onPressed: () async {
+                                          await FirebaseFirestore.instance
+                                              .collection("users")
+                                              .doc(doc.id)
+                                              .update(
+                                                  {"approvalStatus": "rejected"});
+                                        },
+                                        child: const Text("Reject"),
+                                      ),
+                                    ],
+                                  )),
+                                ]);
+                              }).toList(),
                             ),
-                            const SizedBox(width: 8),
-                            ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.red),
-                              onPressed: () async {
-                                await FirebaseFirestore.instance
-                                    .collection("users")
-                                    .doc(doc.id)
-                                    .update({"approvalStatus": "rejected"});
-                              },
-                              child: const Text("Reject"),
-                            ),
-                          ],
-                        )),
-                      ]);
-                    }).toList(),
-                  ),
+                          ),
+                  );
+                }
+
+                return TabBarView(
+                  controller: _tabController,
+                  children: [
+                    buildTable("Approved", approved),
+                    buildTable("Pending", pending),
+                    buildTable("Rejected", rejected),
+                  ],
                 );
               },
             ),
