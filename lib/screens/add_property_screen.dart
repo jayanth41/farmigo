@@ -4,13 +4,15 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart' as fb_storage;
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:cross_file/cross_file.dart';
-import 'package:reorderables/reorderables.dart';
+import 'package:image_picker/image_picker.dart' as image_picker;
+import 'package:cross_file/cross_file.dart' as cross_file;
+// removed: import 'package:reorderables/reorderables.dart';
+// The UI in this file uses built-in Wrap/Grid widgets for ordering and display,
+// so the external `reorderables` package is not required.
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../models/property_model.dart';
-import 'owner_dashboard.dart';
+//import 'owner_dashboard.dart';
 
 import 'property_preview_screen.dart';
 
@@ -59,13 +61,13 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
     for (final amenity in amenities) {
       final normalized = amenity.trim().toLowerCase();
       final query = await collection
-          .where('name', isEqualTo: amenity)
+          .where('name', isEqualTo: normalized)
           .limit(1)
           .get();
 
       if (query.docs.isEmpty) {
         await collection.add({
-          'name': amenity,
+          'name': normalized,
           'createdAt': FieldValue.serverTimestamp(),
         });
       }
@@ -160,10 +162,10 @@ final String _carCategory = 'SUV';
   final TextEditingController _rulesController = TextEditingController();
 
   // Photos (we'll keep a list of URLs/placeholder strings for the UI)
-  final List<String> _photos = [];
-  final List<XFile> _pickedFiles = [];
-  XFile? _documentFile;
-  bool _isPublishing = false;
+    final List<String> _photos = [];
+    final List<cross_file.XFile> _pickedFiles = [];
+    cross_file.XFile? _documentFile;
+    bool _isPublishing = false;
 
   // Availability
   bool _activeListing = true;
@@ -422,8 +424,8 @@ final String _carCategory = 'SUV';
       }
     } else if (choice == 'picker') {
 
-      try {
-        final images = await ImagePicker().pickMultiImage(imageQuality: 85);
+        try {
+        final images = await image_picker.ImagePicker().pickMultiImage(imageQuality: 85);
         if (images != null && images.isNotEmpty) {
           setState(() => _pickedFiles.addAll(images));
         }
@@ -435,8 +437,8 @@ final String _carCategory = 'SUV';
 
   Future<void> _pickDocument() async {
     try {
-      final picked = await ImagePicker().pickImage(
-        source: ImageSource.gallery,
+      final picked = await image_picker.ImagePicker().pickImage(
+        source: image_picker.ImageSource.gallery,
         imageQuality: 85,
       );
       if (picked != null) setState(() => _documentFile = picked);
@@ -525,7 +527,7 @@ final String _carCategory = 'SUV';
 
     setState(() => _isPublishing = true);
 
-    Map<String, dynamic>? _stagedPending;
+  Map<String, dynamic>? stagedPending;
 
     // Convert timings to list of maps
     final List<Map<String, String>> timingsData = _timings.map((t) {
@@ -827,7 +829,7 @@ final String _carCategory = 'SUV';
           };
 
           // keep a local copy so we can return it to callers
-          _stagedPending = Map<String, dynamic>.from(pending);
+          stagedPending = Map<String, dynamic>.from(pending);
 
           await docRef.update({
             'pendingEdits': pending,
@@ -874,10 +876,10 @@ final String _carCategory = 'SUV';
             duration: Duration(seconds: 5),
           ),
         );
-        if (!mounted) return;
-        // Return the staged pending-edits map to the caller so the
-        // owner UI (or parent) can show a diff or navigate as needed.
-        Navigator.of(context).pop(_stagedPending);
+  if (!mounted) return;
+  // Return the staged pending-edits map to the caller so the
+  // owner UI (or parent) can show a diff or navigate as needed.
+  Navigator.of(context).pop(stagedPending);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -1960,116 +1962,121 @@ Container(
         ),
       ),
       const SizedBox(height: 16),
-      // Photo preview grid with reorder and cover selection
-      ReorderableWrap(
-        spacing: 8,
-        runSpacing: 8,
-        onReorder: (oldIndex, newIndex) {
-          setState(() {
-            final allImages = (_photos + _pickedFiles.map((e) => e.path).toList());
-            if (oldIndex < _photos.length && newIndex < _photos.length) {
-              // Both are in _photos list
-              final item = _photos.removeAt(oldIndex);
-              _photos.insert(newIndex, item);
-            } else if (oldIndex >= _photos.length && newIndex >= _photos.length) {
-              // Both are in _pickedFiles list
-              final oldPickedIndex = oldIndex - _photos.length;
-              final newPickedIndex = newIndex - _photos.length;
-              final item = _pickedFiles.removeAt(oldPickedIndex);
-              _pickedFiles.insert(newPickedIndex, item);
-            } else if (oldIndex < _photos.length && newIndex >= _photos.length) {
-              // From _photos to _pickedFiles
-              final item = _photos.removeAt(oldIndex);
-              _pickedFiles.insert(newIndex - _photos.length, XFile(item));
-            } else if (oldIndex >= _photos.length && newIndex <= _photos.length) {
-              // From _pickedFiles to _photos
-              final item = _pickedFiles.removeAt(oldIndex - _photos.length);
-              _photos.insert(newIndex, item.path);
+      // Photo preview with reorder support (horizontal). We build a combined
+      // list of photo items (picked files + network URLs) so reordering is
+      // straightforward, then split back into the two underlying lists.
+      SizedBox(
+        height: 110,
+        child: Builder(builder: (context) {
+          final combined = <Map<String, dynamic>>[];
+          for (final url in _photos) {
+            combined.add({'isPicked': false, 'url': url, 'file': null});
+          }
+          for (final f in _pickedFiles) {
+            combined.add({'isPicked': true, 'url': null, 'file': f});
+          }
+
+          void flushCombined(List<Map<String, dynamic>> list) {
+            // rebuild the two underlying lists from the combined representation
+            final newPhotos = <String>[];
+            final newPicked = <cross_file.XFile>[];
+            for (final item in list) {
+              if (item['isPicked'] == true) {
+                newPicked.add(item['file'] as cross_file.XFile);
+              } else {
+                newPhotos.add(item['url'] as String);
+              }
             }
-          });
-        },
-        children: List.generate(_photos.length + _pickedFiles.length, (index) {
-          final isPicked = index >= _photos.length;
-          final File? fileImage = isPicked
-              ? File(_pickedFiles[index - _photos.length].path)
-              : null;
-          final String? networkImage = !isPicked
-              ? _photos[index]
-              : null;
-          final isCover = index == 0;
-          return Stack(
-            key: ValueKey(index),
-            children: [
-              Container(
-                width: 90,
-                height: 90,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: isCover ? Colors.green : Colors.grey.shade300,
-                    width: isCover ? 2 : 1,
-                  ),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: isPicked
-                      ? Image.file(fileImage!, fit: BoxFit.cover)
-                      : Image.network(networkImage!, fit: BoxFit.cover),
-                ),
-              ),
-              // Cover badge
-              if (isCover)
-                Positioned(
-                  top: 4,
-                  left: 4,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.green,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: const Text(
-                      'Cover',
-                      style: TextStyle(color: Colors.white, fontSize: 10),
-                    ),
-                  ),
-                ),
-              // Actions
-              Positioned(
-                top: 0,
-                right: 0,
-                child: Column(
+            setState(() {
+              _photos
+                ..clear()
+                ..addAll(newPhotos);
+              _pickedFiles
+                ..clear()
+                ..addAll(newPicked);
+            });
+          }
+
+          return ReorderableListView.builder(
+            scrollDirection: Axis.horizontal,
+              onReorder: (oldIndex, newIndex) {
+              // Normalize indexes for remove/insert
+              if (newIndex > oldIndex) newIndex -= 1;
+              final item = combined.removeAt(oldIndex);
+              combined.insert(newIndex, item);
+              flushCombined(combined);
+            },
+            itemCount: combined.length,
+            buildDefaultDragHandles: true,
+            itemBuilder: (context, index) {
+              final item = combined[index];
+              final isPicked = item['isPicked'] == true;
+              final File? fileImage = isPicked ? File((item['file'] as cross_file.XFile).path) : null;
+              final String? networkImage = !isPicked ? (item['url'] as String) : null;
+              final isCover = index == 0;
+
+              return Padding(
+                key: ValueKey('photo-$index-${isPicked ? 'p' : 'u'}'),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+                child: Stack(
                   children: [
-                    GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          if (isPicked) {
-                            final item = _pickedFiles.removeAt(index - _photos.length);
-                            _pickedFiles.insert(0, item);
-                          } else {
-                            final item = _photos.removeAt(index);
-                            _photos.insert(0, item);
-                          }
-                        });
-                      },
-                      child: const Icon(Icons.star, color: Colors.yellow),
+                    Container(
+                      width: 90,
+                      height: 90,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isCover ? Colors.green : Colors.grey.shade300,
+                          width: isCover ? 2 : 1,
+                        ),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: isPicked
+                            ? Image.file(fileImage!, fit: BoxFit.cover)
+                            : Image.network(networkImage!, fit: BoxFit.cover),
+                      ),
                     ),
-                    GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          if (isPicked) {
-                            _pickedFiles.removeAt(index - _photos.length);
-                          } else {
-                            _photos.removeAt(index);
-                          }
-                        });
-                      },
-                      child: const Icon(Icons.delete, color: Colors.red),
+                    if (isCover)
+                      Positioned(
+                        top: 4,
+                        left: 4,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(color: Colors.green, borderRadius: BorderRadius.circular(6)),
+                          child: const Text('Cover', style: TextStyle(color: Colors.white, fontSize: 10)),
+                        ),
+                      ),
+                    Positioned(
+                      top: 0,
+                      right: 0,
+                      child: Column(
+                        children: [
+                          GestureDetector(
+                            onTap: () {
+                              // move this item to index 0 (make cover)
+                              combined.removeAt(index);
+                              combined.insert(0, item);
+                              flushCombined(combined);
+                            },
+                            child: const Icon(Icons.star, color: Colors.yellow),
+                          ),
+                          const SizedBox(height: 6),
+                          GestureDetector(
+                            onTap: () {
+                              // remove the item
+                              combined.removeAt(index);
+                              flushCombined(combined);
+                            },
+                            child: const Icon(Icons.delete, color: Colors.red),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
-              ),
-            ],
+              );
+            },
           );
         }),
       ),
@@ -2254,7 +2261,17 @@ Container(
         bottomNavigationBar: SafeArea(
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: BoxDecoration(color: Theme.of(context).scaffoldBackgroundColor, boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 6)]),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Theme.of(context).colorScheme.primary,
+                  Theme.of(context).colorScheme.primaryContainer,
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 6)],
+            ),
             child: Row(
               children: [
                 Expanded(
@@ -2263,7 +2280,12 @@ Container(
                       await _saveDraft();
                       Navigator.of(context).pop();
                     },
-                    style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.black,
+                      side: const BorderSide(color: Colors.white),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
                     child: const Text('Cancel'),
                   ),
                 ),

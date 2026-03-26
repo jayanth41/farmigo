@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:skybase/services/duffel_service.dart';
+import '../models/offer.dart';
 
 class OrderCreationScreen extends StatefulWidget {
   final Offer offer;
@@ -243,16 +244,13 @@ class _OrderCreationScreenState extends State<OrderCreationScreen> {
                       ),
                       const SizedBox(height: 12),
                       _buildDetailRow('Offer Price', widget.offer.displayPrice),
-                      if (widget.offer.slices.isNotEmpty) ...[
-                        _buildDetailRow(
-                          'Route',
-                          '${widget.offer.origin} → ${widget.offer.destination}',
-                        ),
-                        _buildDetailRow(
-                          'Departure', widget.offer.departureTime),
-                        _buildDetailRow('Arrival', widget.offer.arrivalTime),
-                        _buildDetailRow('Duration', widget.offer.duration),
-                      ],
+                      _buildDetailRow(
+                        'Route',
+                        '${widget.offer.origin} → ${widget.offer.destination}',
+                      ),
+                      _buildDetailRow('Departure', widget.offer.departureTime),
+                      _buildDetailRow('Arrival', widget.offer.arrivalTime),
+                      _buildDetailRow('Duration', widget.offer.duration),
                     ],
                   ),
                 ),
@@ -305,46 +303,54 @@ class _OrderCreationScreenState extends State<OrderCreationScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            if (widget.offer.airlineLogo.isNotEmpty)
-                              Image.network(
-                                widget.offer.airlineLogo,
-                                width: 36,
-                                height: 36,
-                                errorBuilder: (_, __, ___) => const Icon(Icons.flight),
-                              )
-                            else
-                              const Icon(Icons.flight),
-                            const SizedBox(width: 8),
-                            Text(
-                              widget.offer.airlineName,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
+                    SizedBox(
+                      width: double.infinity,
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Row(
+                              children: [
+                                if (widget.offer.airlineLogo.isNotEmpty)
+                                  Image.network(
+                                    widget.offer.airlineLogo,
+                                    width: 36,
+                                    height: 36,
+                                    errorBuilder: (_, __, ___) => const Icon(Icons.flight),
+                                  )
+                                else
+                                  const Icon(Icons.flight),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    widget.offer.airlineName,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                        Text(
-                          widget.offer.displayPrice,
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.green,
                           ),
-                        ),
-                      ],
+                          Text(
+                            widget.offer.displayPrice,
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.green,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 10),
 
                     // Route row
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
+                    SizedBox(
+                      width: double.infinity,
+                      child: Row(
+                        children: [
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -389,7 +395,8 @@ class _OrderCreationScreenState extends State<OrderCreationScreen> {
                             ),
                           ],
                         ),
-                      ],
+                        ],
+                      ),
                     ),
 
                     const SizedBox(height: 8),

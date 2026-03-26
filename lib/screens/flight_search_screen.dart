@@ -5,6 +5,7 @@ import '../services/duffel_service.dart';
 import '../services/airport_service.dart';
 import 'order_creation_screen.dart';
 import '../widgets/flight_card.dart';
+import '../models/offer.dart';
 
 class FlightSearchScreen extends StatefulWidget {
   const FlightSearchScreen({super.key});
@@ -67,32 +68,28 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
     });
 
     try {
+      // STEP 1: Create offer request
       final response = await _duffelService.searchOffers(
-        origin: AirportService.getIata(_departureController.text),
-        destination: AirportService.getIata(_arrivalController.text),
+        origin: _departureController.text,
+        destination: _arrivalController.text,
         departureDate: _departureDateController.text,
         adults: int.tryParse(_passengersController.text) ?? 1,
       );
 
-      final data = response['data'];
-      List<dynamic>? offersJson;
+      final requestId = response['data']?['id'];
 
-      if (data is Map && data['offers'] != null) {
-        offersJson = data['offers'];
-      } else if (data is List) {
-        offersJson = data;
+      if (requestId == null) {
+        throw Exception('Failed to get request ID');
       }
 
-      if (offersJson != null) {
-        setState(() {
-          _allOffers = offersJson!
-              .map((o) => Offer.fromJson(o as Map<String, dynamic>))
-              .toList();
+      // STEP 2: Fetch offers using request ID
+      final offers = await _duffelService.getOffers(requestId);
 
-          _offers = List.from(_allOffers);
-          _sortOffers();
-        });
-      }
+      setState(() {
+        _allOffers = offers;
+        _offers = List.from(_allOffers);
+        _sortOffers();
+      });
     } catch (e) {
       setState(() {
         _errorMessage = e.toString();
@@ -172,12 +169,20 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
             .map((a) => "${a.city} (${a.iata})");
       },
       onSelected: (selection) {
-        controller.text = selection;
+        // Extract only IATA code (e.g., "Hyderabad (HYD)" -> HYD)
+        final code = selection.contains('(')
+            ? selection.split('(').last.replaceAll(')', '').trim()
+            : selection;
+        controller.text = code;
       },
       fieldViewBuilder: (context, textController, focusNode, onSubmit) {
         return TextField(
           controller: textController,
           focusNode: focusNode,
+          onChanged: (value) {
+            // Keep main controller in sync with typed value
+            controller.text = value;
+          },
           decoration: InputDecoration(
             labelText: label,
             prefixIcon: Icon(icon),

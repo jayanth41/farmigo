@@ -17,7 +17,15 @@ class _FlightResultsScreenState extends State<FlightResultsScreen> {
   bool _nonStopOnly = false;
 
   List<duffel.Offer> get sortedOffers {
-    List<duffel.Offer> list = List.from(widget.offers);
+    List<duffel.Offer> list = widget.offers
+        .where((o) {
+          try {
+            return o.priceInINR >= 0;
+          } catch (_) {
+            return false;
+          }
+        })
+        .toList();
 
     if (_nonStopOnly) {
       list = list.where((o) {
@@ -63,16 +71,8 @@ class _FlightResultsScreenState extends State<FlightResultsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // 🔥 Defensive fix: remove broken offers
-    final safeOffers = widget.offers.where((o) {
-      try {
-        return o.priceInINR >= 0;
-      } catch (e) {
-        return false;
-      }
-    }).toList();
 
-    if (safeOffers.isEmpty) {
+    if (sortedOffers.isEmpty) {
       return Scaffold(
         appBar: AppBar(title: const Text("Flights")),
         body: const Center(
@@ -150,11 +150,9 @@ class _FlightResultsScreenState extends State<FlightResultsScreen> {
           Expanded(
             child: ListView.builder(
               padding: const EdgeInsets.all(12),
-              itemCount: sortedOffers.where((o) => o.priceInINR >= 0).length,
+              itemCount: sortedOffers.length,
               itemBuilder: (context, index) {
-
-                final validOffers = sortedOffers.where((o) => o.priceInINR >= 0).toList();
-                final offer = validOffers[index];
+                final offer = sortedOffers[index];
 
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 12),

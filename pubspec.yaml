@@ -27,9 +27,10 @@ dependencies:
   firebase_auth: ^6.1.4
   cloud_firestore: ^6.1.2
   google_sign_in: ^7.2.0  
-  firebase_storage: ^13.0.6 
+  firebase_storage: ^13.2.0 
   firebase_messaging: ^16.1.1
   audioplayers: ^6.5.1
+  cross_file: ^0.3.4+2
   # Temporarily removed flutter_local_notifications due to Android Gradle Plugin
   # compatibility issues (namespace required in plugin's Android manifest).
   # Re-add after upgrading plugin or AGP compatibility testing.

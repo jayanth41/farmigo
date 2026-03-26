@@ -16,6 +16,8 @@ class AppLocationController extends ChangeNotifier {
   StreamSubscription<Position?>? _positionSub;
   String _permissionStatus = 'unknown';
 
+  DateTime? _lastGeocodeTime;
+
   bool get isLocationEnabled => _isLocationEnabled;
   bool get isPermissionGranted => _isPermissionGranted;
   double? get latitude => _latitude;
@@ -98,9 +100,14 @@ class AppLocationController extends ChangeNotifier {
 
       _positionSub = Geolocator.getPositionStream(locationSettings: locationSettings)
           .listen((pos) {
+        if (pos == null) return;
+
         _latitude = pos.latitude;
         _longitude = pos.longitude;
+
+        // Avoid too many reverse geocode calls
         _reverseGeocode(pos.latitude, pos.longitude);
+
         notifyListeners();
       }, onError: (err) {
         debugPrint('Position stream error: $err');
@@ -123,12 +130,23 @@ class AppLocationController extends ChangeNotifier {
   /// Reverse geocode latitude/longitude into readable location name.
   Future<void> _reverseGeocode(double lat, double lon) async {
     try {
+      final now = DateTime.now();
+
+      // Throttle: only once every 5 seconds
+      if (_lastGeocodeTime != null &&
+          now.difference(_lastGeocodeTime!).inSeconds < 5) {
+        return;
+      }
+
+      _lastGeocodeTime = now;
+
       final placemarks = await placemarkFromCoordinates(lat, lon);
       if (placemarks.isNotEmpty) {
         final p = placemarks.first;
         final city = p.locality ?? 'Unknown';
         final state = p.administrativeArea ?? '';
         _locationName = state.isNotEmpty ? '$city, $state' : city;
+
         notifyListeners();
         debugPrint('✅ Location: $_locationName');
       }

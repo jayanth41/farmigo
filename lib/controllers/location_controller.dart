@@ -1,6 +1,7 @@
 import 'package:get/get.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:geocoding/geocoding.dart';
 
 class LocationController extends GetxController {
@@ -9,7 +10,7 @@ class LocationController extends GetxController {
 
   // Persisted selection while app is running
   RxString selectedCity = ''.obs;
-  RxString selectedState = 'Telangana'.obs; // keep default as before
+  RxString selectedState = 'Telangana'.obs; // default state
 
   // Computed display name like "Anajpur, Telangana"
   String get selectedLocationName {
@@ -70,28 +71,43 @@ class LocationController extends GetxController {
 
       if (!isLocationEnabled.value) return null;
 
-      final pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.best).timeout(const Duration(seconds: 10));
-      final placemarks = await placemarkFromCoordinates(pos.latitude, pos.longitude);
+      final pos = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.best,
+      ).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () => throw Exception("Location timeout"),
+      );
+      final List<Placemark> placemarks =
+          await placemarkFromCoordinates(pos.latitude, pos.longitude);
+
       if (placemarks.isNotEmpty) {
         final p = placemarks.first;
-        final city = p.locality ?? '';
+
+        final city = p.locality ?? p.subAdministrativeArea ?? '';
         final state = p.administrativeArea ?? '';
+
+        // update controller state safely
         if (city.isNotEmpty) {
-          // update controller state
           selectedCity.value = city;
-          if (state.isNotEmpty) selectedState.value = state;
+        }
+
+        if (state.isNotEmpty) {
+          selectedState.value = state;
+        }
+
+        if (city.isNotEmpty || state.isNotEmpty) {
           return selectedLocationName;
         }
       }
       return null;
     } catch (e) {
-      debugPrint('detectCurrentLocation error: $e');
+      debugPrint('❌ detectCurrentLocation error: $e');
       return null;
     }
   }
 
   void openStateSelector(BuildContext context) {
-    final states = [ "Andhra Pradesh", "Arunachal Pradesh" ,"Assam","Bihar","Chhatisgarh","Goa","Gujarat","Haryana","Himachal Pradesh","Jharkhand","Karnataka","Kerala","Madhya Pradesh", "Maharashtra" ,"Manipur","Meghalaya","Mizoram","Nagaland","Odisha","Punjab","Rajasthan","Sikkim","Tamil Nadu","Telangana","Tripura","Uttar Pradesh","Uttarakhand","West Bengal","Andaman and Nicobar Islands","Chandigarh","Dadra and Nagar Haveli and Daman and Diu","Delhi","Jammu and Kashmir","Ladakh","Lakshadweep","Puducherry"];
+    final states = [ "Andhra Pradesh", "Arunachal Pradesh" ,"Assam","Bihar","Chhattisgarh","Goa","Gujarat","Haryana","Himachal Pradesh","Jharkhand","Karnataka","Kerala","Madhya Pradesh", "Maharashtra" ,"Manipur","Meghalaya","Mizoram","Nagaland","Odisha","Punjab","Rajasthan","Sikkim","Tamil Nadu","Telangana","Tripura","Uttar Pradesh","Uttarakhand","West Bengal","Andaman and Nicobar Islands","Chandigarh","Dadra and Nagar Haveli and Daman and Diu","Delhi","Jammu and Kashmir","Ladakh","Lakshadweep","Puducherry"];
 
     showModalBottomSheet(
       context: context,
@@ -102,9 +118,9 @@ class LocationController extends GetxController {
         children: states.map((s) {
           final isSelected = s == selectedState.value;
           return ListTile(
-            title: Text(s),
+            title: Text(s, style: const TextStyle()),
             selected: isSelected,
-            selectedTileColor: Colors.blue.withOpacity(0.08),
+            selectedTileColor: Colors.blue.withValues(alpha: 0.08),
             selectedColor: Colors.blue,
             trailing: isSelected ? const Icon(Icons.check, color: Colors.blue) : null,
             onTap: () {

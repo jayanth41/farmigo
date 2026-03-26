@@ -1,6 +1,6 @@
 import 'package:intl/intl.dart';
 
-class UiOffer {
+class Offer {
   final String id;
   final String airlineName;
   final String airlineLogo;
@@ -79,7 +79,7 @@ class UiOffer {
     return "Night";
   }
 
-  UiOffer({
+  Offer({
     required this.id,
     required this.airlineName,
     required this.airlineLogo,
@@ -113,20 +113,21 @@ class UiOffer {
     return isoTime.substring(11, 16);
   }
 
-  factory UiOffer.fromJson(Map<String, dynamic> json) {
+  factory Offer.fromJson(Map<String, dynamic> json) {
     final slices = json["slices"] is List
         ? List<Map<String, dynamic>>.from(json["slices"])
         : [];
     final slice = slices.isNotEmpty ? slices[0] : null;
 
-    final segments = slice?["segments"] is List
-        ? List<Map<String, dynamic>>.from(slice?["segments"])
-        : [];
+    final segments = (slice?["segments"] as List?)
+        ?.map((e) => Map<String, dynamic>.from(e))
+        .toList() ??
+        [];
     final segment = segments.isNotEmpty ? segments[0] : null;
 
-  final airline = (segment?["operating_carrier"] is Map)
-    ? Map<String, dynamic>.from(segment!["operating_carrier"] as Map)
-    : <String, dynamic>{};
+  final airline = segment?["operating_carrier"] is Map
+      ? Map<String, dynamic>.from(segment?["operating_carrier"])
+      : <String, dynamic>{};
     final flightNumber = segment?["marketing_carrier_flight_number"] ??
         segment?["operating_carrier_flight_number"] ??
         "";
@@ -136,7 +137,7 @@ class UiOffer {
         segment?["operating_carrier_code"] ??
         "";
 
-    final duration = slice?["duration"] ?? "PT0H";
+    final duration = (slice?["duration"] ?? "PT0H").toString();
 
     int durationMinutes = 0;
 
@@ -156,7 +157,7 @@ class UiOffer {
 
     final stops = segments.length - 1;
 
-  return UiOffer(
+  return Offer(
       id: json["id"] ?? "",
       airlineName: airline["name"] ?? "Airline",
       airlineLogo: airline["logo_symbol_url"] ??
@@ -165,14 +166,14 @@ class UiOffer {
               : ""),
       flightNumber: flightNumber,
 
-      origin: segment?["origin"]?["iata_code"] ?? "",
-      destination: segment?["destination"]?["iata_code"] ?? "",
+      origin: segment?["origin"]?["iata_code"]?.toString() ?? "",
+      destination: segment?["destination"]?["iata_code"]?.toString() ?? "",
 
       departureTime: _safeTime(segment?["departing_at"]),
       arrivalTime: _safeTime(segment?["arriving_at"]),
-      departureDateTime: segment?["departing_at"] != null
-          ? DateTime.tryParse(segment?["departing_at"])
-          : null,
+      departureDateTime: DateTime.tryParse(
+        segment?["departing_at"]?.toString() ?? "",
+      ),
 
       duration: formattedDuration,
       durationMinutes: durationMinutes,
@@ -193,15 +194,4 @@ class UiOffer {
           : "USD",
     );
   }
-  @override
-  dynamic noSuchMethod(Invocation invocation) {
-    if (invocation.isGetter) {
-      final member = invocation.memberName.toString();
-      if (member.contains('airlineDisplay')) {
-        return airlineName.isNotEmpty ? airlineName : 'Airline';
-      }
-    }
-    return super.noSuchMethod(invocation);
-  }
 }
-  

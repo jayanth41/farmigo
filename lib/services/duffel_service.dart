@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart' as env;
 import 'package:intl/intl.dart';
-import 'package:skybase/models/offer.dart' as ui;
+import '../models/offer.dart';
 
 class DuffelService {
   static const String baseUrl = 'https://api.duffel.com';
@@ -29,7 +29,7 @@ class DuffelService {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
     'Authorization': 'Bearer $accessToken',
-    'Duffel-Version': 'v2',
+    'Duffel-Version': '2024-03-01',
   };
 
   /// Search flights between two airports
@@ -83,26 +83,26 @@ class DuffelService {
     }
   }
 
-  /// Get search results for a session ID
-  Future<List<Offer>> getSearchResults(String sessionId) async {
+  /// Get offers from an offer_request (Duffel 2-step flow)
+  Future<List<Offer>> getOffers(String requestId) async {
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/air/search_sessions/$sessionId/offers'),
+        Uri.parse('$baseUrl/air/offer_requests/$requestId/offers'),
         headers: _headers,
       ).timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
         final offersJson = jsonResponse['data'] as List<dynamic>? ?? [];
-        
+
         return offersJson
             .map((offer) => Offer.fromJson(offer as Map<String, dynamic>))
             .toList();
       } else {
-        throw Exception('Failed to get search results: ${response.body}');
+        throw Exception('Failed to fetch offers: ${response.body}');
       }
     } catch (e) {
-      throw Exception('Error getting search results: $e');
+      throw Exception('Error fetching offers: $e');
     }
   }
 
@@ -147,10 +147,7 @@ class DuffelService {
 
       final response = await http.post(
         Uri.parse('$baseUrl/air/orders'),
-        headers: {
-          ..._headers,
-          'Duffel-Version': '2024-03-01',
-        },
+        headers: _headers,
         body: jsonEncode(body),
       ).timeout(const Duration(seconds: 30));
 
@@ -226,6 +223,7 @@ class DuffelService {
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       final decoded = jsonDecode(response.body);
+      print('🟢 REQUEST ID => ${decoded['data']?['id']}');
       print('🟢 DUFFEL RESPONSE => $decoded');
       return decoded as Map<String, dynamic>;
     }
@@ -244,30 +242,6 @@ class DuffelService {
   }
 }
 
-/// Utility: convert a Duffel Offer (service model) to the UI model (UiOffer)
-ui.UiOffer duffelOfferToUi(Offer o) {
-  DateTime? departureDateTime;
-  if (o.slices.isNotEmpty && o.slices.first.departureAt.isNotEmpty) {
-    departureDateTime = DateTime.tryParse(o.slices.first.departureAt);
-  }
-
-  return ui.UiOffer(
-    id: o.id,
-    airlineName: o.airlines.isNotEmpty ? o.airlines.first.name : o.airlineName,
-    airlineLogo: o.airlineLogo,
-    flightNumber: o.flightNumber,
-    origin: o.origin,
-    destination: o.destination,
-    departureTime: o.departureTime,
-    arrivalTime: o.arrivalTime,
-    departureDateTime: departureDateTime,
-    duration: o.duration,
-    durationMinutes: o.durationMinutes,
-    stopsLabel: o.stopsLabel,
-    price: o.totalAmount,
-    currency: o.totalCurrency,
-  );
-}
 
 class DuffelApiException implements Exception {
   final int statusCode;
@@ -301,7 +275,7 @@ class SearchFlightsResponse {
   }
 }
 
-class Offer {
+class DuffelOffer {
   final String id;
   final double totalAmount;
   final String totalCurrency;
@@ -309,7 +283,7 @@ class Offer {
   final List<Airline> airlines;
   final List<Airport> airports;
 
-  Offer({
+  DuffelOffer({
     required this.id,
     required this.totalAmount,
     required this.totalCurrency,
@@ -318,7 +292,7 @@ class Offer {
     required this.airports,
   });
 
-  factory Offer.fromJson(Map<String, dynamic> json) {
+  factory DuffelOffer.fromJson(Map<String, dynamic> json) {
     final baseData = json['attributes'] ?? json;
     
     List<Slice> slices = [];
@@ -351,7 +325,7 @@ class Offer {
           .toList();
     }
 
-    return Offer(
+    return DuffelOffer(
       id: json['id'] ?? '',
       totalAmount: double.tryParse(
         baseData['total_amount']?.toString() ?? '0',
