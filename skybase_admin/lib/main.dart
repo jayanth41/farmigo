@@ -6,7 +6,6 @@ import 'screens/dashboard_screen.dart';
 import 'screens/users_screen.dart';
 import 'screens/owners_screen.dart';
 import 'screens/admin_chat_list_screen.dart';
-import 'screens/property_approvals_screen.dart';
 import 'screens/property_approval_panel.dart';
 import 'screens/analytics_screen.dart';
 import 'screens/bookings_screen.dart';

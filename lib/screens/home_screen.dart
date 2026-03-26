@@ -865,54 +865,31 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         onItemSelected: _onDrawerItemSelected,
       ),
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-
       body: _buildBody(),
-      bottomNavigationBar: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 250),
-            height: _showBottomBorder ? 3 : 0,
-            color: Theme.of(context).colorScheme.primary,
+      bottomNavigationBar: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 6, 12, 10),
+        child: Container(
+          height: 70,
+          decoration: BoxDecoration(
+            color: const Color(0xFF2F4B5F),
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: const [
+              BoxShadow(
+                color: Color.fromRGBO(0, 0, 0, 0.15),
+                blurRadius: 12,
+              ),
+            ],
           ),
-          Container(
-            decoration: const BoxDecoration(
-              boxShadow: [
-                BoxShadow(
-                  color: Color.fromRGBO(0, 0, 0, 0.1),
-                  blurRadius: 12,
-                ),
-              ],
-            ),
-            child: BottomNavigationBar(
-              currentIndex: _selectedIndex,
-              onTap: (index) {
-                if (!mounted) return;
-                if (_selectedIndex == index) return;
-                setState(() {
-                  _selectedIndex = index;
-                  _showBottomBorder = true;
-                });
-                _bottomBorderTimer?.cancel();
-                _bottomBorderTimer = Timer(const Duration(milliseconds: 700), () {
-                  if (!mounted) return;
-                  setState(() => _showBottomBorder = false);
-                });
-              },
-              type: BottomNavigationBarType.fixed,
-              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-
-              selectedItemColor: Theme.of(context).colorScheme.primary,
-              unselectedItemColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-              items: [
-                BottomNavigationBarItem(icon: _navIcon(Icons.home, 0), label: 'Home'),
-                BottomNavigationBarItem(icon: _navIcon(Icons.favorite, 1), label: 'Favorites'),
-                BottomNavigationBarItem(icon: _navIcon(Icons.calendar_today, 2), label: 'Bookings'),
-                BottomNavigationBarItem(icon: _navIcon(Icons.person, 3), label: 'Profile'),
-              ],
-            ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildNavItem(Icons.home, "Home", 0),
+              _buildNavItem(Icons.favorite, "Favorites", 1),
+              _buildNavItem(Icons.calendar_today, "Bookings", 2),
+              _buildNavItem(Icons.person, "Profile", 3),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -1653,6 +1630,53 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       child: Icon(iconData, size: 20, color: iconColor),
     );
   }
+
+  Widget _buildNavItem(IconData icon, String label, int index) {
+    final isSelected = _selectedIndex == index;
+
+    return GestureDetector(
+      onTap: () {
+        if (_selectedIndex == index) return;
+        setState(() => _selectedIndex = index);
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 20,
+              color: isSelected ? const Color(0xFF2F4B5F) : Colors.white,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: isSelected ? const Color(0xFF2F4B5F) : Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // --- Custom Bottom Navigation (if any) ---
+  // If you have a custom nav bar Row, restore the original items:
+  // children: [
+  //   _buildNavItem(Icons.home, "Home", 0),
+  //   _buildNavItem(Icons.favorite, "Favorites", 1),
+  //   _buildNavItem(Icons.calendar_today, "Bookings", 2),
+  //   _buildNavItem(Icons.person, "Profile", 3),
+  // ],
 }
 
 class _GuestProfileView extends StatelessWidget {
