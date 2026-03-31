@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:flutter/foundation.dart';
+import 'package:razorpay_flutter/razorpay_flutter.dart';
+import 'owner/owner_details_screen.dart';
 
 class OwnerSettingsScreen extends StatefulWidget {
   const OwnerSettingsScreen({super.key});
@@ -14,10 +15,12 @@ class OwnerSettingsScreen extends StatefulWidget {
 class _OwnerSettingsScreenState extends State<OwnerSettingsScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  late Razorpay _razorpay;
+  // Razorpay plugin instance (optional). Nullable so we can safely handle
+  // environments where initialization might fail.
+  Razorpay? _razorpay;
 
   // Razorpay keys (you can change later)
-  static const String _razorpayTestKey = 'rzp_test_1234567890';
+  static const String _razorpayTestKey = 'rzp_test_REPLACE_WITH_YOUR_REAL_KEY';
   static const String _razorpayLiveKey = 'rzp_live_SBLnYIO8JTlM7O';
   static String get _razorpayKey => kDebugMode ? _razorpayTestKey : _razorpayLiveKey;
   final _auth = FirebaseAuth.instance;
@@ -72,27 +75,91 @@ class _OwnerSettingsScreenState extends State<OwnerSettingsScreen>
   }
 
   void _openRazorpayCheckout() {
-    var options = {
+    debugPrint('[OwnerSettings] _openRazorpayCheckout called. kDebugMode=${kDebugMode}');
+    // Razorpay SDK is not available on Web. Short-circuit and inform user.
+    if (kIsWeb) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Razorpay is not supported on Web. Use Android/iOS device.'),
+      ));
+      debugPrint('[OwnerSettings] Aborting Razorpay checkout: running on Web');
+      return;
+    }
+
+    // Prevent using dummy Razorpay key
+    if (_razorpayKey.contains('1234567890') || _razorpayKey.contains('REPLACE')) {
+      debugPrint('[OwnerSettings] ❌ Invalid Razorpay key used');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Razorpay key is invalid. Please use real test key.')),
+      );
+      return;
+    }
+
+    // Build options with defensive values and logging
+    final contact = phoneCtrl.text.trim().isNotEmpty ? phoneCtrl.text.trim() : '9999999999';
+    final email = (_auth.currentUser?.email ?? '').isNotEmpty ? _auth.currentUser!.email! : 'test@example.com';
+
+    final Map<String, dynamic> options = {
       'key': _razorpayKey,
-      'amount': 10000, // ₹100 in paise (test)
+      // amount must be in the smallest currency unit (paise) and an int
+      'amount': (100 * 100), // 100 INR in paise
       'name': 'Skybase',
       'description': defaultPaymentId == null ? 'Add & set default payment' : 'Add Payment Method',
       'prefill': {
-        'contact': phoneCtrl.text,
-        'email': _auth.currentUser?.email,
+        'contact': contact,
+        'email': email,
       },
       'notes': {'defaultAfterAdd': defaultPaymentId == null},
     };
-    try {
-      _razorpay.open(options);
-    } catch (e) {
+
+    debugPrint('[OwnerSettings] Razorpay options: $options');
+
+    // Validation and warning before opening Razorpay
+    if (contact.isEmpty || email.isEmpty) {
+      debugPrint('[OwnerSettings] Invalid prefill data. contact=$contact email=$email');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Razorpay error: $e')),
+        const SnackBar(content: Text('Missing phone/email. Using default test values.')),
       );
+    }
+
+    try {
+      // Ensure the plugin instance is available before calling into it. On
+      // environments where initialization failed (or the plugin isn't present),
+      // `_razorpay` may be null — avoid calling methods on a nullable receiver.
+      if (_razorpay == null) {
+        debugPrint('[OwnerSettings] Razorpay instance is null — cannot open checkout');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Razorpay is not initialized on this device')),
+          );
+        }
+        return;
+      }
+
+      _razorpay!.open(options);
+      debugPrint('[OwnerSettings] Razorpay.open() invoked');
+    } catch (e, st) {
+      debugPrint('[OwnerSettings] Razorpay.open() threw: $e\n$st');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Razorpay error: ${e.toString()}')),
+        );
+      }
     }
   }
 
-  void _handleRazorpaySuccess(PaymentSuccessResponse response) async {
+  // ignore: unused_element
+  void _handleRazorpaySuccess(dynamic response) async {
+    String? paymentId;
+    try {
+      paymentId = response?.paymentId;
+    } catch (_) {
+      try {
+        paymentId = response['paymentId'] as String?;
+      } catch (_) {
+        paymentId = null;
+      }
+    }
+    debugPrint('[OwnerSettings] Razorpay success: $paymentId');
     final uid = _auth.currentUser!.uid;
 
     final Map<String, dynamic> method = {
@@ -121,15 +188,43 @@ class _OwnerSettingsScreenState extends State<OwnerSettingsScreen>
     }
   }
 
-  void _handleRazorpayError(PaymentFailureResponse response) {
+  // ignore: unused_element
+  void _handleRazorpayError(dynamic response) {
+    var code;
+    var message;
+    try {
+      code = response?.code;
+      message = response?.message;
+    } catch (_) {
+      try {
+        code = response['code'];
+        message = response['message'];
+      } catch (_) {
+        code = null;
+        message = response?.toString() ?? 'Unknown error';
+      }
+    }
+    debugPrint('[OwnerSettings] Razorpay error: code=$code message=$message');
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Payment failed: ${response.message}')),
+      SnackBar(content: Text('Payment failed: $message')),
     );
   }
 
-  void _handleRazorpayWallet(ExternalWalletResponse response) {
+  // ignore: unused_element
+  void _handleRazorpayWallet(dynamic response) {
+    String? walletName;
+    try {
+      walletName = response?.walletName;
+    } catch (_) {
+      try {
+        walletName = response['walletName'] as String?;
+      } catch (_) {
+        walletName = null;
+      }
+    }
+    debugPrint('[OwnerSettings] Razorpay external wallet used: $walletName');
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Wallet used: ${response.walletName}')),
+      SnackBar(content: Text('Wallet used: ${walletName ?? 'Unknown'}')),
     );
   }
 
@@ -269,17 +364,30 @@ class _OwnerSettingsScreenState extends State<OwnerSettingsScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
-    _razorpay = Razorpay();
-    _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handleRazorpaySuccess);
-    _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handleRazorpayError);
-    _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleRazorpayWallet);
+    _tabController = TabController(length: 2, vsync: this);
+    // Initialize Razorpay plugin and register handlers. This requires the
+    // `razorpay_flutter` package to be present in pubspec.yaml and
+    // `flutter pub get` to have been run.
+    try {
+      _razorpay = Razorpay();
+      _razorpay!.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handleRazorpaySuccess);
+      _razorpay!.on(Razorpay.EVENT_PAYMENT_ERROR, _handleRazorpayError);
+      _razorpay!.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleRazorpayWallet);
+      debugPrint('[OwnerSettings] Razorpay initialized and handlers registered');
+    } catch (e) {
+      debugPrint('[OwnerSettings] Razorpay initialization failed: $e');
+    }
     _loadProfile();
   }
+  // (declaration moved earlier)
 
   @override
   void dispose() {
-    _razorpay.clear();
+    try {
+      // If the plugin instance exists, clear its handlers. This is a no-op
+      // when `_razorpay` is null or does not implement `clear()`.
+      _razorpay?.clear();
+    } catch (_) {}
     _tabController.dispose();
     super.dispose();
   }
@@ -313,6 +421,7 @@ class _OwnerSettingsScreenState extends State<OwnerSettingsScreen>
     setState(() => loadingProfile = false);
   }
 
+  // ignore: unused_element
   Future<void> _saveProfile() async {
     final uid = _auth.currentUser!.uid;
     await _firestore.collection('users').doc(uid).set({
@@ -415,7 +524,6 @@ class _OwnerSettingsScreenState extends State<OwnerSettingsScreen>
                 indicatorColor: Colors.white,
                 tabs: const [
                   Tab(text: 'Notifications'),
-                  Tab(text: 'Payment'),
                   Tab(text: 'Security'),
                 ],
               ),
@@ -429,7 +537,6 @@ class _OwnerSettingsScreenState extends State<OwnerSettingsScreen>
               controller: _tabController,
               children: [
                 _buildNotificationsTab(),
-                _buildPaymentTab(),
                 _buildSecurityTab(),
               ],
             ),
@@ -511,78 +618,6 @@ class _OwnerSettingsScreenState extends State<OwnerSettingsScreen>
     );
   }
 
-  // ================= PAYMENT TAB =================
-  Widget _buildPaymentTab() {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        const Text('Payment Methods',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: 0.3)),
-        const SizedBox(height: 8),
-        Align(
-          alignment: Alignment.centerRight,
-          child: TextButton.icon(
-            onPressed: _openRazorpayCheckout,
-            icon: const Icon(Icons.add_card),
-            label: const Text('Add Card / UPI'),
-          ),
-        ),
-        const SizedBox(height: 12),
-
-        // ---- LIST OF CARDS (MULTIPLE) ----
-        if (paymentMethods.isEmpty)
-          Card(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            elevation: 2,
-            child: const ListTile(
-              leading: Icon(Icons.credit_card_outlined),
-              title: Text('No payment methods saved'),
-              subtitle: Text('Tap Add Card / UPI to add one'),
-            ),
-          )
-        else
-          AnimatedList(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            initialItemCount: paymentMethods.length,
-            itemBuilder: (context, index, animation) {
-              final m = paymentMethods[index];
-              return SlideTransition(
-                position: animation.drive(
-                  Tween(begin: const Offset(0.2, 0), end: Offset.zero)
-                      .chain(CurveTween(curve: Curves.easeOut)),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: _buildPaymentMethodCard(m),
-                ),
-              );
-            },
-          ),
-
-        const SizedBox(height: 20),
-        const Text('Payout Settings',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
-        Card(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          elevation: 2,
-          child: ListTile(
-            leading: const Icon(Icons.sync_alt),
-            title: const Text('Automatic Payouts'),
-            subtitle: const Text('Automatically transfer earnings to your bank'),
-            trailing: Switch(
-              value: autoPayout,
-              onChanged: (v) {
-                setState(() => autoPayout = v);
-                _savePreferences();
-              },
-            ),
-          ),
-        ),
-      ],
-    );
-  }
 
   Widget _buildPaymentMethodCard(Map<String, dynamic> m) {
     final String id = m['id'] ?? '';

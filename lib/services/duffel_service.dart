@@ -29,7 +29,7 @@ class DuffelService {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
     'Authorization': 'Bearer $accessToken',
-    'Duffel-Version': '2024-03-01',
+    'Duffel-Version': 'v2',
   };
 
   /// Search flights between two airports
@@ -83,27 +83,12 @@ class DuffelService {
     }
   }
 
-  /// Get offers from an offer_request (Duffel 2-step flow)
+  /// ⚠️ Duffel v2 already returns offers inside offer_requests response
+  /// This method is deprecated and should not be used
   Future<List<Offer>> getOffers(String requestId) async {
-    try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/air/offer_requests/$requestId/offers'),
-        headers: _headers,
-      ).timeout(const Duration(seconds: 30));
-
-      if (response.statusCode == 200) {
-        final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
-        final offersJson = jsonResponse['data'] as List<dynamic>? ?? [];
-
-        return offersJson
-            .map((offer) => Offer.fromJson(offer as Map<String, dynamic>))
-            .toList();
-      } else {
-        throw Exception('Failed to fetch offers: ${response.body}');
-      }
-    } catch (e) {
-      throw Exception('Error fetching offers: $e');
-    }
+    throw Exception(
+      'getOffers is deprecated in Duffel v2. Offers are already included in the searchOffers response.',
+    );
   }
 
   /// Create an order from an offer
@@ -120,18 +105,23 @@ class DuffelService {
           'selected_offers': [offerId],
           'passengers': [
             {
+              if (passengerData.passengerId != null && passengerData.passengerId!.isNotEmpty)
+                'id': passengerData.passengerId,
               'type': 'adult',
               'title': passengerData.title,
-              'given_name': passengerData.firstName,
-              'family_name': passengerData.lastName,
+              'given_name': passengerData.firstName.trim(),
+              'family_name': passengerData.lastName.trim(),
               'born_on': passengerData.dateOfBirth,
+              'gender': passengerData.gender == 'male' ? 'm' : 'f',
+              'email': passengerData.email,
+              'phone_number': passengerData.phoneNumber,
             }
           ],
           'payments': [
             {
               'type': 'balance',
-              'currency': 'INR',
-              'amount': '0.00'
+              'currency': 'GBP',
+              'amount': passengerData.amount,
             }
           ],
           'contacts': [
@@ -224,7 +214,11 @@ class DuffelService {
     if (response.statusCode >= 200 && response.statusCode < 300) {
       final decoded = jsonDecode(response.body);
       print('🟢 REQUEST ID => ${decoded['data']?['id']}');
+
+      final offers = decoded['data']?['offers'] ?? [];
+      print('🟢 OFFERS COUNT => ${offers.length}');
       print('🟢 DUFFEL RESPONSE => $decoded');
+
       return decoded as Map<String, dynamic>;
     }
 
@@ -682,6 +676,7 @@ class Airport {
 }
 
 class PassengerData {
+  final String? passengerId; // optional to avoid breaking existing calls
   final String title;
   final String firstName;
   final String lastName;
@@ -689,8 +684,10 @@ class PassengerData {
   final String phoneNumber;
   final String dateOfBirth; // Format: YYYY-MM-DD
   final String gender; // male or female
+  final String amount;
 
   PassengerData({
+    this.passengerId, // NOT required anymore
     required this.title,
     required this.firstName,
     required this.lastName,
@@ -698,6 +695,7 @@ class PassengerData {
     required this.phoneNumber,
     required this.dateOfBirth,
     required this.gender,
+    required this.amount,
   });
 }
 

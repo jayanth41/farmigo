@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:skybase/services/duffel_service.dart';
 import '../models/offer.dart';
+import '../services/duffel_service.dart';
+import '../services/payment_service.dart';
 
 class OrderCreationScreen extends StatefulWidget {
   final Offer offer;
@@ -35,6 +37,26 @@ class _OrderCreationScreenState extends State<OrderCreationScreen> {
   String? _errorMessage;
   OrderResponse? _createdOrder;
 
+  late PaymentService _paymentService;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _paymentService = PaymentService();
+
+    _paymentService.init(
+      onSuccess: () async {
+        await _createOrderAfterPayment();
+      },
+      onError: (msg) {
+        setState(() {
+          _errorMessage = msg;
+        });
+      },
+    );
+  }
+
   Future<void> _selectDate() async {
     final date = await showDatePicker(
       context: context,
@@ -48,7 +70,21 @@ class _OrderCreationScreenState extends State<OrderCreationScreen> {
     }
   }
 
-  Future<void> _createOrder() async {
+  void _startPayment() {
+    final amount = widget.offer.totalAmount.toString();
+
+    final email = _contactEmailController.text.trim();
+    final phoneRaw = _contactPhoneController.text.replaceAll(RegExp(r'\D'), '');
+    final phone = phoneRaw.startsWith('91') ? '+$phoneRaw' : '+91$phoneRaw';
+
+    _paymentService.startPayment(
+      amount: amount,
+      email: email,
+      phone: phone,
+    );
+  }
+
+  Future<void> _createOrderAfterPayment() async {
     // Validate inputs
     if (_firstNameController.text.isEmpty ||
         _lastNameController.text.isEmpty ||
@@ -69,21 +105,91 @@ class _OrderCreationScreenState extends State<OrderCreationScreen> {
     });
 
     try {
+      // Basic validation for Duffel
+      final email = _emailController.text.trim();
+      final contactEmail = _contactEmailController.text.trim();
+      final phoneRaw = _phoneController.text.replaceAll(RegExp(r'\D'), '');
+      final contactPhoneRaw = _contactPhoneController.text.replaceAll(RegExp(r'\D'), '');
+
+      if (!email.contains('@') || !contactEmail.contains('@')) {
+        setState(() {
+          _errorMessage = 'Please enter valid email addresses';
+        });
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      if (phoneRaw.length < 10 || contactPhoneRaw.length < 10) {
+        setState(() {
+          _errorMessage = 'Please enter valid phone numbers (10 digits)';
+        });
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      final phoneFormatted = phoneRaw.startsWith('91')
+          ? '+$phoneRaw'
+          : '+91$phoneRaw';
+      final contactPhoneFormatted = contactPhoneRaw.startsWith('91')
+          ? '+$contactPhoneRaw'
+          : '+91$contactPhoneRaw';
+
       final passengerData = PassengerData(
-        title: _titleController.text,
-        firstName: _firstNameController.text,
-        lastName: _lastNameController.text,
-        email: _emailController.text,
-        phoneNumber: _phoneController.text,
+        passengerId: '',
+        title: _titleController.text.trim(),
+        firstName: _firstNameController.text.trim(),
+        lastName: _lastNameController.text.trim(),
+        email: email,
+        phoneNumber: phoneFormatted,
         dateOfBirth: _dobController.text,
         gender: _gender,
+        amount: widget.offer.totalAmount.toString(),
+      );
+
+      // 🔥 Step 1: Fetch fresh offers (use searchOffers which returns real offers)
+      final resp = await widget.duffelService.searchOffers(
+        origin: widget.offer.origin,
+        destination: widget.offer.destination,
+        departureDate: DateFormat('yyyy-MM-dd')
+            .format(widget.offer.departureDateTime!),
+        adults: 1,
+      );
+
+      final offers = (resp['data']?['offers'] as List?) ?? [];
+
+      final passengers = (resp['data']?['passengers'] as List?) ?? [];
+
+      if (passengers.isEmpty) {
+        throw Exception("No passengers returned from Duffel");
+      }
+
+      final passengerId = passengers.first['id'];
+
+      if (offers.isEmpty) {
+        throw Exception("No fresh offers available");
+      }
+
+      final firstOffer = offers.first;
+      final freshOfferId = firstOffer['id'];
+
+      // 🔥 Step 2 & 3: Create updated passenger data and create order
+      final updatedPassengerData = PassengerData(
+        passengerId: passengerId,
+        title: passengerData.title,
+        firstName: passengerData.firstName,
+        lastName: passengerData.lastName,
+        email: passengerData.email,
+        phoneNumber: passengerData.phoneNumber,
+        dateOfBirth: passengerData.dateOfBirth,
+        gender: passengerData.gender,
+        amount: passengerData.amount,
       );
 
       final order = await widget.duffelService.createOrder(
-        offerId: widget.offer.id,
-        passengerData: passengerData,
-        contactEmail: _contactEmailController.text,
-        contactPhoneNumber: _contactPhoneController.text,
+        offerId: freshOfferId,
+        passengerData: updatedPassengerData,
+        contactEmail: contactEmail,
+        contactPhoneNumber: contactPhoneFormatted,
       );
 
       setState(() {
@@ -95,8 +201,16 @@ class _OrderCreationScreenState extends State<OrderCreationScreen> {
         _showOrderSuccessDialog(order);
       }
     } catch (e) {
+      String message = 'Error creating order';
+
+      if (e.toString().contains('offer_no_longer_available')) {
+        message = '⚠️ Price updated. Please try booking again.';
+      } else {
+        message = 'Error: ${e.toString()}';
+      }
+
       setState(() {
-        _errorMessage = 'Error creating order: $e';
+        _errorMessage = message;
       });
     } finally {
       setState(() {
@@ -138,6 +252,7 @@ class _OrderCreationScreenState extends State<OrderCreationScreen> {
 
   @override
   void dispose() {
+    _paymentService.dispose();
     _titleController.dispose();
     _firstNameController.dispose();
     _lastNameController.dispose();
@@ -350,51 +465,56 @@ class _OrderCreationScreenState extends State<OrderCreationScreen> {
                     SizedBox(
                       width: double.infinity,
                       child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Departure',
-                              style: TextStyle(fontSize: 12, color: Colors.grey),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Departure',
+                                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                                ),
+                                Text(
+                                  widget.offer.origin,
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                ),
+                                Text(
+                                  widget.offer.departureTime,
+                                  style: const TextStyle(fontSize: 12),
+                                ),
+                              ],
                             ),
-                            Text(
-                              widget.offer.origin,
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          ),
+                          Column(
+                            children: [
+                              const Icon(Icons.flight_takeoff, size: 18),
+                              const SizedBox(height: 4),
+                              Text(
+                                widget.offer.duration,
+                                style: const TextStyle(fontSize: 12, color: Colors.grey),
+                              ),
+                            ],
+                          ),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                const Text(
+                                  'Arrival',
+                                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                                ),
+                                Text(
+                                  widget.offer.destination,
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                ),
+                                Text(
+                                  widget.offer.arrivalTime,
+                                  style: const TextStyle(fontSize: 12),
+                                ),
+                              ],
                             ),
-                            Text(
-                              widget.offer.departureTime,
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                          ],
-                        ),
-                        Column(
-                          children: [
-                            const Icon(Icons.flight_takeoff, size: 18),
-                            const SizedBox(height: 4),
-                            Text(
-                              widget.offer.duration,
-                              style: const TextStyle(fontSize: 12, color: Colors.grey),
-                            ),
-                          ],
-                        ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            const Text(
-                              'Arrival',
-                              style: TextStyle(fontSize: 12, color: Colors.grey),
-                            ),
-                            Text(
-                              widget.offer.destination,
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                            ),
-                            Text(
-                              widget.offer.arrivalTime,
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                          ],
-                        ),
+                          ),
                         ],
                       ),
                     ),
@@ -425,6 +545,13 @@ class _OrderCreationScreenState extends State<OrderCreationScreen> {
                   style: TextStyle(color: Colors.red.shade800),
                 ),
               ),
+            if (_errorMessage != null) ...[
+              const SizedBox(height: 10),
+              ElevatedButton(
+                onPressed: _startPayment,
+                child: const Text('Retry Booking'),
+              ),
+            ],
             const SizedBox(height: 20),
 
             // Passenger Information
@@ -579,7 +706,7 @@ class _OrderCreationScreenState extends State<OrderCreationScreen> {
 
             // Create Order Button
             ElevatedButton(
-              onPressed: _isLoading ? null : _createOrder,
+              onPressed: _isLoading ? null : _startPayment,
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(

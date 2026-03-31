@@ -2,6 +2,7 @@ import 'package:intl/intl.dart';
 
 class Offer {
   final String id;
+  final List<String> passengerIds;
   final String airlineName;
   final String airlineLogo;
   final String flightNumber;
@@ -81,6 +82,7 @@ class Offer {
 
   Offer({
     required this.id,
+    required this.passengerIds,
     required this.airlineName,
     required this.airlineLogo,
     required this.flightNumber,
@@ -109,8 +111,12 @@ class Offer {
   }
 
   static String _safeTime(String? isoTime) {
-    if (isoTime == null || isoTime.length < 16) return "";
-    return isoTime.substring(11, 16);
+    try {
+      if (isoTime == null || isoTime.length < 16) return "--:--";
+      return isoTime.substring(11, 16);
+    } catch (_) {
+      return "--:--";
+    }
   }
 
   factory Offer.fromJson(Map<String, dynamic> json) {
@@ -157,9 +163,24 @@ class Offer {
 
     final stops = segments.length - 1;
 
+    List<String> passengerIds = [];
+
+    final passengersSource = json["passengers"] ??
+        (json["data"] is Map ? json["data"]["passengers"] : null);
+
+    if (passengersSource is List) {
+      passengerIds = passengersSource
+          .map((p) => p["id"]?.toString() ?? "")
+          .where((id) => id.isNotEmpty)
+          .toList();
+    }
+
   return Offer(
       id: json["id"] ?? "",
-      airlineName: airline["name"] ?? "Airline",
+      passengerIds: passengerIds,
+      airlineName: (airline["name"] ?? "").toString().isNotEmpty
+          ? airline["name"]
+          : "Airline",
       airlineLogo: airline["logo_symbol_url"] ??
           (carrierCode.isNotEmpty
               ? "https://content.airhex.com/content/logos/airlines_${carrierCode}_200_200_s.png"
@@ -194,4 +215,6 @@ class Offer {
           : "USD",
     );
   }
+  /// Total amount in the offer's original currency (major units)
+  double get totalAmount => price;
 }

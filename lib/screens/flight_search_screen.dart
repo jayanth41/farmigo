@@ -76,29 +76,38 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
         adults: int.tryParse(_passengersController.text) ?? 1,
       );
 
-      final requestId = response['data']?['id'];
+      final offersJson = response['data']?['offers'] as List? ?? [];
 
-      if (requestId == null) {
-        throw Exception('Failed to get request ID');
+      debugPrint("✅ Offers received: ${offersJson.length}");
+
+      if (offersJson.isEmpty) {
+        setState(() {
+          _errorMessage = "No offers returned from API";
+        });
       }
 
-      // STEP 2: Fetch offers using request ID
-      final offers = await _duffelService.getOffers(requestId);
+      final offers = offersJson
+          .map((o) => Offer.fromJson(o as Map<String, dynamic>))
+          .toList();
 
       setState(() {
         _allOffers = offers;
         _offers = List.from(_allOffers);
         _sortOffers();
       });
-    } catch (e) {
+    } catch (e, stack) {
+      debugPrint("❌ Flight search error: $e");
+      debugPrintStack(stackTrace: stack);
       setState(() {
-        _errorMessage = e.toString();
+        _errorMessage = "Failed to load flights. Please try again.";
       });
     }
 
-    setState(() {
-      _isLoading = false;
-    });
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   void _sortOffers() {

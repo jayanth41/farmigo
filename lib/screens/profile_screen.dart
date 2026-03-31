@@ -4,7 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
 import '../controllers/favorites_controller.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:image_picker/image_picker.dart' as img;
 import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
 
@@ -436,6 +436,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                           ],
                         ),
+                        // ---- Payment Methods section ----
+                        if (_activeRole == 'owner') ...[
+                          const Divider(height: 1, color: Colors.white),
+                          ExpansionTile(
+                            leading: const Icon(Icons.payment_outlined, color: Colors.white),
+                            title: const Text(
+                              "Payment Methods",
+                              style: TextStyle(color: Colors.white),
+                            ),
+                            iconColor: Colors.white,
+                            collapsedIconColor: Colors.white,
+                            children: [
+                              ListTile(
+                                leading: const Icon(Icons.credit_card, color: Colors.white),
+                                title: const Text("Add Card", style: TextStyle(color: Colors.white)),
+                                onTap: () {
+                                  _openRazorpayCheckout();
+                                },
+                              ),
+                              ListTile(
+                                leading: const Icon(Icons.account_balance_wallet, color: Colors.white),
+                                title: const Text("Add UPI", style: TextStyle(color: Colors.white)),
+                                onTap: () {
+                                  _openRazorpayCheckout();
+                                },
+                              ),
+                            ],
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -526,8 +555,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (mounted) setState(() => _loading = false);
   }
 
-  Future<void> _pickAndUploadImage(ImageSource source) async {
-    final picker = ImagePicker();
+  Future<void> _pickAndUploadImage(img.ImageSource source) async {
+    final picker = img.ImagePicker();
 
     final pickedFile = await picker.pickImage(
       source: source,
@@ -748,7 +777,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               title: const Text("Take Photo"),
                               onTap: () async {
                                 Navigator.pop(ctx);
-                                await _pickAndUploadImage(ImageSource.camera);
+                                await _pickAndUploadImage(img.ImageSource.camera);
                               },
                             ),
                             ListTile(
@@ -756,7 +785,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               title: const Text("Choose from Gallery"),
                               onTap: () async {
                                 Navigator.pop(ctx);
-                                await _pickAndUploadImage(ImageSource.gallery);
+                                await _pickAndUploadImage(img.ImageSource.gallery);
                               },
                             ),
                             if ((_userDoc?['photoUrl'] ?? '').toString().isNotEmpty)
@@ -911,4 +940,66 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // ---------------- EDIT FORM ----------------
   // (Previously an unused helper was here; removed to keep code clean.)
+
+  // ---- Payment Methods Bottom Sheet ----
+  void _showPaymentOptions() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                "Payment Methods",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                leading: const Icon(Icons.credit_card),
+                title: const Text("Add Card"),
+                onTap: () {
+                  Navigator.pop(context);
+                  _openRazorpayCheckout();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.account_balance_wallet),
+                title: const Text("Add UPI"),
+                onTap: () {
+                  Navigator.pop(context);
+                  _openRazorpayCheckout();
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _openRazorpayCheckout() {
+    final options = {
+      'key': 'rzp_test_xxxxxxxx',
+      'amount': 100 * 100,
+      'name': 'Skybase',
+      'description': 'Add Payment Method',
+      'prefill': {
+        'contact': '9999999999',
+        'email': 'test@example.com',
+      },
+    };
+
+    try {
+      debugPrint("Opening Razorpay...");
+      // TODO: connect Razorpay instance here if not already
+    } catch (e) {
+      debugPrint("Razorpay error: $e");
+    }
+  }
 }
