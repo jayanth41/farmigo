@@ -4,6 +4,7 @@ import '../navigation/app_routes.dart';
 import '../controllers/bookings_controller.dart';
 // app_drawer removed from this secondary screen to keep back navigation consistent
 import '../widgets/loading_widget.dart';
+import 'owner_dashboard.dart';
 
 
 class BookingsScreen extends StatefulWidget {
@@ -215,8 +216,22 @@ class BookingItemCard extends StatelessWidget {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
 
-  // Prefer the canonical keys used by the bookings API
-  String imageUrl = booking['imageUrl'] ?? booking['image'] ?? booking['propertyImage'] ?? '';
+    // Prefer the canonical keys used by the bookings API
+    String imageUrl = booking['imageUrl'] ?? booking['image'] ?? booking['propertyImage'] ?? '';
+
+    Future<bool> _isBlocked(Map<String, dynamic> booking) async {
+      try {
+        final checkIn = DateTime.parse(booking['checkIn']);
+        final checkOut = DateTime.parse(booking['checkOut']);
+        final propertyId = booking['propertyId'] ?? booking['property_id'] ?? '';
+
+        if (propertyId.isEmpty) return false;
+
+        return await isRangeBlocked(checkIn, checkOut, propertyId);
+      } catch (_) {
+        return false;
+      }
+    }
 
     String formatDate(String? raw) {
       if (raw == null || raw.toString().trim().isEmpty) return '';
@@ -262,30 +277,49 @@ class BookingItemCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        booking['propertyName'] ?? '',
-                        style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: _getStatusColor(booking['status']),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        booking['status']?.toString().toUpperCase() ?? 'UNKNOWN',
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12),
-                      ),
-                    ),
-                  ],
+                FutureBuilder<bool>(
+                  future: _isBlocked(booking),
+                  builder: (context, snap) {
+                    final isBlocked = snap.data == true;
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (isBlocked)
+                          Container(
+                            margin: const EdgeInsets.only(right: 6),
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.red,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Text(
+                              'BLOCKED',
+                              style: TextStyle(color: Colors.white, fontSize: 10),
+                            ),
+                          ),
+                        Expanded(
+                          child: Text(
+                            booking['propertyName'] ?? '',
+                            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: _getStatusColor(booking['status']),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            booking['status']?.toString().toUpperCase() ?? 'UNKNOWN',
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
                 const SizedBox(height: 8),
                 Row(
@@ -328,6 +362,36 @@ class BookingItemCard extends StatelessWidget {
                     ),
                   ],
                 ),
+                // Blocked dates preview
+                FutureBuilder<Set<DateTime>>(
+                  future: getBlockedDates(booking['propertyId'] ?? ''),
+                  builder: (context, snap) {
+                    if (!snap.hasData || snap.data!.isEmpty) return const SizedBox();
+
+                    final blockedDates = snap.data!.take(3).toList(); // show first 3
+                    final formatted = blockedDates.map((d) {
+                      const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                      return '${d.day} ${months[d.month - 1]}';
+                    }).join(', ');
+
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.block, size: 14, color: Colors.red),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              'Unavailable: $formatted${snap.data!.length > 3 ? '...' : ''}',
+                              style: const TextStyle(fontSize: 12, color: Colors.red),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
                 const SizedBox(height: 12),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -353,7 +417,22 @@ class BookingItemCard extends StatelessWidget {
                     if (booking['status'] == 'upcoming')
                       Expanded(
                         child: ElevatedButton(
-                          onPressed: () => _showCancelDialog(context, booking),
+                          onPressed: () async {
+                            final blocked = await isRangeBlocked(
+                              DateTime.parse(booking['checkIn']),
+                              DateTime.parse(booking['checkOut']),
+                              booking['propertyId'] ?? '',
+                            );
+
+                            if (blocked) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Selected booking dates are not available')),
+                              );
+                              return;
+                            }
+
+                            _showCancelDialog(context, booking);
+                          },
                           style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
                           child: const Text('Cancel'),
                         ),

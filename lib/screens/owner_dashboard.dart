@@ -12,6 +12,383 @@ import 'owner_messages_screen.dart';
 import 'owner_notifications_screen.dart';
 import 'add_property_screen.dart' as add_screen;
 import 'edit_property_screen.dart' as edit_screen;
+// ================= BLOCK DATES SCREEN ==================
+class BlockDatesScreen extends StatefulWidget {
+  final String propertyId;
+
+  const BlockDatesScreen({Key? key, required this.propertyId}) : super(key: key);
+
+  @override
+  _BlockDatesScreenState createState() => _BlockDatesScreenState();
+}
+
+class _BlockDatesScreenState extends State<BlockDatesScreen> {
+  String _getMonthName(int month) {
+    const months = [
+      'January','February','March','April','May','June',
+      'July','August','September','October','November','December'
+    ];
+    return months[month - 1];
+  }
+  Set<DateTime> _selectedDates = {};
+  Set<DateTime> _loadedDates = {};
+  bool _saving = false;
+  String? _error;
+  DateTime? _rangeStart;
+  DateTime? _rangeEnd;
+  DateTime _currentMonth = DateTime.now();
+
+  // === Helper methods for calendar UI enhancements ===
+  bool _isSameDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
+  bool _isPast(DateTime date) {
+    final today = DateTime.now();
+    final d = DateTime(date.year, date.month, date.day);
+    final t = DateTime(today.year, today.month, today.day);
+    return d.isBefore(t);
+  }
+
+  bool _isInRange(DateTime date) {
+    if (_rangeStart == null || _rangeEnd == null) return false;
+    return !date.isBefore(_rangeStart!) && !date.isAfter(_rangeEnd!);
+  }
+
+  bool _isBlocked(DateTime date) {
+    return _loadedDates.any((d) => _isSameDay(d, date));
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBlockedDates();
+  }
+
+  Future<void> _loadBlockedDates() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    final doc = await FirebaseFirestore.instance
+        .collection('blocked_dates')
+        .doc('${uid}_${widget.propertyId}')
+        .get();
+
+    if (doc.exists) {
+      final data = doc.data();
+      final List<dynamic> dates = data?['dates'] ?? [];
+
+      setState(() {
+        _loadedDates = dates
+            .map((d) => (d as Timestamp).toDate())
+            .toSet();
+
+        _selectedDates.addAll(_loadedDates);
+      });
+    }
+  }
+
+  void _toggleDate(DateTime date) {
+    final normalized = DateTime(date.year, date.month, date.day);
+
+    setState(() {
+      // 🔥 If date already blocked → ask to remove
+      if (_isBlocked(normalized)) {
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Remove blocked date?'),
+            content: const Text('This date is already blocked. Do you want to unblock it?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  setState(() {
+                    _loadedDates.removeWhere((d) => _isSameDay(d, normalized));
+                    _selectedDates.removeWhere((d) => _isSameDay(d, normalized));
+
+                    // 🔥 also update Firestore immediately
+                    final uid = FirebaseAuth.instance.currentUser?.uid;
+                    if (uid != null) {
+                      FirebaseFirestore.instance
+                          .collection('blocked_dates')
+                          .doc('${uid}_${widget.propertyId}')
+                          .set({
+                        'dates': _selectedDates.map((d) => Timestamp.fromDate(d)).toList(),
+                      });
+                    }
+                  });
+                },
+                child: const Text('Remove', style: TextStyle(color: Colors.red)),
+              ),
+            ],
+          ),
+        );
+        return;
+      }
+
+      // 🔥 If tapping same start date again → clear selection
+      if (_rangeStart != null &&
+          _rangeEnd == null &&
+          _isSameDay(_rangeStart!, normalized)) {
+        _rangeStart = null;
+        _rangeEnd = null;
+        _selectedDates.clear();
+        return;
+      }
+
+      // 🔥 If tapping same full range again → clear
+      if (_rangeStart != null &&
+          _rangeEnd != null &&
+          _isSameDay(_rangeStart!, normalized) &&
+          _isSameDay(_rangeEnd!, normalized)) {
+        _rangeStart = null;
+        _rangeEnd = null;
+        _selectedDates.clear();
+        return;
+      }
+
+      // Normal flow
+      if (_rangeStart == null || (_rangeStart != null && _rangeEnd != null)) {
+        _rangeStart = normalized;
+        _rangeEnd = null;
+        _selectedDates.clear();
+        _selectedDates.add(normalized);
+      } else if (_rangeStart != null && _rangeEnd == null) {
+        if (normalized.isBefore(_rangeStart!)) {
+          _rangeEnd = _rangeStart;
+          _rangeStart = normalized;
+        } else {
+          _rangeEnd = normalized;
+        }
+
+        // fill range
+        _selectedDates.clear();
+        for (var d = _rangeStart!;
+            !d.isAfter(_rangeEnd!);
+            d = d.add(const Duration(days: 1))) {
+          _selectedDates.add(d);
+        }
+      }
+    });
+  }
+
+  Future<void> _saveBlockedDates() async {
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) {
+      setState(() {
+        _saving = false;
+        _error = "Not logged in";
+      });
+      return;
+    }
+    try {
+      await FirebaseFirestore.instance
+          .collection('blocked_dates')
+          .doc('${uid}_${widget.propertyId}')
+          .set({
+        'dates': _selectedDates.map((d) => Timestamp.fromDate(d)).toList(),
+      });
+      // 🔥 Sync loadedDates with saved data
+      _loadedDates = Set.from(_selectedDates);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Blocked dates updated')),
+        );
+      }
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+      });
+    } finally {
+      setState(() {
+        _saving = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final firstDay = DateTime(_currentMonth.year, _currentMonth.month, 1);
+    final daysInMonth = DateTime(_currentMonth.year, _currentMonth.month + 1, 0).day;
+
+    final days = List.generate(daysInMonth, (i) {
+      return DateTime(_currentMonth.year, _currentMonth.month, i + 1);
+    });
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Block Dates'),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Select a start and end date to block a range (like bookings):',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+            ),
+            const SizedBox(height: 16),
+            if (_error != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(_error!, style: const TextStyle(color: Colors.red)),
+              ),
+            GestureDetector(
+              onHorizontalDragEnd: (details) {
+                if (details.primaryVelocity! < 0) {
+                  setState(() {
+                    _currentMonth = DateTime(_currentMonth.year, _currentMonth.month + 1);
+                  });
+                } else if (details.primaryVelocity! > 0) {
+                  setState(() {
+                    _currentMonth = DateTime(_currentMonth.year, _currentMonth.month - 1);
+                  });
+                }
+              },
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.chevron_left),
+                        onPressed: () {
+                          setState(() {
+                            _currentMonth = DateTime(_currentMonth.year, _currentMonth.month - 1);
+                          });
+                        },
+                      ),
+                      Text(
+                        '${_getMonthName(_currentMonth.month)} ${_currentMonth.year}',
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.chevron_right),
+                        onPressed: () {
+                          setState(() {
+                            _currentMonth = DateTime(_currentMonth.year, _currentMonth.month + 1);
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                  const Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      Text('S'), Text('M'), Text('T'),
+                      Text('W'), Text('T'), Text('F'), Text('S'),
+                    ],
+                  ),
+                  SizedBox(
+                    height: 300,
+                    child: GridView.builder(
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 7,
+                        mainAxisSpacing: 6,
+                        crossAxisSpacing: 6,
+                        childAspectRatio: 1.2,
+                      ),
+                      itemCount: days.length,
+                      itemBuilder: (context, i) {
+                        final date = days[i];
+                        final isSelected = _selectedDates.any((d) => _isSameDay(d, date));
+                        final isStart = _rangeStart != null && _isSameDay(date, _rangeStart!);
+                        final isEnd = _rangeEnd != null && _isSameDay(date, _rangeEnd!);
+                        final inRange = _isInRange(date);
+                        final isPast = _isPast(date);
+                        final isBlocked = _isBlocked(date);
+                        return GestureDetector(
+                          onTap: isPast ? null : () => _toggleDate(date),
+                          child: Tooltip(
+                            message: isPast
+                                ? 'Past'
+                                : isBlocked
+                                    ? 'Blocked'
+                                    : (isStart || isEnd)
+                                        ? 'Selected'
+                                        : inRange
+                                            ? 'In Range'
+                                            : 'Available',
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: isPast
+                                    ? Colors.grey[300]
+                                    : isBlocked
+                                        ? Colors.grey[400]
+                                        : (isStart || isEnd)
+                                            ? Colors.red
+                                            : inRange
+                                                ? Colors.red.withOpacity(0.3)
+                                                : Colors.grey[200],
+                                borderRadius: BorderRadius.horizontal(
+                                  left: Radius.circular(isStart ? 20 : 0),
+                                  right: Radius.circular(isEnd ? 20 : 0),
+                                ),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? Colors.red
+                                      : Colors.grey.withOpacity(0.4),
+                                  width: 1.2,
+                                ),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                '${date.day}',
+                                style: TextStyle(
+                                  color: isPast
+                                      ? Colors.grey
+                                      : (isStart || isEnd)
+                                          ? Colors.white
+                                          : Colors.black87,
+                                  fontWeight: (isStart || isEnd) ? FontWeight.bold : FontWeight.normal,
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _saving ? null : _saveBlockedDates,
+                child: _saving
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Save Blocked Dates'),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              "Blocked dates will prevent guests from booking your property on those days.",
+              style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
 
 /// OwnerDashboard now acts as a smart router:
 /// It briefly shows a loader, checks Firestore, and then
@@ -700,6 +1077,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
                         );
                       },
                     ),
+
                   ],
                 ),
               ),
@@ -1500,6 +1878,20 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
                                                                   );
                                                                 }
                                                               }
+                                                            },
+                                                          ),
+                                                          const Divider(height: 1),
+                                                          const Divider(height: 1),
+                                                          ListTile(
+                                                            leading: const Icon(Icons.block),
+                                                            title: const Text('Block Dates'),
+                                                            onTap: () {
+                                                              Navigator.pop(ctx);
+                                                              Navigator.of(context).push(
+                                                                MaterialPageRoute(
+                                                                  builder: (_) => BlockDatesScreen(propertyId: p['id']),
+                                                                ),
+                                                              );
                                                             },
                                                           ),
                                                           const Divider(height: 1),
@@ -2945,4 +3337,63 @@ class EditProfileScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+// GLOBAL HELPER to check if a date is blocked for the current owner
+Future<bool> isDateBlocked(DateTime date) async {
+  final uid = FirebaseAuth.instance.currentUser?.uid;
+  if (uid == null) return false;
+
+  final doc = await FirebaseFirestore.instance
+      .collection('blocked_dates')
+      .doc(uid)
+      .get();
+
+  if (!doc.exists) return false;
+
+  final dates = (doc.data()?['dates'] as List<dynamic>? ?? [])
+      .map((d) => (d as Timestamp).toDate());
+
+  return dates.any((d) =>
+      d.year == date.year &&
+      d.month == date.month &&
+      d.day == date.day);
+}
+// ========== GLOBAL HELPERS FOR BOOKING SCREEN ==========
+
+Future<Set<DateTime>> getBlockedDates(String propertyId) async {
+  final uid = FirebaseAuth.instance.currentUser?.uid;
+  if (uid == null) return {};
+
+  final doc = await FirebaseFirestore.instance
+      .collection('blocked_dates')
+      .doc('${uid}_$propertyId')
+      .get();
+
+  if (!doc.exists) return {};
+
+  final dates = (doc.data()?['dates'] as List<dynamic>? ?? [])
+      .map((d) => (d as Timestamp).toDate());
+
+  return dates
+      .map((d) => DateTime(d.year, d.month, d.day))
+      .toSet();
+}
+
+Future<bool> isRangeBlocked(DateTime start, DateTime end, String propertyId) async {
+  final blocked = await getBlockedDates(propertyId);
+
+  for (var d = start;
+      !d.isAfter(end);
+      d = d.add(const Duration(days: 1))) {
+    final normalized = DateTime(d.year, d.month, d.day);
+
+    if (blocked.any((b) =>
+        b.year == normalized.year &&
+        b.month == normalized.month &&
+        b.day == normalized.day)) {
+      return true;
+    }
+  }
+  return false;
 }
