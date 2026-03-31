@@ -622,16 +622,45 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
                       },
                     ),
 
-                    _DrawerTile(
-                      icon: Icons.calendar_today_outlined,
-                      label: 'Bookings',
-                      selected: false,
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.of(context).pushReplacement(
-                          MaterialPageRoute(
-                            builder: (_) => OwnerMainScaffold(initialIndex: 1),
-                          ),
+                    StreamBuilder<QuerySnapshot>(
+                      stream: FirebaseFirestore.instance
+                          .collection('bookings')
+                          .where('ownerId', isEqualTo: FirebaseAuth.instance.currentUser?.uid)
+                          .snapshots(),
+                      builder: (context, snap) {
+                        final count = snap.hasData ? snap.data!.docs.length : 0;
+                        return Stack(
+                          children: [
+                            _DrawerTile(
+                              icon: Icons.calendar_today_outlined,
+                              label: 'Bookings',
+                              selected: false,
+                              onTap: () {
+                                Navigator.pop(context);
+                                Navigator.of(context).pushReplacement(
+                                  MaterialPageRoute(
+                                    builder: (_) => OwnerMainScaffold(initialIndex: 1),
+                                  ),
+                                );
+                              },
+                            ),
+                            if (count > 0)
+                              Positioned(
+                                right: 20,
+                                top: 10,
+                                child: Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    count > 9 ? '9+' : count.toString(),
+                                    style: const TextStyle(color: Colors.white, fontSize: 11),
+                                  ),
+                                ),
+                              ),
+                          ],
                         );
                       },
                     ),
@@ -906,11 +935,44 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
                       );
                     },
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.chat_bubble_outline, color: Colors.white),
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const MessagesScreen()),
+                  StreamBuilder<QuerySnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection('messages')
+                        .where('receiverId', isEqualTo: FirebaseAuth.instance.currentUser?.uid)
+                        .where('isRead', isEqualTo: false)
+                        .snapshots(),
+                    builder: (context, snap) {
+                      final count = snap.hasData ? snap.data!.docs.length : 0;
+                      return Stack(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.chat_bubble_outline, color: Colors.white),
+                            onPressed: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(builder: (_) => const MessagesScreen()),
+                              );
+                            },
+                          ),
+                          if (count > 0)
+                            Positioned(
+                              right: 6,
+                              top: 6,
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: Colors.red,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+                                child: Center(
+                                  child: Text(
+                                    count > 9 ? '9+' : count.toString(),
+                                    style: const TextStyle(color: Colors.white, fontSize: 11),
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
                       );
                     },
                   ),

@@ -6,7 +6,7 @@ import 'package:get/get.dart';
 import '../controllers/favorites_controller.dart';
 import 'package:image_picker/image_picker.dart' as img;
 import 'dart:io';
-import 'package:firebase_storage/firebase_storage.dart';
+import 'package:firebase_storage/firebase_storage.dart' as fb_storage;
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -571,7 +571,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final file = File(pickedFile.path);
 
     try {
-      final ref = FirebaseStorage.instance
+      final ref = fb_storage.FirebaseStorage.instance
           .ref()
           .child('profile_photos')
           .child(user.uid);
