@@ -3,7 +3,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
-import 'owner/owner_details_screen.dart';
 
 class OwnerSettingsScreen extends StatefulWidget {
   const OwnerSettingsScreen({super.key});
@@ -14,7 +13,6 @@ class OwnerSettingsScreen extends StatefulWidget {
 
 class _OwnerSettingsScreenState extends State<OwnerSettingsScreen>
     with SingleTickerProviderStateMixin {
-  late TabController _tabController;
   // Razorpay plugin instance (optional). Nullable so we can safely handle
   // environments where initialization might fail.
   Razorpay? _razorpay;
@@ -52,6 +50,7 @@ class _OwnerSettingsScreenState extends State<OwnerSettingsScreen>
 
   // Security toggle
   bool enable2FA = false;
+  bool _verifyingPhone = false;
 
   Map<String, dynamic>? userData;
   // Store multiple payment methods locally
@@ -270,8 +269,6 @@ class _OwnerSettingsScreenState extends State<OwnerSettingsScreen>
   }
 
   String? _verificationId;
-  // ignore: unused_field
-  bool _verifyingPhone = false;
 
   Future<void> _startPhoneVerification(String phone) async {
     setState(() => _verifyingPhone = true);
@@ -364,7 +361,6 @@ class _OwnerSettingsScreenState extends State<OwnerSettingsScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
     // Initialize Razorpay plugin and register handlers. This requires the
     // `razorpay_flutter` package to be present in pubspec.yaml and
     // `flutter pub get` to have been run.
@@ -384,12 +380,34 @@ class _OwnerSettingsScreenState extends State<OwnerSettingsScreen>
   @override
   void dispose() {
     try {
-      // If the plugin instance exists, clear its handlers. This is a no-op
-      // when `_razorpay` is null or does not implement `clear()`.
       _razorpay?.clear();
     } catch (_) {}
-    _tabController.dispose();
+
+    // Dispose controllers (optimization + memory safety)
+    nameCtrl.dispose();
+    phoneCtrl.dispose();
+    bioCtrl.dispose();
+    businessNameCtrl.dispose();
+    businessAddrCtrl.dispose();
+    currentPassCtrl.dispose();
+    newPassCtrl.dispose();
+    confirmPassCtrl.dispose();
+
     super.dispose();
+  }
+  /// Reusable switch tile builder to reduce rebuild code for toggles
+  Widget _buildSwitchTile({
+    required String title,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return ListTile(
+      title: Text(title),
+      trailing: Switch(
+        value: value,
+        onChanged: onChanged,
+      ),
+    );
   }
 
   Future<void> _loadProfile() async {
@@ -472,7 +490,7 @@ class _OwnerSettingsScreenState extends State<OwnerSettingsScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(140),
+        preferredSize: const Size.fromHeight(100),
         child: Container(
           width: double.infinity,
           padding: const EdgeInsets.fromLTRB(16, 40, 16, 10),
@@ -517,29 +535,14 @@ class _OwnerSettingsScreenState extends State<OwnerSettingsScreen>
                 ),
               ),
               const SizedBox(height: 8),
-              TabBar(
-                controller: _tabController,
-                labelColor: Colors.white,
-                unselectedLabelColor: Colors.white70,
-                indicatorColor: Colors.white,
-                tabs: const [
-                  Tab(text: 'Notifications'),
-                  Tab(text: 'Security'),
-                ],
-              ),
+              // TabBar removed
             ],
           ),
         ),
       ),
       body: loadingProfile
           ? const Center(child: CircularProgressIndicator())
-          : TabBarView(
-              controller: _tabController,
-              children: [
-                _buildNotificationsTab(),
-                _buildSecurityTab(),
-              ],
-            ),
+          : _buildNotificationsTab(),
     );
   }
 
@@ -553,35 +556,29 @@ class _OwnerSettingsScreenState extends State<OwnerSettingsScreen>
         Card(
           child: Column(
             children: [
-              ListTile(
-                title: const Text('New Booking Requests'),
-                trailing: Switch(
-                  value: notifyNewBooking,
-                  onChanged: (v) {
-                    setState(() => notifyNewBooking = v);
-                    _savePreferences();
-                  },
-                ),
+              _buildSwitchTile(
+                title: 'New Booking Requests',
+                value: notifyNewBooking,
+                onChanged: (v) {
+                  setState(() => notifyNewBooking = v);
+                  _savePreferences();
+                },
               ),
-              ListTile(
-                title: const Text('Booking Confirmations'),
-                trailing: Switch(
-                  value: notifyConfirm,
-                  onChanged: (v) {
-                    setState(() => notifyConfirm = v);
-                    _savePreferences();
-                  },
-                ),
+              _buildSwitchTile(
+                title: 'Booking Confirmations',
+                value: notifyConfirm,
+                onChanged: (v) {
+                  setState(() => notifyConfirm = v);
+                  _savePreferences();
+                },
               ),
-              ListTile(
-                title: const Text('Cancellations'),
-                trailing: Switch(
-                  value: notifyCancel,
-                  onChanged: (v) {
-                    setState(() => notifyCancel = v);
-                    _savePreferences();
-                  },
-                ),
+              _buildSwitchTile(
+                title: 'Cancellations',
+                value: notifyCancel,
+                onChanged: (v) {
+                  setState(() => notifyCancel = v);
+                  _savePreferences();
+                },
               ),
             ],
           ),
@@ -591,25 +588,62 @@ class _OwnerSettingsScreenState extends State<OwnerSettingsScreen>
         Card(
           child: Column(
             children: [
-              ListTile(
-                title: const Text('Guest Messages'),
-                trailing: Switch(
-                  value: notifyGuestMsg,
-                  onChanged: (v) {
-                    setState(() => notifyGuestMsg = v);
-                    _savePreferences();
-                  },
-                ),
+              _buildSwitchTile(
+                title: 'Guest Messages',
+                value: notifyGuestMsg,
+                onChanged: (v) {
+                  setState(() => notifyGuestMsg = v);
+                  _savePreferences();
+                },
               ),
+              _buildSwitchTile(
+                title: 'Reviews',
+                value: notifyReviews,
+                onChanged: (v) {
+                  setState(() => notifyReviews = v);
+                  _savePreferences();
+                },
+              ),
+            ],
+          ),
+        ),
+        // 2FA section
+        const Divider(),
+        const Text('Security', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        Card(
+          child: Column(
+            children: [
               ListTile(
-                title: const Text('Reviews'),
-                trailing: Switch(
-                  value: notifyReviews,
-                  onChanged: (v) {
-                    setState(() => notifyReviews = v);
-                    _savePreferences();
-                  },
+                title: const Text('Enable 2FA (Phone OTP)'),
+                subtitle: Text(
+                  _verifyingPhone
+                      ? 'Verifying...'
+                      : (enable2FA ? 'Active' : 'Not enabled'),
                 ),
+                trailing: _verifyingPhone
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Switch(
+                        value: enable2FA,
+                        onChanged: (v) async {
+                          if (!v) {
+                            setState(() => enable2FA = false);
+                            await _savePreferences();
+                            return;
+                          }
+                          final phone = phoneCtrl.text.trim();
+                          if (phone.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Please enter your phone in Profile tab first')),
+                            );
+                            return;
+                          }
+                          await _startPhoneVerification(phone);
+                        },
+                      ),
               ),
             ],
           ),
@@ -619,47 +653,6 @@ class _OwnerSettingsScreenState extends State<OwnerSettingsScreen>
   }
 
 
-  Widget _buildPaymentMethodCard(Map<String, dynamic> m) {
-    final String id = m['id'] ?? '';
-    final String type = m['type'] ?? 'CARD';
-    final String last4 = id.length >= 4 ? id.substring(id.length - 4) : '----';
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      elevation: 4,
-      child: ListTile(
-        leading: Stack(
-          children: [
-            CircleAvatar(
-              child: Icon(type == 'CARD' ? Icons.credit_card : Icons.account_balance_wallet),
-            ),
-            if (defaultPaymentId == id)
-              const Positioned(
-                right: 0,
-                bottom: 0,
-                child: Icon(Icons.check_circle, color: Colors.green, size: 18),
-              ),
-          ],
-        ),
-        title: Text(type == 'CARD' ? 'Card ending in •••• $last4' : 'UPI / Wallet'),
-        subtitle: Text(type),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              icon: Icon(defaultPaymentId == id ? Icons.star : Icons.star_border),
-              color: defaultPaymentId == id ? Colors.amber : null,
-              onPressed: () => _setDefaultPayment(id),
-              tooltip: 'Set default',
-            ),
-            IconButton(
-              icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-              onPressed: () => _deletePaymentMethod(id),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   // ================= SECURITY TAB =================
   Widget _buildSecurityTab() {
@@ -667,41 +660,7 @@ class _OwnerSettingsScreenState extends State<OwnerSettingsScreen>
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Password & Security', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          TextField(controller: currentPassCtrl, obscureText: true, decoration: const InputDecoration(labelText: 'Current Password')),
-          const SizedBox(height: 8),
-          TextField(controller: newPassCtrl, obscureText: true, decoration: const InputDecoration(labelText: 'New Password')),
-          const SizedBox(height: 8),
-          TextField(controller: confirmPassCtrl, obscureText: true, decoration: const InputDecoration(labelText: 'Confirm New Password')),
-          const SizedBox(height: 12),
-          ElevatedButton(onPressed: _updatePassword, child: const Text('Update Password')),
-          const SizedBox(height: 20),
-          const Text('Two-Factor Authentication', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          ListTile(
-            title: const Text('Enable 2FA (Phone OTP)'),
-            subtitle: Text(enable2FA ? 'Active' : 'Not enabled'),
-            trailing: Switch(
-              value: enable2FA,
-              onChanged: (v) async {
-                if (!v) {
-                  setState(() => enable2FA = false);
-                  await _savePreferences();
-                  return;
-                }
-                final phone = phoneCtrl.text.trim();
-                if (phone.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Please enter your phone in Profile tab first')),
-                  );
-                  return;
-                }
-                await _startPhoneVerification(phone);
-              },
-            ),
-          ),
-        ],
+        
       ),
     );
   }

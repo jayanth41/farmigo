@@ -1,14 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import '../controllers/auth_controller.dart';
 import '../settings/theme_provider.dart';
-import '../theme/app_colors.dart';
-import 'change_password_screen.dart';
 import 'privacy_security_screen.dart';
 // MFA setup screen replaced with a placeholder; import removed to avoid direct dependency.
-import 'dart:convert';
-import 'package:http/http.dart' as http;
 // TOTP/MFA backend integration is not implemented. The UI keeps the
 // 2FA toggle but server-side enrollment/unenroll calls are currently
 // stubbed to avoid runtime errors until a provider is chosen.
@@ -28,7 +22,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String language = "English";
   String currency = "USD";
   bool _twoFactorEnabled = false;
-  bool _mfaLoading = false;
   // MFA enrollment list removed for Firebase-only migration.
 
   @override
@@ -40,8 +33,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
+        toolbarHeight: 90,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            bottom: Radius.circular(20),
+          ),
+        ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(Icons.arrow_back_ios_new),
           onPressed: () => Navigator.of(context).pop(),
         ),
         backgroundColor: const Color.fromARGB(255, 41, 70, 92),
@@ -102,9 +101,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
 
           _sectionTitle("Privacy & Security"),
-          _arrowTile("Change Password", () {
-            Navigator.push(context, MaterialPageRoute(builder: (_) => const ChangePasswordScreen()));
-          }),
           _arrowTile("Privacy & Security", () {
             Navigator.push(context, MaterialPageRoute(builder: (_) => const PrivacySecurityScreen()));
           }),
@@ -114,7 +110,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             child: SwitchListTile(
               title: Text('Two Factor Authentication', style: Theme.of(context).textTheme.bodyLarge),
-              subtitle: Text(_mfaLoading ? 'Checking...' : (_twoFactorEnabled ? 'Enabled' : 'Disabled'), style: Theme.of(context).textTheme.bodyMedium),
+              subtitle: Text(_twoFactorEnabled ? 'Enabled' : 'Disabled', style: Theme.of(context).textTheme.bodyMedium),
               value: _twoFactorEnabled,
               activeThumbColor: Theme.of(context).colorScheme.primary,
               onChanged: (v) async {
@@ -148,7 +144,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.initState();
   // MFA status is not yet implemented for the Firebase-only migration.
   // Initialize local flags to conservative defaults.
-  _mfaLoading = false;
   _twoFactorEnabled = false;
   }
 
@@ -232,16 +227,4 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // ---------------- LOGOUT ----------------
-
-  Future<void> _logout() async {
-    // Directly sign out from Firebase (AuthController also calls this).
-    await FirebaseAuth.instance.signOut();
-
-    if (!mounted) return;
-    Navigator.of(context).pushNamedAndRemoveUntil(
-      '/login',
-      (route) => false,
-    );
-  }
 }
