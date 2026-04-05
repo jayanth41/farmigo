@@ -6,16 +6,6 @@ import 'package:get/get.dart';
 import '../services/user_service.dart';
 import '../controllers/favorites_controller.dart';
 import '../controllers/location_controller.dart';
-import 'favorites_screen.dart';
-import 'bookings_screen.dart';
-import 'profile_screen.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'dart:async';
-import 'package:get/get.dart';
-import '../services/user_service.dart';
-import '../controllers/favorites_controller.dart';
-import '../controllers/location_controller.dart';
 import '../data/farmhouses_data.dart';
 import 'favorites_screen.dart';
 import 'bookings_screen.dart';
@@ -29,15 +19,15 @@ import '../widgets/app_drawer.dart';
 import '../widgets/properties_grid.dart';
 import 'filters_screen.dart';
 import 'package:provider/provider.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:audioplayers/audioplayers.dart';
+import 'package:firebase_messaging/firebase_messaging.dart' as fcm;
+import 'package:audioplayers/audioplayers.dart' as ap;
 import 'notification_screen.dart';
 import '../controllers/auth_controller.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../filters/filters_provider.dart';
 import '../controllers/app_location_controller.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:geocoding/geocoding.dart';
+import 'package:geocoding/geocoding.dart' as geo;
 import '../models/category.dart';
 import 'location_selector_screen.dart';
 import 'category_results_screen.dart';
@@ -51,6 +41,8 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
+  late final Timestamp _dealsNowTs;
+  Stream<QuerySnapshot>? _dealsStream;
   late LocationController locationController = Get.put(LocationController());
   // Subscribe to selected city changes so we can re-apply filters when user
   // chooses a different city from the LocationSelector.
@@ -116,7 +108,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   // Notification / animation state
   late final AnimationController _bellController;
   late final Animation<double> _bellAnimation;
-  late final AudioPlayer _audioPlayer;
+  late final ap.AudioPlayer _audioPlayer;
   // Local notifications plugin removed temporarily to avoid AGP/plugin
   // compatibility issues; we fall back to a simple sound alert.
   int _prevTotalUnread = 0;
@@ -126,6 +118,15 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   @override
   void initState() {
     super.initState();
+    _dealsNowTs = Timestamp.now();
+    _dealsStream = FirebaseFirestore.instance
+        .collection('properties')
+        .where('isLastMinuteDeal', isEqualTo: true)
+        .where('isActive', isEqualTo: true)
+        .where('lastMinuteValidTill', isGreaterThan: _dealsNowTs)
+        .orderBy('lastMinuteValidTill')
+        .orderBy('lastMinuteDiscount', descending: true)
+        .snapshots();
     _listenProperties();
     _searchController.addListener(_onSearchChanged);
 
@@ -155,7 +156,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     // Subscribe to global filters provider updates after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       try {
-        final provider = Provider.of<FiltersProvider>(context, listen: false);
+        final provider = context.read<FiltersProvider>();
         _filtersProvider = provider;
         provider.addListener(_onGlobalFiltersChanged);
       } catch (_) {
@@ -178,7 +179,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       if (status == AnimationStatus.completed) _bellController.reverse();
     });
 
-    _audioPlayer = AudioPlayer();
+    _audioPlayer = ap.AudioPlayer();
     _initFCM();
   }
 
@@ -286,14 +287,14 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   Future<void> _initFCM() async {
     try {
       // Request permissions (iOS)
-      await FirebaseMessaging.instance.requestPermission();
+      await fcm.FirebaseMessaging.instance.requestPermission();
 
       // Note: flutter_local_notifications plugin removed temporarily.
       // We still request FCM permission and handle messages below.
 
       // Save token for current user and log it for diagnostics
       final user = FirebaseAuth.instance.currentUser;
-      final token = await FirebaseMessaging.instance.getToken();
+      final token = await fcm.FirebaseMessaging.instance.getToken();
       debugPrint('[HomeScreen][FCM] token=$token user=${user?.uid}');
       if (user != null && token != null) {
         try {
@@ -307,7 +308,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
       // Foreground message handling: play a short sound and optionally show
       // an in-app cue (SnackBar) when a notification arrives.
-      FirebaseMessaging.onMessage.listen((message) async {
+      fcm.FirebaseMessaging.onMessage.listen((message) async {
         final notif = message.notification;
         debugPrint('[HomeScreen][FCM] onMessage received: message=${message.messageId} notification=${notif?.title}/${notif?.body} data=${message.data}');
         if (notif != null) {
@@ -324,7 +325,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         }
       });
 
-      FirebaseMessaging.onMessageOpenedApp.listen((message) {
+      fcm.FirebaseMessaging.onMessageOpenedApp.listen((message) {
         debugPrint('[HomeScreen][FCM] onMessageOpenedApp: message=${message.messageId} data=${message.data}');
         try {
           if (!mounted) return;
@@ -528,7 +529,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   Future<String?> _fetchLocationOnce() async {
     if (_locationFuture != null) return _locationFuture!;
-    _locationFuture = () async {
+    _locationFuture = (() async {
       try {
         try {
           final appLoc = Provider.of<AppLocationController>(context, listen: false);
@@ -556,7 +557,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
         final pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.best).timeout(const Duration(seconds: 10));
         try {
-          final placemarks = await placemarkFromCoordinates(pos.latitude, pos.longitude);
+          final placemarks = await geo.placemarkFromCoordinates(pos.latitude, pos.longitude);
           if (placemarks.isNotEmpty) {
             final p = placemarks.first;
             final city = p.locality ?? '';
@@ -572,7 +573,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       } catch (_) {
         return null;
       }
-    }();
+    }()) as Future<String?>;
 
     return _locationFuture!;
   }
@@ -978,7 +979,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                 Icon(
                                   Icons.location_on_outlined,
                                   size: 14,
-                                  color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.95),
+                                  color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.95),
                                 ),
                                 const SizedBox(width: 6),
                                 Builder(builder: (ctx) {
@@ -989,7 +990,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                       name,
                                       style: TextStyle(
                                         fontSize: 13,
-                                        color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.92),
+                                        color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.92),
                                         fontWeight: FontWeight.w600,
                                       ),
                                     );
@@ -997,14 +998,14 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                     return Obx(() {
                                       final name = locationController.selectedLocationName;
                                       if (locationController.selectedCity.value.isNotEmpty) {
-                                        return Text(
-                                          name,
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.92),
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        );
+                                          return Text(
+                                            name,
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.92),
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          );
                                       }
                                       return FutureBuilder<String?>(
                                         future: _fetchLocationOnce(),
@@ -1015,7 +1016,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                             val ?? 'Location unavailable',
                                             style: TextStyle(
                                               fontSize: 13,
-                                              color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.92),
+                                              color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.92),
                                               fontWeight: FontWeight.w600,
                                             ),
                                           );
@@ -1025,7 +1026,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                   }
                                 }),
                                 const SizedBox(width: 6),
-                                Icon(Icons.keyboard_arrow_down, size: 16, color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.95)),
+                                Icon(Icons.keyboard_arrow_down, size: 16, color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.95)),
                               ],
                             ),
                           ),
@@ -1242,83 +1243,72 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       },
                     ),
                     const SizedBox(height: 20),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Text('Last minute deals', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color:  Color.fromARGB(255, 41, 70, 92))),
-                    ),
-                    const SizedBox(height: 8),
-                    SizedBox(
-                      height: 160,
-                      child: StreamBuilder(
-                        // Build the query dynamically so we can apply the selected
-                        // city filter when the user has chosen a city.
-                        stream: (() {
-                          try {
-                            final selectedCity = locationController.selectedCity.value.trim();
-                            Query query = FirebaseFirestore.instance
-                                .collection('properties')
-                                .where('isLastMinuteDeal', isEqualTo: true)
-                                .where('isActive', isEqualTo: true)
-                                .where('lastMinuteValidTill', isGreaterThan: Timestamp.now());
+                    StreamBuilder<QuerySnapshot>(
+                      stream: _dealsStream ?? const Stream.empty(),
+                      builder: (context, snapshot) {
+                        if (snapshot.hasError) {
+                          return const SizedBox.shrink();
+                        }
 
-                            if (selectedCity.isNotEmpty) {
-                              // Only include deals for the selected city
-                              query = query.where('city', isEqualTo: selectedCity);
-                            }
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const SizedBox.shrink();
+                        }
 
-                            query = query.orderBy('lastMinuteValidTill').orderBy('lastMinuteDiscount', descending: true);
-                            return query.snapshots();
-                          } catch (e) {
-                            debugPrint('Failed to build deals query with city filter: $e');
-                            return FirebaseFirestore.instance
-                                .collection('properties')
-                                .where('isLastMinuteDeal', isEqualTo: true)
-                                .where('isActive', isEqualTo: true)
-                                .where('lastMinuteValidTill', isGreaterThan: Timestamp.now())
-                                .orderBy('lastMinuteValidTill')
-                                .orderBy('lastMinuteDiscount', descending: true)
-                                .snapshots();
-                          }
-                        })(),
-                        builder: (context, snapshot) {
-                          if (snapshot.connectionState == ConnectionState.waiting) {
-                            return const Center(child: CircularProgressIndicator());
-                          }
+                        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                          return const SizedBox.shrink();
+                        }
 
-                          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                            return const Center(
+                        final selectedCity = locationController.selectedCity.value.toLowerCase();
+                        final deals = snapshot.data!.docs.where((doc) {
+                          if (selectedCity.isEmpty) return true;
+                          final data = doc.data() as Map<String, dynamic>;
+                          final city = (data['city'] ?? '').toString().toLowerCase();
+                          return city.contains(selectedCity);
+                        }).toList();
+
+                        if (deals.isEmpty) {
+                          return const SizedBox.shrink();
+                        }
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 16),
+                            const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 16),
                               child: Text(
-                                'No last minute deals available',
-                                style: TextStyle(color: Colors.grey),
+                                'Last minute deals',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color.fromARGB(255, 41, 70, 92),
+                                ),
                               ),
-                            );
-                          }
+                            ),
+                            const SizedBox(height: 8),
+                            SizedBox(
+                              height: 160,
+                              child: ListView.builder(
+                                scrollDirection: Axis.horizontal,
+                                padding: const EdgeInsets.symmetric(horizontal: 12),
+                                itemCount: deals.length > 6 ? 6 : deals.length,
+                                itemBuilder: (context, index) {
+                                  final raw = deals[index].data();
+                                  final Map<String, dynamic> data =
+                                      (raw is Map<String, dynamic>) ? raw : <String, dynamic>{};
+                                  final discount = data['lastMinuteDiscount'] ?? 0;
+                                  final Timestamp? validTillTs =
+                                      (data['lastMinuteValidTill'] is Timestamp)
+                                          ? data['lastMinuteValidTill'] as Timestamp
+                                          : null;
 
-                          final deals = snapshot.data!.docs;
+                                  if (validTillTs == null) return const SizedBox.shrink();
 
-                          return ListView.builder(
-                            scrollDirection: Axis.horizontal,
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                            itemCount: deals.length > 6 ? 6 : deals.length,
-                            itemBuilder: (context, index) {
-                final raw = deals[index].data();
-                final Map<String, dynamic> data = (raw is Map<String, dynamic>) ? raw : <String, dynamic>{};
-                final discount = data['lastMinuteDiscount'] ?? 0;
-                final Timestamp? validTillTs = (data['lastMinuteValidTill'] is Timestamp)
-                  ? data['lastMinuteValidTill'] as Timestamp
-                  : null;
-
-                              if (validTillTs == null) return const SizedBox.shrink();
-
-                              return StreamBuilder<int>(
-                                stream: Stream.periodic(const Duration(seconds: 30), (x) => x),
-                                builder: (context, _) {
                                   final now = DateTime.now();
                                   final validTill = validTillTs.toDate();
                                   final remaining = validTill.difference(now);
 
                                   if (remaining.isNegative) {
-                                    // Auto hide when expired
                                     return const SizedBox.shrink();
                                   }
 
@@ -1329,7 +1319,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                     width: 260,
                                     margin: const EdgeInsets.only(right: 12),
                                     child: Card(
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(12)),
                                       child: Padding(
                                         padding: const EdgeInsets.all(10.0),
                                         child: Column(
@@ -1352,17 +1343,26 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                             ),
                                             const Spacer(),
                                             Row(
-                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.spaceBetween,
                                               children: [
                                                 Builder(builder: (_) {
-                                                  final originalPrice = (data['price'] ?? 0) as num;
-                                                  final discountVal = (data['lastMinuteDiscount'] ?? 0) as num;
+                                                  final originalPrice =
+                                                      (data['price'] ?? 0) as num;
+                                                  final discountVal =
+                                                      (data['lastMinuteDiscount'] ?? 0)
+                                                          as num;
                                                   final discountedPrice = discountVal > 0
-                                                      ? (originalPrice - (originalPrice * discountVal / 100)).round()
+                                                      ? (originalPrice -
+                                                              (originalPrice *
+                                                                  discountVal /
+                                                                  100))
+                                                          .round()
                                                       : originalPrice;
 
                                                   return Column(
-                                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment.start,
                                                     children: [
                                                       if (discountVal > 0)
                                                         Text(
@@ -1370,7 +1370,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                                           style: const TextStyle(
                                                             fontSize: 12,
                                                             color: Colors.grey,
-                                                            decoration: TextDecoration.lineThrough,
+                                                            decoration:
+                                                                TextDecoration.lineThrough,
                                                           ),
                                                         ),
                                                       Text(
@@ -1385,10 +1386,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                                 }),
                                                 if (discount > 0)
                                                   Container(
-                                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                    padding: const EdgeInsets.symmetric(
+                                                        horizontal: 8, vertical: 4),
                                                     decoration: BoxDecoration(
-                                                      color: const Color.fromARGB(255, 41, 70, 92),
-                                                      borderRadius: BorderRadius.circular(8),
+                                                      color: const Color.fromARGB(
+                                                          255, 41, 70, 92),
+                                                      borderRadius:
+                                                          BorderRadius.circular(8),
                                                     ),
                                                     child: Text(
                                                       '$discount% OFF',
@@ -1407,11 +1411,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                     ),
                                   );
                                 },
-                              );
-                            },
-                          );
-                        },
-                      ),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
                     ),
                     const SizedBox(height: 16),
                     Padding(
@@ -1690,7 +1694,7 @@ class _GuestProfileView extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.person_outline, size: 72, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
+            Icon(Icons.person_outline, size: 72, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
             const SizedBox(height: 12),
             Text('You are browsing as a guest', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 8),
