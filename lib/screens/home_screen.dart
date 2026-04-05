@@ -6,7 +6,6 @@ import 'package:get/get.dart';
 import '../services/user_service.dart';
 import '../controllers/favorites_controller.dart';
 import '../controllers/location_controller.dart';
-import '../data/farmhouses_data.dart';
 import 'favorites_screen.dart';
 import 'bookings_screen.dart';
 import 'profile_screen.dart';
@@ -14,15 +13,12 @@ import 'all_properties_screen.dart';
 import 'owner_dashboard.dart';
 import '../navigation/app_routes.dart';
 import '../widgets/category_tabs.dart';
-import '../widgets/offers_carousel.dart';
 import '../widgets/app_drawer.dart';
 import '../widgets/properties_grid.dart';
 import 'filters_screen.dart';
-import 'package:provider/provider.dart';
 import 'package:firebase_messaging/firebase_messaging.dart' as fcm;
 import 'package:audioplayers/audioplayers.dart' as ap;
 import 'notification_screen.dart';
-import '../controllers/auth_controller.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../filters/filters_provider.dart';
 import '../controllers/app_location_controller.dart';
@@ -153,16 +149,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     // Load user profile from the app's user service (Firestore) if available
     loadProfile();
 
-    // Subscribe to global filters provider updates after first frame
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      try {
-        final provider = context.read<FiltersProvider>();
-        _filtersProvider = provider;
-        provider.addListener(_onGlobalFiltersChanged);
-      } catch (_) {
-        // Provider might not be available in some contexts; ignore.
-      }
-    });
+    // Provider removed to avoid context issues in large screen
+    _filtersProvider = null;
 
     // Start animated placeholder cycling — show one phrase at a time
     _searchPlaceholder = _searchPlaceholders.first;
@@ -532,7 +520,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     _locationFuture = (() async {
       try {
         try {
-          final appLoc = Provider.of<AppLocationController>(context, listen: false);
+          final appLoc = Get.find<AppLocationController>();
           await appLoc.initialize();
           final name = appLoc.locationName;
           if (name.isNotEmpty && name != 'Fetching location...' && name != 'Location unavailable') {
@@ -624,7 +612,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         ElevatedButton(
                           onPressed: () {
                             try {
-                              final locCtrl = Provider.of<AppLocationController>(ctx, listen: false);
+                              final locCtrl = Get.find<AppLocationController>();
                               locCtrl.setLocationName(ctl.text.trim());
                             } catch (_) {}
                             Navigator.of(bc).pop();
@@ -984,7 +972,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                 const SizedBox(width: 6),
                                 Builder(builder: (ctx) {
                                   try {
-                                    final appLoc = Provider.of<AppLocationController>(ctx);
+                                    final appLoc = Get.find<AppLocationController>();
                                     final name = appLoc.locationName;
                                     return Text(
                                       name,
