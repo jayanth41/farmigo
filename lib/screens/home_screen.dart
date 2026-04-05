@@ -57,9 +57,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   int _placeholderIndex = 0;
   String _searchPlaceholder = 'Search farmhouses';
   Timer? _placeholderTimer;
+  Timer? _searchDebounce;
 
-  // Bottom nav temporary border visibility
-  bool _showBottomBorder = false;
+  // Bottom nav timer for bottom border transitions
   Timer? _bottomBorderTimer;
   late FavoritesController favoritesController;
   Map<String, dynamic>? _profile;
@@ -260,15 +260,18 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
       if (!mounted) return;
 
+      final newList = List<Map<String, dynamic>>.from(data);
+
+      // Avoid unnecessary rebuild if data length hasn’t changed
+      if (_allProperties.length == newList.length) {
+        return;
+      }
+
       setState(() {
-        _allProperties = List<Map<String, dynamic>>.from(data);
-        // Initialize filtered list to all properties by default so "Featured"
-        // sections show results when no filters are applied.
-        _filteredFarmhouses = List<Map<String, dynamic>>.from(_allProperties);
+        _allProperties = newList;
       });
-      debugPrint('Loaded properties: ${_allProperties.length}');
+
       _applyFilters();
-      debugPrint('Filtered properties after load: ${_filteredFarmhouses.length}');
     });
   }
 
@@ -438,6 +441,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     } catch (_) {}
     _placeholderTimer?.cancel();
     _bottomBorderTimer?.cancel();
+    _searchDebounce?.cancel();
     _bellController.dispose();
     try {
       _audioPlayer.dispose();
@@ -513,7 +517,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     _applyFilters();
   }
 
-  void _onSearchChanged() => _applyFilters();
+  void _onSearchChanged() {
+  _searchDebounce?.cancel();
+
+  _searchDebounce = Timer(const Duration(milliseconds: 400), () {
+    _applyFilters();
+  });
+}
 
   Future<String?> _fetchLocationOnce() async {
     if (_locationFuture != null) return _locationFuture!;
@@ -566,71 +576,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     return _locationFuture!;
   }
 
-  void _showLocationSheet(BuildContext ctx) {
-    showModalBottomSheet(
-      context: ctx,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
-      ),
-      builder: (bc) {
-        final TextEditingController ctl = TextEditingController();
-        return Padding(
-          padding: EdgeInsets.only(bottom: MediaQuery.of(bc).viewInsets.bottom),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: FutureBuilder<String?>(
-              future: _fetchLocationOnce(),
-              builder: (context, snap) {
-                final loading = snap.connectionState == ConnectionState.waiting;
-                final detected = snap.data;
-                if (detected != null && detected.isNotEmpty) ctl.text = detected;
-                return Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Edit location', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 12),
-                    if (loading) const Text('Fetching location...')
-                    else if (detected == 'Location disabled') const Text('Location disabled')
-                    else if (detected == null) const Text('Could not detect location')
-                    else const SizedBox.shrink(),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: ctl,
-                      decoration: const InputDecoration(
-                        border: OutlineInputBorder(),
-                        hintText: 'Enter location name or coordinates',
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        TextButton(onPressed: () => Navigator.of(bc).pop(), child: const Text('Cancel')),
-                        const SizedBox(width: 8),
-                        ElevatedButton(
-                          onPressed: () {
-                            try {
-                              final locCtrl = Get.find<AppLocationController>();
-                              locCtrl.setLocationName(ctl.text.trim());
-                            } catch (_) {}
-                            Navigator.of(bc).pop();
-                            ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Location saved')));
-                          },
-                          child: const Text('Save'),
-                        )
-                      ],
-                    ),
-                  ],
-                );
-              },
-            ),
-          ),
-        );
-      },
-    );
-  }
+  // _showLocationSheet removed because it was unused; use _openLocationSelector instead.
 
   void _openLocationSelector(BuildContext ctx) {
     showModalBottomSheet(
@@ -696,135 +642,150 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     final selectedState = _selectedState.toLowerCase();
     final selectedCategory = _selectedCategory.toLowerCase();
 
-    setState(() {
-      _filteredFarmhouses = _allProperties.where((farm) {
-        debugPrint('HomeScreen: total properties loaded = ${_allProperties.length}');
-        final name = (farm['propertyName'] as String?)?.toLowerCase() ?? '';
-        final location = (farm['city'] as String?)?.toLowerCase() ?? '';
-        // Selected city from LocationController
-        String selectedCity = '';
-        try {
-          selectedCity = locationController.selectedCity.value.toLowerCase();
-        } catch (_) {}
-        // If a city is selected, only show properties from that city
-        if (selectedCity.isNotEmpty && !location.contains(selectedCity)) {
-          return false;
-        }
-        final price = (farm['pricePerNight'] is num)
-            ? (farm['pricePerNight'] as num).toDouble()
-            : 0.0;
-        double distance = 0;
-        try {
-          if (farm['distance'] != null) {
-            final raw = farm['distance'].toString();
-            distance = double.tryParse(raw.split(' ').first) ?? 0;
-          }
-        } catch (_) {
-          distance = 0;
-        }
+    final result = _allProperties.where((farm) {
+      final name = (farm['propertyName'] as String?)?.toLowerCase() ?? '';
+      final location = (farm['city'] as String?)?.toLowerCase() ?? '';
 
-        bool matchesSearch = true;
-        if (query.isNotEmpty) {
-          matchesSearch = name.contains(query) || location.contains(query);
-        }
+      String selectedCity = '';
+      try {
+        selectedCity = locationController.selectedCity.value.toLowerCase();
+      } catch (_) {}
 
-        if (!(price >= _priceRange.start && price <= _priceRange.end)) {
-          return false;
-        }
-        if (distance > _maxDistance) return false;
-        if (_luxuryOnly && price < 3500) return false;
-
-        final rating = (farm['rating'] is double) ? (farm['rating'] as double) : 0.0;
-        if (rating < _minRating) return false;
-
-        List<String> farmAmenities = [];
-        try {
-          if (farm['amenities'] is Map) {
-            final map = Map<String, dynamic>.from(farm['amenities']);
-            farmAmenities = map.entries
-                .where((e) => e.value == true)
-                .map((e) => e.key)
-                .toList();
-          } else if (farm['amenities'] is List) {
-            farmAmenities = (farm['amenities'] as List).cast<String>();
-          }
-        } catch (_) {
-          farmAmenities = [];
-        }
-        for (final entry in _amenities.entries) {
-          if (entry.value && !farmAmenities.contains(entry.key)) {
-            return false;
-          }
-        }
-
-        final farmPropertyType =
-            (farm['propertyType'] ?? farm['property_type'] ?? '').toString().toLowerCase();
-        bool propertyTypeMatches = true;
-        bool anyPropertyTypeSelected = _propertyTypes.values.any((v) => v);
-
-        if (anyPropertyTypeSelected) {
-          propertyTypeMatches = _propertyTypes.entries.any((entry) =>
-              entry.value && farmPropertyType.contains(entry.key.toLowerCase()));
-        }
-        if (!propertyTypeMatches) return false;
-
-        final farmState = (farm['state'] as String?)?.toLowerCase() ?? '';
-        final farmCategory = (farm['category'] as String?)?.toLowerCase() ?? '';
-
-        if (selectedState.isNotEmpty &&
-            selectedState != 'all' &&
-            farmState != selectedState) {
-          return false;
-        }
-        if (selectedCategory.isNotEmpty &&
-            selectedCategory != 'all' &&
-            farmCategory != selectedCategory) {
-          return false;
-        }
-
-        debugPrint('HomeScreen: property passed filters -> ${farm['propertyName']}');
-        return matchesSearch;
-      }).toList();
-
-      switch (_sortOption) {
-        case 'Price: Low to High':
-          _filteredFarmhouses.sort((a, b) =>
-              ((a['pricePerNight'] is num ? (a['pricePerNight'] as num).toDouble() : 0.0))
-                  .compareTo(
-                      (b['pricePerNight'] is num ? (b['pricePerNight'] as num).toDouble() : 0.0)));
-          break;
-        case 'Price: High to Low':
-          _filteredFarmhouses.sort((a, b) =>
-              ((b['pricePerNight'] is num ? (b['pricePerNight'] as num).toDouble() : 0.0))
-                  .compareTo(
-                      (a['pricePerNight'] is num ? (a['pricePerNight'] as num).toDouble() : 0.0)));
-          break;
-        case 'Distance':
-          double dist(Map<String, dynamic> f) {
-            double distance = 0;
-            try {
-              if (f['distance'] != null) {
-                final raw = f['distance'].toString();
-                distance = double.tryParse(raw.split(' ').first) ?? 0;
-              }
-            } catch (_) {
-              distance = 0;
-            }
-            return distance;
-          }
-          _filteredFarmhouses.sort((a, b) => dist(a).compareTo(dist(b)));
-          break;
-        case 'Rating':
-          double r(Map<String, dynamic> f) =>
-              (f['rating'] is double) ? (f['rating'] as double) : 0.0;
-          _filteredFarmhouses.sort((a, b) => r(b).compareTo(r(a)));
-          break;
-        case 'Relevance':
-        default:
-          break;
+      if (selectedCity.isNotEmpty && !location.contains(selectedCity)) {
+        return false;
       }
+
+      final price = (farm['pricePerNight'] is num)
+          ? (farm['pricePerNight'] as num).toDouble()
+          : 0.0;
+
+      double distance = 0;
+      try {
+        if (farm['distance'] != null) {
+          final raw = farm['distance'].toString();
+          distance = double.tryParse(raw.split(' ').first) ?? 0;
+        }
+      } catch (_) {}
+
+      if (query.isNotEmpty &&
+          !name.contains(query) &&
+          !location.contains(query)) {
+        return false;
+      }
+
+      if (!(price >= _priceRange.start && price <= _priceRange.end)) {
+        return false;
+      }
+
+      if (distance > _maxDistance) return false;
+      if (_luxuryOnly && price < 3500) return false;
+
+      final rating =
+          (farm['rating'] is double) ? (farm['rating'] as double) : 0.0;
+      if (rating < _minRating) return false;
+
+      List<String> farmAmenities = [];
+      try {
+        if (farm['amenities'] is Map) {
+          final map = Map<String, dynamic>.from(farm['amenities']);
+          farmAmenities = map.entries
+              .where((e) => e.value == true)
+              .map((e) => e.key)
+              .toList();
+        } else if (farm['amenities'] is List) {
+          farmAmenities = (farm['amenities'] as List).cast<String>();
+        }
+      } catch (_) {}
+
+      for (final entry in _amenities.entries) {
+        if (entry.value && !farmAmenities.contains(entry.key)) {
+          return false;
+        }
+      }
+
+      final farmPropertyType =
+          (farm['propertyType'] ?? farm['property_type'] ?? '')
+              .toString()
+              .toLowerCase();
+
+      bool propertyTypeMatches = true;
+      bool anyPropertyTypeSelected = _propertyTypes.values.any((v) => v);
+
+      if (anyPropertyTypeSelected) {
+        propertyTypeMatches = _propertyTypes.entries.any((entry) =>
+            entry.value &&
+            farmPropertyType.contains(entry.key.toLowerCase()));
+      }
+
+      if (!propertyTypeMatches) return false;
+
+      final farmState =
+          (farm['state'] as String?)?.toLowerCase() ?? '';
+      final farmCategory =
+          (farm['category'] as String?)?.toLowerCase() ?? '';
+
+      if (selectedState.isNotEmpty &&
+          selectedState != 'all' &&
+          farmState != selectedState) {
+        return false;
+      }
+
+      if (selectedCategory.isNotEmpty &&
+          selectedCategory != 'all' &&
+          farmCategory != selectedCategory) {
+        return false;
+      }
+
+      return true;
+    }).toList();
+
+    switch (_sortOption) {
+      case 'Price: Low to High':
+        result.sort((a, b) =>
+            ((a['pricePerNight'] is num
+                    ? (a['pricePerNight'] as num).toDouble()
+                    : 0.0))
+                .compareTo((b['pricePerNight'] is num
+                    ? (b['pricePerNight'] as num).toDouble()
+                    : 0.0)));
+        break;
+      case 'Price: High to Low':
+        result.sort((a, b) =>
+            ((b['pricePerNight'] is num
+                    ? (b['pricePerNight'] as num).toDouble()
+                    : 0.0))
+                .compareTo((a['pricePerNight'] is num
+                    ? (a['pricePerNight'] as num).toDouble()
+                    : 0.0)));
+        break;
+      case 'Distance':
+        double dist(Map<String, dynamic> f) {
+          double d = 0;
+          try {
+            if (f['distance'] != null) {
+              final raw = f['distance'].toString();
+              d = double.tryParse(raw.split(' ').first) ?? 0;
+            }
+          } catch (_) {}
+          return d;
+        }
+        result.sort((a, b) => dist(a).compareTo(dist(b)));
+        break;
+      case 'Rating':
+        double r(Map<String, dynamic> f) =>
+            (f['rating'] is double) ? (f['rating'] as double) : 0.0;
+        result.sort((a, b) => r(b).compareTo(r(a)));
+        break;
+      case 'Relevance':
+      default:
+        break;
+    }
+
+    if (!mounted) return;
+
+    setState(() {
+      _filteredFarmhouses = result;
     });
-    debugPrint('Filtered properties (post _applyFilters): ${_filteredFarmhouses.length}');
   }
 
   @override
@@ -1609,19 +1570,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     );
   }
 
-  Widget _navIcon(IconData iconData, int index) {
-    final selected = _selectedIndex == index;
-    final bgColor = selected ? Theme.of(context).colorScheme.primary : Colors.transparent;
-    final iconColor = selected ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.onSurface.withOpacity(0.7);
-    return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: bgColor,
-        shape: BoxShape.circle,
-      ),
-      child: Icon(iconData, size: 20, color: iconColor),
-    );
-  }
+  // _navIcon removed: unused helper that previously rendered a circular icon background.
+  // The bottom navigation now uses _buildNavItem which handles selected styling.
 
   Widget _buildNavItem(IconData icon, String label, int index) {
     final isSelected = _selectedIndex == index;
