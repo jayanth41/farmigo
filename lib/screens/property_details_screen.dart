@@ -6,6 +6,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart' as maps;
 import 'package:intl/intl.dart' as intl;
 import 'package:image_picker/image_picker.dart' as picker;
 import 'package:firebase_storage/firebase_storage.dart' as storage;
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/property_model.dart';
 import '../services/property_service.dart';
@@ -187,6 +188,10 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                   _buildTitleSection(),
                   const SizedBox(height: 16),
 
+                  // Google Map (moved up)
+                  _buildMapSection(),
+                  const SizedBox(height: 16),
+
                   // Chat with Owner Button
                   _buildChatButton(),
                   const SizedBox(height: 16),
@@ -217,10 +222,6 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
 
                   // 9. Description
                   _buildDescriptionSection(),
-                  const SizedBox(height: 24),
-
-                  // 10. Google Map
-                  _buildMapSection(),
                   const SizedBox(height: 24),
 
                   // 11. Nearby Attractions
@@ -336,7 +337,17 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
             fontWeight: FontWeight.bold,
           ),
         ),
+        const SizedBox(height: 6),
+        // Location moved up
+        Text(
+          '${property.city}, ${property.state}',
+          style: TextStyle(
+            fontSize: 14,
+            color: Colors.grey.shade600,
+          ),
+        ),
         const SizedBox(height: 8),
+        // Rating row
         Row(
           children: [
             const Icon(Icons.star, color: Colors.amber, size: 20),
@@ -357,14 +368,6 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
               ),
             ),
           ],
-        ),
-        const SizedBox(height: 8),
-        Text(
-          '${property.city}, ${property.state}',
-          style: TextStyle(
-            fontSize: 14,
-            color: Colors.grey.shade600,
-          ),
         ),
       ],
     );
@@ -570,19 +573,24 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
                         reason.$2,
                         color: Colors.blue,
-                        size: 28,
+                        size: 24,
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        reason.$1,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
+                      const SizedBox(height: 6),
+                      Flexible(
+                        child: Text(
+                          reason.$1,
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
                     ],
@@ -676,22 +684,33 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: Colors.blue),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 12,
-              color: Colors.grey,
+          Icon(icon, color: Colors.blue, size: 20),
+          const SizedBox(height: 6),
+          Flexible(
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 11,
+                color: Colors.grey,
+              ),
             ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            time,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
+          const SizedBox(height: 2),
+          Flexible(
+            child: Text(
+              time,
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
@@ -777,24 +796,99 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
           ),
         ),
         const SizedBox(height: 12),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: SizedBox(
-            height: 300,
-            child: maps.GoogleMap(
-              initialCameraPosition: maps.CameraPosition(
-                target: maps.LatLng(property.latitude, property.longitude),
-                zoom: 14,
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
               ),
-              markers: {
-                maps.Marker(
-                  markerId: const maps.MarkerId('propertyLocation'),
-                  position: maps.LatLng(property.latitude, property.longitude),
-                  infoWindow: maps.InfoWindow(title: property.name),
-                ),
-              },
-              myLocationButtonEnabled: false,
-              zoomControlsEnabled: false,
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: SizedBox(
+              height: 260,
+              child: Stack(
+                children: [
+                  maps.GoogleMap(
+                    initialCameraPosition: maps.CameraPosition(
+                      target: maps.LatLng(property.latitude, property.longitude),
+                      zoom: 15,
+                    ),
+                    markers: {
+                      maps.Marker(
+                        markerId: const maps.MarkerId('propertyLocation'),
+                        position: maps.LatLng(property.latitude, property.longitude),
+                        infoWindow: maps.InfoWindow(title: property.name),
+                      ),
+                    },
+                    zoomControlsEnabled: false,
+                    myLocationButtonEnabled: false,
+                    mapToolbarEnabled: false,
+                    compassEnabled: false,
+                  ),
+
+                  // Gradient overlay for premium feel
+                  Positioned.fill(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.black.withOpacity(0.4),
+                            Colors.transparent,
+                            Colors.black.withOpacity(0.3),
+                          ],
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // Location name bottom card
+                  Positioned(
+                    bottom: 12,
+                    left: 12,
+                    right: 12,
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.location_on, color: Colors.red),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              '${property.city}, ${property.state}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () {
+                              final lat = property.latitude;
+                              final lng = property.longitude;
+                              final url =
+                                  'https://www.google.com/maps/search/?api=1&query=$lat,$lng';
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Opening maps...')),
+                              );
+                            },
+                            child: const Icon(Icons.open_in_new),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -1231,13 +1325,50 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                   // Upload all images in parallel
                   if (selectedImages.isNotEmpty) {
                     final uploadFutures = selectedImages.map((image) async {
+                      final filePath = image.path;
+                      if (filePath.isEmpty) return '';
+
+                      // 🔥 Compress image
+                      final compressedPath = '${filePath}_compressed.jpg';
+                      final compressedFile = await FlutterImageCompress.compressAndGetFile(
+                        filePath,
+                        compressedPath,
+                        quality: 70,
+                      );
+
+                      final fileToUpload = compressedFile != null ? File(compressedFile.path) : File(filePath);
+
                       final ref = storage.FirebaseStorage.instance
                           .ref()
                           .child('reviews/${widget.propertyId}/${DateTime.now().millisecondsSinceEpoch}_${image.name}');
-                      await ref.putFile(File(image.path));
-                      return await ref.getDownloadURL();
+
+                      int attempt = 0;
+
+                      while (attempt < 2) {
+                        try {
+                          final uploadTask = ref.putFile(fileToUpload);
+
+                          // 🔄 Progress tracking
+                          uploadTask.snapshotEvents.listen((event) {
+                            final progress = (event.bytesTransferred / event.totalBytes) * 100;
+                            debugPrint('Upload progress: ${progress.toStringAsFixed(0)}%');
+                          });
+
+                          await uploadTask;
+                          return await ref.getDownloadURL();
+                        } catch (e) {
+                          attempt++;
+                          if (attempt >= 2) {
+                            debugPrint('Upload failed after retry: $e');
+                            return '';
+                          }
+                        }
+                      }
+                      return '';
                     });
-                    imageUrls = await Future.wait(uploadFutures);
+                    imageUrls = (await Future.wait(uploadFutures))
+                        .where((e) => e.isNotEmpty)
+                        .toList();
                   }
                   await _submitReview(
                     rating: rating,

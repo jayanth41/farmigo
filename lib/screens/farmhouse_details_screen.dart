@@ -294,12 +294,65 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                   ),
                 ),
                 Expanded(
-                  child: Image.network(
-                    "https://maps.googleapis.com/maps/api/staticmap?center=$query&zoom=13&size=600x400&markers=color:red|$query",
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => const Center(
-                      child: Text("Map preview not available"),
-                    ),
+                  child: Stack(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.network(
+                          "https://maps.googleapis.com/maps/api/staticmap?center=$query&zoom=14&size=600x400&markers=color:red|$query",
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          errorBuilder: (_, __, ___) => const Center(
+                            child: Text("Map preview not available"),
+                          ),
+                        ),
+                      ),
+                      // Gradient overlay
+                      Positioned.fill(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            gradient: LinearGradient(
+                              colors: [
+                                Colors.black.withOpacity(0.3),
+                                Colors.transparent,
+                                Colors.black.withOpacity(0.2),
+                              ],
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                            ),
+                          ),
+                        ),
+                      ),
+                      // Location label
+                      Positioned(
+                        bottom: 12,
+                        left: 12,
+                        right: 12,
+                        child: Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.location_on, color: Colors.red, size: 18),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  widget.location,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 Padding(
@@ -647,6 +700,50 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                       color: Colors.black,
                     ),
                   ),
+                  const SizedBox(height: 8),
+
+                  // Location (moved up)
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Padding(
+                        padding: EdgeInsets.only(top: 2),
+                        child: Icon(
+                          Icons.location_on,
+                          size: 18,
+                          color: Colors.red,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            GestureDetector(
+                              onTap: _openGoogleMaps,
+                              child: Text(
+                                widget.location,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.black87,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              widget.distance,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+
                   const SizedBox(height: 12),
 
                   // Property Timings section
@@ -704,47 +801,8 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                       ],
                     ),
                   ),
-
                   const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.location_on,
-                        size: 20,
-                        color: Colors.red,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            GestureDetector(
-                              onTap: _openGoogleMaps,
-                              child: Text(
-                                widget.location,
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.blue,
-                                  fontWeight: FontWeight.w600,
-                                  decoration: TextDecoration.underline,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              widget.distance,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
+                  // Location row moved above, so remove this block.
 
                   // Owner / Host Info Card
                   Container(
@@ -767,7 +825,7 @@ class _FarmhouseDetailsScreenState extends State<FarmhouseDetailsScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                "Hosted by Owner",
+                                "Managed by",
                                 style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,
