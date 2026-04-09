@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
+import 'package:firebase_core/firebase_core.dart';
+import '../firebase_options.dart';
 import 'login_screen.dart';
 import '../core/mode_router.dart';
 // Note: keep imports minimal for the splash's one-shot auth check.
@@ -35,43 +37,49 @@ class _SplashScreenState extends State<SplashScreen>
 
     // Start animation
     _controller.forward();
-    _goNext();
+    _initializeAndNavigate();
   }
 
-  /// One-time navigation decision after the splash.
-  /// RULE: Always go to HOME after splash.
-  /// All owner/role decisions now happen ONLY when the user taps "Owner Dashboard".
-  Future<void> _goNext() async {
-    await Future.delayed(const Duration(seconds: 2));
+  Future<void> _initializeAndNavigate() async {
+    // Keep a minimal splash duration for UX
+    await Future.delayed(const Duration(milliseconds: 1200));
+
     if (!mounted) return;
 
-    final fb.User? user = fb.FirebaseAuth.instance.currentUser;
+    fb.User? user;
+
+    // Ensure Firebase is initialized before touching FirebaseAuth.
+    try {
+      if (Firebase.apps.isEmpty) {
+        await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform).timeout(const Duration(seconds: 3));
+      }
+    } catch (e) {
+      // If initialization fails or times out, proceed with null user —
+      // the app will navigate to login. We log for debugging.
+      debugPrint('[Splash] Firebase init failed or timed out: $e');
+    }
 
     try {
-      if (user == null) {
-        // Not signed in -> go to Login
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const LoginScreen()),
-        );
-        return;
-      }
+      user = fb.FirebaseAuth.instance.currentUser;
+    } catch (e) {
+      debugPrint('[Splash] FirebaseAuth access failed: $e');
+      user = null;
+    }
 
-      // Signed in -> route based on activeRole using ModeRouter
+    if (!mounted) return;
+
+    if (user == null) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const ModeRouter()),
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
       );
-    } catch (e) {
-      debugPrint('[SplashScreen] Navigation error: $e');
-      if (mounted) {
-        // Safe fallback: still route through ModeRouter
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const ModeRouter()),
-        );
-      }
+      return;
     }
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const ModeRouter()),
+    );
   }
 
 
@@ -100,24 +108,24 @@ class _SplashScreenState extends State<SplashScreen>
                   opacity: _fadeAnimation,
                   child: RichText(
                     textAlign: TextAlign.center,
-                    text: const TextSpan(
+                    text: TextSpan(
                       children: [
                         TextSpan(
                           text: 'SKY',
                           style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 48,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 3.0,
+                            color: Theme.of(context).colorScheme.onPrimary,
+                            fontSize: 40,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.2,
                           ),
                         ),
-                        TextSpan(
+                        const TextSpan(
                           text: 'BASE',
                           style: TextStyle(
-                            color: Color(0xFFD6D6D6),
-                            fontSize: 48,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 3.0,
+                            color: Color(0xFFB9C5CC),
+                            fontSize: 40,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.2,
                           ),
                         ),
                       ],
@@ -125,7 +133,7 @@ class _SplashScreenState extends State<SplashScreen>
                   ),
                 ),
 
-                const SizedBox(height: 14),
+                const SizedBox(height: 28),
 
                 const Text(
                   'Stay Above Expectations.',

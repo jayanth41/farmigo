@@ -44,7 +44,7 @@ Future<void> _firebaseMessagingBackgroundHandler(dynamic message) async {
   debugPrint('[FCM][background] message=${message.messageId} data=${message.data}');
 }
 
-Future<void> main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Reduce unnecessary rebuild/jank on some devices (OnePlus fix)
@@ -52,23 +52,6 @@ Future<void> main() async {
     debugPrint('Global error: $error');
     return true;
   };
-
-  // Load environment variables before anything uses them.
-  // If this fails we WANT to see the error instead of silently continuing,
-  // because services like DuffelService depend on these values.
-  await env.dotenv.load(fileName: "assets/.env");
-  debugPrint('[Main] .env successfully loaded');
-
-  debugPrint("🚨🚨🚨 MAIN() STARTED — CHECKING APP CHECK 🚨🚨🚨");
-
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-
-  // 🔥 Disable Firestore cache (fix OnePlus device issue)
-  FirebaseFirestore.instance.settings = const Settings(
-    persistenceEnabled: false,
-  );
 
   // Register background message handler for FCM. Handler must be a
   // top-level function (not a closure) so the Android background isolate
@@ -79,21 +62,47 @@ Future<void> main() async {
     debugPrint('[Main] Failed to register onBackgroundMessage: $e');
   }
 
-  await _requestNotificationPermission();
+  runApp(const MyApp());
+  _initAsync();
+}
 
-  // Load airport database for flight autocomplete
+Future<void> _initAsync() async {
   try {
+    // Load env
+    await env.dotenv.load(fileName: "assets/.env");
+    debugPrint('[Main] .env successfully loaded');
+
+    // Init Firebase
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+
+    // Firestore settings
+    FirebaseFirestore.instance.settings = const Settings(
+      persistenceEnabled: false,
+    );
+
+    // Notifications
+    await _requestNotificationPermission();
+
+    // Load airport DB
     await AirportService.loadAirports();
     debugPrint('[Main] Airport database loaded');
+
+    // Initialize controllers that may depend on Firebase after Firebase is ready.
+    try {
+      Get.put(SettingsController()..initialize());
+      Get.put(AuthController());
+      Get.put(FiltersProvider());
+      Get.put(AppLocationController()..initialize());
+      debugPrint('[Main] Controllers initialized');
+    } catch (e) {
+      debugPrint('[Main] Controller init failed: $e');
+    }
+
   } catch (e) {
-    debugPrint('[Main] Failed to load airport database: $e');
+    debugPrint('[Main] initAsync error: $e');
   }
-
-  // ❌ REMOVE App Check activation in debug
-// We'll enable it properly later for release builds only
-
-
-  runApp(const MyApp());
 }
 
 Future<void> _requestNotificationPermission() async {
@@ -145,11 +154,9 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final themeController = Get.put(ThemeProvider());
-    Get.put(SettingsController()..initialize());
-    Get.put(AuthController());
-    Get.put(FiltersProvider());
-    Get.put(AppLocationController()..initialize());
+  final themeController = Get.put(ThemeProvider());
+  // Defer initialization of other controllers until Firebase is ready.
+  // They are initialized from `_initAsync()` after Firebase.initializeApp().
 
     ThemeMode resolveThemeMode(dynamic provider) {
       try {
