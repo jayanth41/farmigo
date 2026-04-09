@@ -194,10 +194,10 @@ class _CategoryGridState extends State<CategoryGrid> {
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               decoration: BoxDecoration(
-                color: isSelected ? AppColors.primary : Colors.white,
+                color: isSelected ? const Color.fromARGB(255, 41, 70, 92) : Colors.white,
                 borderRadius: BorderRadius.circular(18),
                 border: Border.all(
-                  color: AppColors.primary.withOpacity(0.2),
+                  color: const Color.fromARGB(255, 41, 70, 92),
                   width: 1,
                 ),
                 boxShadow: [
@@ -222,7 +222,7 @@ class _CategoryGridState extends State<CategoryGrid> {
                       size: 26,
                       color: isSelected
                           ? Theme.of(context).colorScheme.onPrimary
-                          : AppColors.primary,
+                          : const Color.fromARGB(255, 41, 70, 92),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -234,7 +234,7 @@ class _CategoryGridState extends State<CategoryGrid> {
                       fontSize: 13,
                       color: isSelected
                           ? Theme.of(context).colorScheme.onPrimary
-                          : AppColors.primary,
+                          : const Color.fromARGB(255, 41, 70, 92),
                     ),
                   ),
                 ],

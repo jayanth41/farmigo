@@ -869,10 +869,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           // reduced vertical padding to make header more compact while still
           // covering the status bar area
           padding: EdgeInsets.fromLTRB(
-            16,
-            MediaQuery.of(context).padding.top + 4,
-            16,
-            8,
+            12,
+            MediaQuery.of(context).padding.top,
+            12,
+            6,
           ),
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -898,7 +898,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     ),
                   ),
                   const SizedBox(width: 6),
-                  const SizedBox(width: 4),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -916,7 +915,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                             ],
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 2),
                         InkWell(
                           onTap: () => _openLocationSelector(context),
                           borderRadius: BorderRadius.circular(6),
@@ -1072,7 +1071,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   ),
                 ],
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 3),
               Builder(builder: (ctx) {
                 final cs = Theme.of(ctx).colorScheme;
                 return Padding(
@@ -1152,10 +1151,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Hello 👋 ${_profile != null && _profile!['name'] != null ? _profile!['name'] : 'Guest'}',
+                            'Hello, ${_profile != null && _profile!['name'] != null ? _profile!['name'] : 'Guest'} 👋',
                             style: Theme.of(context).textTheme.bodyLarge,
                           ),
-                          const SizedBox(height: 4),
+                        const SizedBox(height: 2),
                           Text(
                             'Where would you like to go...?',
                             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
@@ -1279,7 +1278,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                               data['propertyName'] ?? 'Property',
                                               style: const TextStyle(fontWeight: FontWeight.bold),
                                             ),
-                                            const SizedBox(height: 6),
+              const SizedBox(height: 3),
                                             Text(data['location'] ?? ''),
                                             const SizedBox(height: 6),
                                             Text(
@@ -1369,19 +1368,15 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     const SizedBox(height: 16),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Text('Recommended', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color.fromARGB(255, 41, 70, 92))),
-                    ),
-                    const SizedBox(height: 8),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                       child: Row(
                         children: [
                           const Expanded(
                             child: Text(
-                              "Featured Properties",
+                              'Recommended',
                               style: TextStyle(
                                 fontSize: 18,
-                                fontWeight: FontWeight.w500,
+                                fontWeight: FontWeight.w600,
+                                color: Color.fromARGB(255, 41, 70, 92),
                               ),
                             ),
                           ),
@@ -1410,7 +1405,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                         _maxDistance = filters['maxDistance'] ?? _maxDistance;
                                         _luxuryOnly = filters['luxuryOnly'] ?? _luxuryOnly;
                                         _minRating = filters['minRating'] ?? _minRating;
-                                        // Accept both old and new key names for amenities/property types
+
                                         final Map<String, dynamic> amenitiesFromCallback = Map<String, dynamic>.from(
                                             (filters['amenities'] ?? filters['houseAmenities'] ?? filters['house_amenities'] ?? <String, dynamic>{}) as Map);
                                         final Map<String, dynamic> propertyTypesFromCallback = Map<String, dynamic>.from(
@@ -1464,6 +1459,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         ],
                       ),
                     ),
+                    const SizedBox(height: 8),
                     PropertiesGrid(properties: _filteredFarmhouses),
 
                     const SizedBox(height: 12),
