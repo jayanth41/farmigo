@@ -71,8 +71,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   Future<String?>? _locationFuture;
 
   // Location & Category selectors
-  final String _selectedState = 'all';
-  final String _selectedCategory = 'All';
+  String _selectedState = 'all';
+  String _selectedCategory = 'All';
 
   // Advanced filter state (shared with filters screen)
   RangeValues _priceRange = const RangeValues(0, 10000);

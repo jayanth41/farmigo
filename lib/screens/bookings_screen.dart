@@ -22,18 +22,12 @@ class _BookingsScreenState extends State<BookingsScreen> {
   void initState() {
     super.initState();
     bookingsController = Get.put(BookingsController());
-    bookingsController.fetchBookings();
+    bookingsController.fetchBookings(status: 'upcoming');
+    _filterStatus = 'upcoming';
   }
 
   List get filteredBookings {
-    if (_filterStatus == 'all') {
-      return bookingsController.bookings;
-    }
-    return bookingsController.bookings.where((booking){
-       final status =
-        (booking['status'] ?? '').toString().toLowerCase();
-    return status == _filterStatus;
-  }).toList();
+    return bookingsController.bookings;
   }
 
   @override
@@ -96,15 +90,21 @@ class _BookingsScreenState extends State<BookingsScreen> {
                       unselectedLabelColor: Colors.grey,
                       indicatorColor: const Color.fromARGB(255, 41, 70, 92),
                       onTap: (index) {
+                        String status;
+                        if (index == 0) {
+                          status = 'upcoming';
+                        } else if (index == 1) {
+                          status = 'completed';
+                        } else {
+                          status = 'cancelled';
+                        }
+
                         setState(() {
-                          if (index == 0) {
-                            _filterStatus = 'upcoming';
-                          } else if (index == 1) {
-                            _filterStatus = 'completed';
-                          } else {
-                            _filterStatus = 'cancelled';
-                          }
+                          _filterStatus = status;
                         });
+
+                        // 🔥 Fetch from backend based on tab
+                        bookingsController.fetchBookings(status: status);
                       },
                       tabs: const [
                         Tab(text: "Upcoming"),
@@ -117,66 +117,85 @@ class _BookingsScreenState extends State<BookingsScreen> {
               ),
             ),
 
-            // Bookings List or Empty State
+            // Bookings List or Empty State with Pull-to-Refresh
             Expanded(
-              child: bookingsController.bookings.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
+              child: RefreshIndicator(
+                onRefresh: () async {
+                  await bookingsController.fetchBookings(status: _filterStatus);
+                },
+                child: bookingsController.bookings.isEmpty
+                    ? ListView(
                         children: [
-                          Icon(Icons.calendar_today, size: 72, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3)),
-                          const SizedBox(height: 12),
-                          Text(
-                            'No bookings yet',
-                            style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'You have no bookings at the moment',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
-                          ),
-                          const SizedBox(height: 16),
-                          ElevatedButton(
-                            onPressed: () {
-                              try {
-                                Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false);
-                              } catch (_) {}
-                            },
-                            child: const Text('Explore Properties'),
+                          SizedBox(
+                            height: MediaQuery.of(context).size.height * 0.6,
+                            child: Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.calendar_today, size: 72, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3)),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    'No bookings yet',
+                                    style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'You have no bookings at the moment',
+                                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  ElevatedButton(
+                                    onPressed: () {
+                                      try {
+                                        Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false);
+                                      } catch (_) {}
+                                    },
+                                    child: const Text('Explore Properties'),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
                         ],
-                      ),
-                    )
-                  : (filteredBookings.isEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                      )
+                    : (filteredBookings.isEmpty
+                        ? ListView(
                             children: [
-                              Icon(
-                                Icons.inbox_outlined,
-                                size: 64,
-                                color: Colors.grey[400],
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                'No $_filterStatus bookings',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.grey[600],
+                              SizedBox(
+                                height: MediaQuery.of(context).size.height * 0.6,
+                                child: Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.inbox_outlined,
+                                        size: 64,
+                                        color: Colors.grey[400],
+                                      ),
+                                      const SizedBox(height: 16),
+                                      Text(
+                                        'No $_filterStatus bookings',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          color: Colors.grey[600],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ],
-                          ),
-                        )
-                      : ListView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                          itemCount: filteredBookings.length,
-                          itemBuilder: (context, index) {
-                            final booking = filteredBookings[index];
-                            return BookingItemCard(booking: booking);
-                          },
-                        )
-                    ),
+                          )
+                        : ListView.builder(
+                            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                            itemCount: filteredBookings.length,
+                            itemBuilder: (context, index) {
+                              final booking = filteredBookings[index];
+                              return BookingItemCard(booking: booking);
+                            },
+                          )
+                      ),
+              ),
             ),
           ],
         );
