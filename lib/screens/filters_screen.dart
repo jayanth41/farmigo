@@ -461,39 +461,72 @@ class _FiltersScreenState extends State<FiltersScreen> {
               const SizedBox(height: 12),
               const Text('Amenities', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
               const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: _amenities.keys.map((k) {
-                  final isSelected = _amenities[k] ?? false;
-                  return FilterChip(
-                    label: Text(
-  k
-      .split(' ')
-      .map((word) =>
-          word[0].toUpperCase() + word.substring(1))
-      .join(' '),// capitalize first letter
-                      style: TextStyle(
-                        color: isSelected
-                            ? Colors.white
-                            : const Color.fromARGB(255, 41, 70, 92),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    selected: isSelected,
-                    showCheckmark: false,
-                    backgroundColor: Colors.transparent,
-                    selectedColor: const Color.fromARGB(255, 41, 70, 92),
-                    side: const BorderSide(
-                      color: Color.fromARGB(255, 41, 70, 92),
-                      width: 1.2,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    onSelected: (v) => setState(() => _amenities[k] = v),
+              StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('amenities')
+                    .orderBy('name')
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Padding(
+                      padding: EdgeInsets.all(12),
+                      child: CircularProgressIndicator(),
+                    );
+                  }
+
+                  if (snapshot.hasError) {
+                    return const Text(
+                      'Error loading amenities',
+                      style: TextStyle(color: Colors.red),
+                    );
+                  }
+
+                  final docs = snapshot.data?.docs ?? [];
+
+                  if (docs.isEmpty) {
+                    return const Text(
+                      'No amenities available',
+                      style: TextStyle(color: Colors.grey),
+                    );
+                  }
+
+                  final amenityNames = docs
+                      .map((d) => (d.data() as Map<String, dynamic>)['name'] as String)
+                      .toSet()
+                      .toList();
+
+                  return Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: amenityNames.map((k) {
+                      final isSelected = _amenities[k] ?? false;
+
+                      return FilterChip(
+                        label: Text(
+                          k,
+                          style: TextStyle(
+                            color: isSelected
+                                ? Colors.white
+                                : const Color.fromARGB(255, 41, 70, 92),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        selected: isSelected,
+                        showCheckmark: false,
+                        backgroundColor: Colors.transparent,
+                        selectedColor: const Color.fromARGB(255, 41, 70, 92),
+                        side: const BorderSide(
+                          color: Color.fromARGB(255, 41, 70, 92),
+                          width: 1.2,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        onSelected: (v) => setState(() => _amenities[k] = v),
+                      );
+                    }).toList(),
                   );
-                }).toList(),
+                },
               ),
               const SizedBox(height: 12),
               const Text('Special options', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
@@ -535,14 +568,11 @@ class _FiltersScreenState extends State<FiltersScreen> {
               const SizedBox(height: 12),
               const Text('Property Type', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
               const SizedBox(height: 8),
-              Wrap(spacing: 8, runSpacing: 8, children: _propertyTypes.keys.map((k) => FilterChip(label: Text(k), selected: _propertyTypes[k] ?? false, onSelected: (v) => setState(() => _propertyTypes[k] = v))).toList()),
-              const Text('Amenities', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-              const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
-                children: _houseAmenities.keys.map((k) {
-                  final isSelected = _houseAmenities[k] ?? false;
+                children: _propertyTypes.keys.map((k) {
+                  final isSelected = _propertyTypes[k] ?? false;
                   return FilterChip(
                     label: Text(
                       k,
@@ -564,14 +594,10 @@ class _FiltersScreenState extends State<FiltersScreen> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    onSelected: (v) => setState(() => _houseAmenities[k] = v),
+                    onSelected: (v) => setState(() => _propertyTypes[k] = v),
                   );
                 }).toList(),
               ),
-              const SizedBox(height: 12),
-              const Text('Special options', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-              const SizedBox(height: 8),
-              Wrap(spacing: 8, runSpacing: 8, children: _specialOptions.keys.map((k) => FilterChip(label: Text(k), selected: _specialOptions[k] ?? false, onSelected: (v) => setState(() => _specialOptions[k] = v))).toList()),
               const SizedBox(height: 12),
               Row(children: [const Expanded(child: Text('Rating (4★ & above)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600))), Switch(value: _minRating >= 4.0, onChanged: (v) => setState(() => _minRating = v ? 4.0 : 0.0))]),
               const SizedBox(height: 12),
@@ -1141,9 +1167,18 @@ Container(
 
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: const Text('Filters'),
         backgroundColor: const Color.fromARGB(255, 41, 70, 92),
         foregroundColor: Colors.white,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            bottom: Radius.circular(20),
+          ),
+        ),
       ),
       body: SafeArea(
         child: Padding(

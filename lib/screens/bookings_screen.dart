@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../navigation/app_routes.dart';
 import '../controllers/bookings_controller.dart';
-// app_drawer removed from this secondary screen to keep back navigation consistent
 import '../widgets/loading_widget.dart';
 import 'owner_dashboard.dart';
 
