@@ -1138,7 +1138,134 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
                     const SizedBox(height: 8),
 
-                    PropertiesGrid(properties: _filteredFarmhouses),
+                    SizedBox(
+                      height: 260,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        itemCount: _filteredFarmhouses.length,
+                        itemBuilder: (context, index) {
+                          final item = _filteredFarmhouses[index];
+
+                          return TweenAnimationBuilder<double>(
+                            duration: Duration(milliseconds: 400 + (index * 80)),
+                            tween: Tween(begin: 0.95, end: 1),
+                            builder: (context, value, child) {
+                              return Transform.scale(
+                                scale: value,
+                                child: Opacity(
+                                  opacity: value,
+                                  child: child,
+                                ),
+                              );
+                            },
+                            child: Container(
+                              width: 300,
+                              margin: const EdgeInsets.only(right: 14),
+                              child: GestureDetector(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => AllPropertiesScreen(
+                                        properties: [item],
+                                      ),
+                                    ),
+                                  );
+                                },
+                                child: Card(
+                                      elevation: 4,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                        side: const BorderSide(color: Color.fromARGB(255, 41, 70, 92), width: 1.4),
+                                      ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      // Image
+                                      ClipRRect(
+                                        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                                        child: Container(
+                                          height: 150,
+                                          width: double.infinity,
+                                          color: Colors.grey.shade300,
+                                          child: (item['photoUrls'] is List && item['photoUrls'].isNotEmpty)
+                                              ? Image.network(
+                                                  item['photoUrls'][0],
+                                                  fit: BoxFit.cover,
+                                                )
+                                              : const Icon(Icons.image, size: 40),
+                                        ),
+                                      ),
+
+                                      // Details
+                                      Padding(
+                                        padding: const EdgeInsets.all(12.0),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              item['propertyName'] ?? '',
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 15,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 6),
+
+                                            Row(
+                                              children: [
+                                                const Icon(Icons.location_on, size: 14, color: Colors.grey),
+                                                const SizedBox(width: 4),
+                                                Expanded(
+                                                  child: Text(
+                                                    item['city'] ?? '',
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                    style: const TextStyle(fontSize: 12),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+
+                                            const SizedBox(height: 8),
+
+                                            Row(
+                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                              children: [
+                                                Text(
+                                                  '₹${(item['pricePerNight'] ?? 0).toString()}',
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.w700,
+                                                    fontSize: 16,
+                                                  ),
+                                                ),
+                                                Row(
+                                                  children: [
+                                                    const Icon(Icons.star, size: 14, color: Colors.amber),
+                                                    const SizedBox(width: 2),
+                                                    Text(
+                                                      (item['rating'] ?? 4.0).toString(),
+                                                      style: const TextStyle(fontSize: 12),
+                                                    ),
+                                                  ],
+                                                )
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
                   ],
                 )
               : ListView(
@@ -1266,9 +1393,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                   return Container(
                                     width: 260,
                                     margin: const EdgeInsets.only(right: 12),
-                                    child: Card(
-                                      shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(12)),
+                    child: Card(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: const BorderSide(color:  Color.fromARGB(255, 41, 70, 92), width: 1.4)),
                                       child: Padding(
                                         padding: const EdgeInsets.all(10.0),
                                         child: Column(
@@ -1462,103 +1590,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     const SizedBox(height: 8),
                     PropertiesGrid(properties: _filteredFarmhouses),
 
-                    const SizedBox(height: 12),
-                    // Additional horizontal property cards to appear below Recommended
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Text('Explore more properties', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color:  Color.fromARGB(255, 41, 70, 92))),
-                    ),
-                    const SizedBox(height: 8),
-                    SizedBox(
-                      height: 200,
-                      child: ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        itemCount: _filteredFarmhouses.isNotEmpty ? (_filteredFarmhouses.length > 6 ? 6 : _filteredFarmhouses.length) : 0,
-                        itemBuilder: (context, index) {
-                          final item = _filteredFarmhouses[index];
-                          return Container(
-                            width: 260,
-                            margin: const EdgeInsets.only(right: 12),
-                            child: Card(
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Container(
-                                    height: 110,
-                                    width: double.infinity,
-                                    decoration: BoxDecoration(
-                                      color: Colors.grey.shade300,
-                                      borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                                      image: (item['photoUrls'] is List && item['photoUrls'].isNotEmpty)
-                                          ? DecorationImage(image: NetworkImage(item['photoUrls'][0]), fit: BoxFit.cover)
-                                          : null,
-                                    ),
-                                  ),
-                                  Padding(
-                                    padding: const EdgeInsets.all(10.0),
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(item['propertyName'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold)),
-                                        const SizedBox(height: 6),
-                                        Text(item['city'] ?? ''),
-                                        const SizedBox(height: 6),
-                                        Text('₹${(item['pricePerNight'] ?? 0).toString()}', style: const TextStyle(fontWeight: FontWeight.w700)),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
 
-                    const SizedBox(height: 16),
-                    // Small dummy cards below Recommended
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Text('You might also like', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-                    ),
-                    const SizedBox(height: 8),
-                    SizedBox(
-                      height: 120,
-                      child: ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        itemCount: _filteredFarmhouses.isNotEmpty ? (_filteredFarmhouses.length > 3 ? 3 : _filteredFarmhouses.length) : 3,
-                        itemBuilder: (context, index) {
-                          final item = _filteredFarmhouses.isNotEmpty ? _filteredFarmhouses[index] : {
-                            'name': 'Cozy Retreat',
-                            'location': 'Nearby',
-                            'price': 2500,
-                          };
-                          return Container(
-                            width: 200,
-                            margin: const EdgeInsets.only(right: 12),
-                            child: Card(
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              child: Padding(
-                                padding: const EdgeInsets.all(10.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(item['name'] ?? 'Cozy Retreat', style: const TextStyle(fontWeight: FontWeight.bold)),
-                                    const SizedBox(height: 6),
-                                    Text(item['location'] ?? 'Nearby'),
-                                    const Spacer(),
-                                    Text('₹${(item['price'] ?? 0).toString()}', style: const TextStyle(fontWeight: FontWeight.w700)),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
                   ],
                 ),
         ),

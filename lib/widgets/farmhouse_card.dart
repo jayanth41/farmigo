@@ -122,6 +122,7 @@ class _FarmhouseCardState extends State<FarmhouseCard> {
         decoration: BoxDecoration(
           color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(18),
+          border: Border.all(color:  Color.fromARGB(255, 41, 70, 92), width: 1.4),
           boxShadow: const [
             BoxShadow(
               color: Color.fromRGBO(0, 0, 0, 0.08),
