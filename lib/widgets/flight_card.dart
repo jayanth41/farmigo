@@ -36,107 +36,175 @@ class FlightCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 12),
+    return InkWell(
+      borderRadius: BorderRadius.circular(18),
+      // Leave onTap null so parent GestureDetector can handle taps (navigation)
+      onTap: null,
+      child: Container(
+        width: double.infinity,
+        margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Colors.white, Colors.grey.shade50],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 12,
+              offset: Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
 
-          /// Airline + Price
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Flexible(
-                fit: FlexFit.loose,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
+            /// Airline + Price badge
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
                   children: [
                     if (offer.airlineLogo.isNotEmpty)
                       Image.network(
                         offer.airlineLogo,
-                        width: 22,
-                        height: 22,
-                        errorBuilder: (_, __, ___) => const Icon(
-                          Icons.flight_takeoff,
-                          size: 18,
-                          color: Colors.blueGrey,
-                        ),
+                        width: 30,
+                        height: 30,
+                        errorBuilder: (_, __, ___) =>
+                            const Icon(Icons.flight, size: 24),
                       )
                     else
-                      const Icon(Icons.flight_takeoff, size: 18, color: Colors.blueGrey),
-                    const SizedBox(width: 6),
-                    Flexible(
-                      child: Text(
-                        offer.flightNumber.isNotEmpty
-                            ? "${offer.airlineName} ${offer.flightNumber}"
-                            : offer.airlineName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                        ),
+                      const Icon(Icons.flight, size: 24),
+                    const SizedBox(width: 8),
+                    Text(
+                      offer.airlineName,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
                       ),
                     ),
                   ],
                 ),
-              ),
-              Text(
-                offer.displayPrice,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.green,
+
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade50,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    offer.displayPrice,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green,
+                    ),
+                  ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
 
-          const SizedBox(height: 12),
+            const SizedBox(height: 16),
 
-          /// Route + Duration
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            mainAxisSize: MainAxisSize.max,
-            children: [
-              Flexible(
-                fit: FlexFit.loose,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
+            /// Time + flight path
+            Row(
+              children: [
+
+                /// Departure
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.route, size: 16, color: Colors.grey),
-                    const SizedBox(width: 6),
-                    Flexible(
-                      child: Builder(
-                        builder: (_) {
-                          return Text(
-                            "${offer.origin} → ${offer.destination}",
-                            overflow: TextOverflow.ellipsis,
-                          );
-                        },
+                    Text(
+                      offer.departureTime ?? "--",
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
                       ),
+                    ),
+                    Text(
+                      offer.origin,
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
                     ),
                   ],
                 ),
-              ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.schedule, size: 16, color: Colors.grey),
-                  const SizedBox(width: 4),
-                  Text(_formatDuration(offer.duration)),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-        ],
+
+                const SizedBox(width: 10),
+
+                /// Path
+                Expanded(
+                  child: Column(
+                    children: [
+                      Text(
+                        _formatDuration(offer.duration),
+                        style: const TextStyle(fontSize: 11),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: const [
+                          Expanded(child: Divider(thickness: 1)),
+                          Icon(Icons.flight, size: 16, color: Colors.grey),
+                          Expanded(child: Divider(thickness: 1)),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(width: 10),
+
+                /// Arrival
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      offer.arrivalTime ?? "--",
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      offer.destination,
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 14),
+
+            /// Bottom tags
+            Row(
+              children: [
+                if (offer.isNonStop == true)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade100,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text(
+                      "Non-stop",
+                      style: TextStyle(fontSize: 12),
+                    ),
+                  ),
+
+                const SizedBox(width: 8),
+
+                if (offer.flightNumber.isNotEmpty)
+                  Text(
+                    offer.flightNumber,
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

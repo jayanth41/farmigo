@@ -26,12 +26,10 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
   List<Offer> _offers = [];
   List<Offer> _allOffers = [];
   String? _errorMessage;
-
   String _sortType = "cheapest";
   bool _nonStopOnly = false;
   final Set<String> _selectedAirlines = {};
   String? _departurePeriodFilter;
-
   @override
   void initState() {
     super.initState();
@@ -68,7 +66,6 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
     });
 
     try {
-      // STEP 1: Create offer request
       final response = await _duffelService.searchOffers(
         origin: _departureController.text,
         destination: _arrivalController.text,
@@ -121,14 +118,11 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
       _offers = _offers.where((o) => _selectedAirlines.contains(o.airlineName)).toList();
     }
 
-    // departure period filter removed (field not available on Offer)
-
     if (_sortType == "cheapest") {
       _offers.sort((a, b) => a.priceInINR.compareTo(b.priceInINR));
     } else if (_sortType == "fastest") {
       _offers.sort((a, b) => a.durationMinutes.compareTo(b.durationMinutes));
     } else if (_sortType == "best") {
-      // approximate best = cheapest + fastest (weighted)
       _offers.sort((a, b) {
         final aScore = a.priceInINR + a.durationMinutes;
         final bScore = b.priceInINR + b.durationMinutes;
@@ -207,7 +201,18 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Search Flights')),
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, size: 20),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text('Search Flights'),
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            bottom: Radius.circular(20),
+          ),
+        ),
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -264,14 +269,20 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    ElevatedButton(
-                      onPressed: _isLoading ? null : _searchFlights,
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _isLoading ? null : _searchFlights,
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+              ),
+                        ),
+                        child: _isLoading
+                            ? const CircularProgressIndicator()
+                            : const Text('Search Flights'),
                       ),
-                      child: _isLoading
-                          ? const CircularProgressIndicator()
-                          : const Text('Search Flights'),
                     ),
                   ],
                 ),
@@ -290,97 +301,181 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
               Padding(
                 padding: const EdgeInsets.only(bottom: 10),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    ChoiceChip(
-                      label: const Text("Cheapest"),
-                      selected: _sortType == "cheapest",
-                      onSelected: (_) {
-                        setState(() {
-                          _sortType = "cheapest";
-                          _sortOffers();
-                        });
-                      },
+                    Text(
+                      "${_offers.length} flights",
+                      style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
-                    ChoiceChip(
-                      label: const Text("Fastest"),
-                      selected: _sortType == "fastest",
-                      onSelected: (_) {
-                        setState(() {
-                          _sortType = "fastest";
-                          _sortOffers();
-                        });
-                      },
-                    ),
-                    ChoiceChip(
-                      label: const Text("Best Value"),
-                      selected: _sortType == "best",
-                      onSelected: (_) {
-                        setState(() {
-                          _sortType = "best";
-                          _sortOffers();
-                        });
-                      },
-                    ),
-                    ChoiceChip(
-                      label: const Text("Non‑stop"),
-                      selected: _nonStopOnly,
-                      onSelected: (_) {
-                        setState(() {
-                          _nonStopOnly = !_nonStopOnly;
-                          _sortOffers();
-                        });
+                    IconButton(
+                      icon: const Icon(Icons.tune),
+                      onPressed: () {
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          shape: const RoundedRectangleBorder(
+                            borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                          ),
+                          builder: (_) {
+                            return StatefulBuilder(
+                              builder: (context, setModalState) {
+                            return SizedBox(
+                              height: MediaQuery.of(context).size.height * 0.75,
+                              child: SingleChildScrollView(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.max,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        "Sort & Filter",
+                                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                                      ),
+                                      const SizedBox(height: 16),
+
+                                      const Text("Sort by", style: TextStyle(fontWeight: FontWeight.w600)),
+                                      const SizedBox(height: 8),
+
+                                      RadioListTile(
+                                        title: const Text("Cheapest"),
+                                        value: "cheapest",
+                                        groupValue: _sortType,
+                                        onChanged: (v) {
+                                          setModalState(() => _sortType = v!);
+                                          setState(() => _sortOffers());
+                                        },
+                                      ),
+                                      RadioListTile(
+                                        title: const Text("Fastest"),
+                                        value: "fastest",
+                                        groupValue: _sortType,
+                                        onChanged: (v) {
+                                          setModalState(() => _sortType = v!);
+                                          setState(() => _sortOffers());
+                                        },
+                                      ),
+                                      RadioListTile(
+                                        title: const Text("Best Value"),
+                                        value: "best",
+                                        groupValue: _sortType,
+                                        onChanged: (v) {
+                                          setModalState(() => _sortType = v!);
+                                          setState(() => _sortOffers());
+                                        },
+                                      ),
+
+                                      const SizedBox(height: 12),
+
+                                      SwitchListTile(
+                                        title: const Text("Non-stop only"),
+                                        value: _nonStopOnly,
+                                        onChanged: (v) {
+                                          setModalState(() => _nonStopOnly = v);
+                                          setState(() => _sortOffers());
+                                        },
+                                      ),
+
+                                      const SizedBox(height: 12),
+                                      const Text("Airlines", style: TextStyle(fontWeight: FontWeight.w600)),
+                                      const SizedBox(height: 8),
+
+                                      Wrap(
+                                        spacing: 8,
+                                        runSpacing: 6,
+                                        children: _allOffers
+                                            .map((o) => o.airlineName)
+                                            .toSet()
+                                            .map((airline) => FilterChip(
+                                                  label: Text(
+                                                    airline,
+                                                    style: TextStyle(
+                                                      color: _selectedAirlines.contains(airline) ? Colors.white : null,
+                                                    ),
+                                                  ),
+                                                  selected: _selectedAirlines.contains(airline),
+                                                  showCheckmark: false,
+                                                  selectedColor: const Color.fromARGB(255, 41, 70, 92),
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius: BorderRadius.circular(10),
+                                                    side: const BorderSide(color: Color.fromARGB(255, 41, 70, 92)),
+                                                  ),
+                                                  onSelected: (_) {
+                                                    setModalState(() {
+                                                      if (_selectedAirlines.contains(airline)) {
+                                                        _selectedAirlines.remove(airline);
+                                                      } else {
+                                                        _selectedAirlines.add(airline);
+                                                      }
+                                                    });
+                                                    setState(() => _sortOffers());
+                                                  },
+                                                ))
+                                            .toList(),
+                                      ),
+
+                                      const SizedBox(height: 12),
+
+                                      const Text(
+                                        "Departure Time",
+                                        style: TextStyle(fontWeight: FontWeight.w600),
+                                      ),
+                                      const SizedBox(height: 8),
+
+                                      Wrap(
+                                        spacing: 8,
+                                        children: ["Morning", "Afternoon", "Evening", "Night"]
+                                            .map((period) {
+                                          final isSelected = _departurePeriodFilter == period;
+
+                                          return ChoiceChip(
+                                            label: Text(
+                                              period,
+                                              style: TextStyle(
+                                                color: isSelected ? Colors.white : null,
+                                              ),
+                                            ),
+                                            selected: isSelected,
+                                            selectedColor: const Color.fromARGB(255, 41, 70, 92),
+                                            onSelected: (_) {
+                                              setModalState(() {
+                                                if (_departurePeriodFilter == period) {
+                                                  _departurePeriodFilter = null;
+                                                } else {
+                                                  _departurePeriodFilter = period;
+                                                }
+                                              });
+                                              setState(() => _sortOffers());
+                                            },
+                                          );
+                                        }).toList(),
+                                      ),
+
+                                      const SizedBox(height: 12),
+
+                                      SizedBox(
+                                        width: double.infinity,
+                                        child: ElevatedButton(
+                                          onPressed: () => Navigator.pop(context),
+                                          child: const Text("Apply"),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                              },
+                            );
+                          },
+                        );
                       },
                     ),
                   ],
                 ),
               ),
-            if (_offers.isNotEmpty)
-              Wrap(
-                spacing: 8,
-                runSpacing: 6,
-                children: _allOffers
-                    .map((o) => o.airlineName)
-                    .toSet()
-                    .map((airline) => FilterChip(
-                          label: Text(airline),
-                          selected: _selectedAirlines.contains(airline),
-                          onSelected: (_) {
-                            setState(() {
-                              if (_selectedAirlines.contains(airline)) {
-                                _selectedAirlines.remove(airline);
-                              } else {
-                                _selectedAirlines.add(airline);
-                              }
-                              _sortOffers();
-                            });
-                          },
-                        ))
-                    .toList(),
-              ),
-            if (_offers.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 8, bottom: 12),
-                child: Wrap(
-                  spacing: 8,
-                  children: ["Morning", "Afternoon", "Evening", "Night"]
-                      .map((period) => ChoiceChip(
-                            label: Text(period),
-                            selected: _departurePeriodFilter == period,
-                            onSelected: (_) {
-                              setState(() {
-                                if (_departurePeriodFilter == period) {
-                                  _departurePeriodFilter = null;
-                                } else {
-                                  _departurePeriodFilter = period;
-                                }
-                                _sortOffers();
-                              });
-                            },
-                          ))
-                      .toList(),
-                ),
-              ),
+            // Airline chips moved into the filter bottom sheet to keep main UI minimal
+            
 
             if (!_isLoading && _offers.isEmpty && _errorMessage == null)
               const Padding(

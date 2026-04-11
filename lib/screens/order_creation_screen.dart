@@ -269,8 +269,17 @@ class _OrderCreationScreenState extends State<OrderCreationScreen> {
     if (_createdOrder != null) {
       return Scaffold(
         appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new, size: 20),
+            onPressed: () => Navigator.pop(context),
+          ),
           title: const Text('Order Confirmation'),
           elevation: 0,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(
+              bottom: Radius.circular(20),
+            ),
+          ),
         ),
         body: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -390,8 +399,17 @@ class _OrderCreationScreenState extends State<OrderCreationScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, size: 20),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: const Text('Create Order'),
         elevation: 0,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            bottom: Radius.circular(20),
+          ),
+        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),

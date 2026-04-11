@@ -44,8 +44,8 @@ Future<bool> checkOwnerVerificationStatus({
       }
     } catch (_) {}
 
-    // Very short wait so animations finish
-    await Future.delayed(const Duration(milliseconds: 120));
+  // Very short wait so animations finish (reduced perfs delay)
+  await Future.delayed(const Duration(milliseconds: 60));
 
     if (!context.mounted) return false;
 
@@ -117,7 +117,7 @@ Future<bool> checkOwnerVerificationStatus({
 ///   so the Login screen is removed from the back stack.
 /// - "Profile" item removed from the navigation list.
 /// - Drawer header is clickable and navigates to `ProfileScreen`.
-class AppDrawer extends StatelessWidget {
+class AppDrawer extends StatefulWidget {
   final String? activeItem;
   final ValueChanged<String>? onItemSelected;
   final Map<String, dynamic>? profile;
@@ -130,6 +130,31 @@ class AppDrawer extends StatelessWidget {
     this.profile,
     this.isProfileLoading = false,
   });
+
+  @override
+  State<AppDrawer> createState() => _AppDrawerState();
+}
+
+class _AppDrawerState extends State<AppDrawer> {
+  // Cache futures per-uid so multiple builders reuse the same Firestore read.
+  static final Map<String, Future<Map<String, dynamic>?>> _userDocFutureCache = {};
+
+  // Local last-seen copy to avoid flicker while future is loading again.
+  Map<String, dynamic>? _lastSeenUserData;
+
+  Future<Map<String, dynamic>?> _getUserDocFuture(String? uid) {
+    if (uid == null || uid.isEmpty) return Future.value(null);
+    if (_userDocFutureCache.containsKey(uid)) return _userDocFutureCache[uid]!;
+
+    final fut = _fetchUserDoc(uid).then((data) {
+      // store a local copy to render immediately on subsequent builds
+      if (data != null) _lastSeenUserData = Map<String, dynamic>.from(data);
+      return data;
+    });
+
+    _userDocFutureCache[uid] = fut;
+    return fut;
+  }
 
   // Owner role checks removed - app no longer exposes owner onboarding
 
@@ -151,9 +176,16 @@ class AppDrawer extends StatelessWidget {
                 Navigator.of(context).pop();
               } catch (_) {}
 
+              final uid = fb.FirebaseAuth.instance.currentUser?.uid;
+
               // Sign out from Firebase
               try {
                 await fb.FirebaseAuth.instance.signOut();
+                // Clear any cached user futures for this uid to avoid stale data
+                if (uid != null && uid.isNotEmpty) {
+                  _userDocFutureCache.remove(uid);
+                }
+                _lastSeenUserData = null;
               } catch (e) {
                 debugPrint('Logout failed: $e');
               }
@@ -303,12 +335,14 @@ class AppDrawer extends StatelessWidget {
                             }
 
                             return FutureBuilder<Map<String, dynamic>?>(
-                              // Safe fetch with timeout to avoid indefinite loading
-                              future: _fetchUserDoc(uid),
+                              future: _getUserDocFuture(uid),
                               builder: (context, snap) {
                                 final fb.User? userLocal = fb.FirebaseAuth.instance.currentUser;
-                                // While waiting, show a subtle loader inside the avatar so UI isn't blocked
-                                if (snap.connectionState == ConnectionState.waiting) {
+
+                                // If we have a last-seen copy use it to avoid flicker while loading
+                                final fallback = _lastSeenUserData;
+
+                                if (snap.connectionState == ConnectionState.waiting && fallback == null) {
                                   return CircleAvatar(
                                     radius: 28,
                                     backgroundColor: surface,
@@ -316,13 +350,12 @@ class AppDrawer extends StatelessWidget {
                                   );
                                 }
 
-                                final data = snap.data ?? {};
-                                final displayName = (profile?['name'] ?? data['name'] ?? userLocal?.displayName ?? '')?.toString() ?? '';
+                                final data = snap.data ?? fallback ?? {};
+                                final displayName = (widget.profile?['name'] ?? data['name'] ?? userLocal?.displayName ?? '')?.toString() ?? '';
                                 final email = (userLocal?.email ?? data['email'])?.toString();
                                 final photoUrl = (data['photoUrl'] as String?) ?? userLocal?.photoURL;
                                 final avatarLetter = displayName.isNotEmpty ? displayName[0] : (email?.isNotEmpty == true ? email![0] : 'U');
 
-                                // If photoUrl is present, try to show it; otherwise show initial
                                 if (photoUrl != null && photoUrl.isNotEmpty) {
                                   return CircleAvatar(
                                     radius: 28,
@@ -347,8 +380,8 @@ class AppDrawer extends StatelessWidget {
                             );
                           }),
                           const SizedBox(width: 12),
-                          Expanded(
-                            child: isProfileLoading
+                                      Expanded(
+                            child: widget.isProfileLoading
                                 ? Text(
                                     'Loading...',
                                     style: TextStyle(color: theme.colorScheme.onPrimary.withOpacity(0.9)),
@@ -357,21 +390,11 @@ class AppDrawer extends StatelessWidget {
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       FutureBuilder<Map<String, dynamic>?>(
-                                        future: _fetchUserDoc(fb.FirebaseAuth.instance.currentUser?.uid ?? '').then((d) {
-                                          // If doc missing, attempt to ensure it's created in background
-                                          final uid = fb.FirebaseAuth.instance.currentUser?.uid;
-                                          if (d == null && uid != null && uid.isNotEmpty) {
-                                            // fire-and-forget; permission errors are caught inside
-                                            ensureUserDoc(uid);
-                                          }
-                                          return d;
-                                        }),
+                                        future: _getUserDocFuture(fb.FirebaseAuth.instance.currentUser?.uid ?? ''),
                                         builder: (context, snap) {
                                           final fb.User? user = fb.FirebaseAuth.instance.currentUser;
+                                          final fallback = _lastSeenUserData;
 
-                                          // If there's no signed-in user, show a clear Guest UI with
-                                          // a prompt to login. This avoids forcing a redirect while
-                                          // clearly indicating limited access.
                                           if (user == null) {
                                             return Column(
                                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -387,13 +410,13 @@ class AppDrawer extends StatelessWidget {
                                                 const SizedBox(height: 4),
                                                 Text(
                                                   'Please login to continue',
-                                                    style: TextStyle(color: theme.colorScheme.onPrimary.withOpacity(0.9), fontSize: 12),
+                                                  style: TextStyle(color: theme.colorScheme.onPrimary.withOpacity(0.9), fontSize: 12),
                                                 ),
                                               ],
                                             );
                                           }
 
-                                          if (snap.connectionState == ConnectionState.waiting) {
+                                          if (snap.connectionState == ConnectionState.waiting && fallback == null) {
                                             return Row(
                                               children: [
                                                 const SizedBox(width: 6),
@@ -404,9 +427,16 @@ class AppDrawer extends StatelessWidget {
                                             );
                                           }
 
-                                          final data = snap.data ?? {};
-                                          final displayName = (profile?['name'] ?? data['name'] ?? user.displayName ?? '')?.toString() ?? '';
+                                          final data = snap.data ?? fallback ?? {};
+                                          final displayName = (widget.profile?['name'] ?? data['name'] ?? user.displayName ?? '')?.toString() ?? '';
                                           final email = (user.email ?? data['email'])?.toString();
+
+                                          // If doc missing, attempt to ensure it's created in background
+                                          final uid = fb.FirebaseAuth.instance.currentUser?.uid;
+                                          if (data.isEmpty && uid != null && uid.isNotEmpty) {
+                                            ensureUserDoc(uid);
+                                          }
+
                                           return Column(
                                             crossAxisAlignment: CrossAxisAlignment.start,
                                             children: [
@@ -442,17 +472,15 @@ class AppDrawer extends StatelessWidget {
                 padding: const EdgeInsets.all(16),
                 children: [
                   // ===== SWITCH ACCOUNT =====
-                  FutureBuilder<DocumentSnapshot>(
-                    future: FirebaseFirestore.instance
-                        .collection('users')
-                        .doc(fb.FirebaseAuth.instance.currentUser?.uid)
-                        .get(),
+                  FutureBuilder<Map<String, dynamic>?>(
+                    future: _getUserDocFuture(fb.FirebaseAuth.instance.currentUser?.uid ?? ''),
                     builder: (context, snap) {
                       String activeRole = 'user';
                       bool isOwner = false;
 
-                      if (snap.hasData && snap.data?.data() != null) {
-                        final data = snap.data!.data() as Map<String, dynamic>;
+                      final data = snap.data ?? _lastSeenUserData ?? {};
+
+                      if (data.isNotEmpty) {
                         activeRole = (data['activeRole'] ?? 'user').toString();
 
                         final role = (data['role'] ?? 'user').toString();
@@ -558,8 +586,8 @@ class AppDrawer extends StatelessWidget {
                       // If parent scaffold wants to handle item selection (e.g.
                       // switch bottom tabs), delegate to it. This avoids
                       // creating a new Home route on top of the existing one.
-                      if (onItemSelected != null && AppRoutes.labelToRoute.containsKey(AppRoutes.labelHome)) {
-                        Future.microtask(() => onItemSelected!(AppRoutes.labelHome));
+                      if (widget.onItemSelected != null && AppRoutes.labelToRoute.containsKey(AppRoutes.labelHome)) {
+                        Future.microtask(() => widget.onItemSelected!(AppRoutes.labelHome));
                         return;
                       }
 
@@ -600,8 +628,8 @@ class AppDrawer extends StatelessWidget {
                         Navigator.of(context).pop();
                       } catch (_) {}
 
-                      if (onItemSelected != null && AppRoutes.labelToRoute.containsKey(AppRoutes.labelFavorites)) {
-                        Future.microtask(() => onItemSelected!(AppRoutes.labelFavorites));
+                      if (widget.onItemSelected != null && AppRoutes.labelToRoute.containsKey(AppRoutes.labelFavorites)) {
+                        Future.microtask(() => widget.onItemSelected!(AppRoutes.labelFavorites));
                         return;
                       }
 
@@ -621,8 +649,8 @@ class AppDrawer extends StatelessWidget {
                         Navigator.of(context).pop();
                       } catch (_) {}
 
-                      if (onItemSelected != null && AppRoutes.labelToRoute.containsKey(AppRoutes.labelBookings)) {
-                        Future.microtask(() => onItemSelected!(AppRoutes.labelBookings));
+                      if (widget.onItemSelected != null && AppRoutes.labelToRoute.containsKey(AppRoutes.labelBookings)) {
+                        Future.microtask(() => widget.onItemSelected!(AppRoutes.labelBookings));
                         return;
                       }
 
@@ -635,16 +663,13 @@ class AppDrawer extends StatelessWidget {
                     },
                   ),
 
-                  FutureBuilder<DocumentSnapshot>(
-                    future: FirebaseFirestore.instance
-                        .collection('users')
-                        .doc(fb.FirebaseAuth.instance.currentUser?.uid)
-                        .get(),
+                  FutureBuilder<Map<String, dynamic>?>(
+                    future: _getUserDocFuture(fb.FirebaseAuth.instance.currentUser?.uid ?? ''),
                     builder: (context, snap) {
+                      final data = snap.data ?? _lastSeenUserData ?? {};
                       bool isOwner = false;
 
-                      if (snap.hasData && snap.data?.data() != null) {
-                        final data = snap.data!.data() as Map<String, dynamic>;
+                      if (data.isNotEmpty) {
                         final role = (data['role'] ?? '').toString();
                         final rolesRaw = data['roles'];
                         List<String> roles = [];
@@ -654,9 +679,7 @@ class AppDrawer extends StatelessWidget {
                           roles = [rolesRaw];
                         }
 
-                        isOwner = role == 'owner' ||
-                            roles.contains('farmhouse_owner') ||
-                            roles.contains('car_owner');
+                        isOwner = role == 'owner' || roles.contains('farmhouse_owner') || roles.contains('car_owner');
                       }
 
                       if (isOwner) {
@@ -696,8 +719,8 @@ class AppDrawer extends StatelessWidget {
                       try {
                         Navigator.of(context).pop();
                       } catch (_) {}
-                      if (onItemSelected != null && AppRoutes.labelToRoute.containsKey(AppRoutes.labelSettings)) {
-                        Future.microtask(() => onItemSelected!(AppRoutes.labelSettings));
+                      if (widget.onItemSelected != null && AppRoutes.labelToRoute.containsKey(AppRoutes.labelSettings)) {
+                        Future.microtask(() => widget.onItemSelected!(AppRoutes.labelSettings));
                         return;
                       }
                       Navigator.pushNamed(context, '/settings');
@@ -710,8 +733,8 @@ class AppDrawer extends StatelessWidget {
                       try {
                         Navigator.of(context).pop();
                       } catch (_) {}
-                      if (onItemSelected != null && AppRoutes.labelToRoute.containsKey(AppRoutes.labelOffers)) {
-                        Future.microtask(() => onItemSelected!(AppRoutes.labelOffers));
+                      if (widget.onItemSelected != null && AppRoutes.labelToRoute.containsKey(AppRoutes.labelOffers)) {
+                        Future.microtask(() => widget.onItemSelected!(AppRoutes.labelOffers));
                         return;
                       }
                       Navigator.pushNamed(context, '/offers');
@@ -724,8 +747,8 @@ class AppDrawer extends StatelessWidget {
                       try {
                         Navigator.of(context).pop();
                       } catch (_) {}
-                      if (onItemSelected != null && AppRoutes.labelToRoute.containsKey(AppRoutes.labelHelp)) {
-                        Future.microtask(() => onItemSelected!(AppRoutes.labelHelp));
+                      if (widget.onItemSelected != null && AppRoutes.labelToRoute.containsKey(AppRoutes.labelHelp)) {
+                        Future.microtask(() => widget.onItemSelected!(AppRoutes.labelHelp));
                         return;
                       }
                       Navigator.pushNamed(context, '/help-support');
@@ -800,10 +823,11 @@ class AppDrawer extends StatelessWidget {
     try {
       final docRef = FirebaseFirestore.instance.collection('users').doc(uid);
 
-      // 🔥 FORCE SERVER FETCH (avoids OnePlus cache issue)
-      final snap = await docRef
-          .get(const GetOptions(source: Source.server))
-          .timeout(const Duration(seconds: 5));
+    // Use serverAndCache so we prefer fresh data but still benefit from
+    // cached reads to reduce network calls and UI flicker.
+    final snap = await docRef
+      .get(const GetOptions(source: Source.serverAndCache))
+      .timeout(const Duration(seconds: 5));
 
       if (!snap.exists) return null;
 
