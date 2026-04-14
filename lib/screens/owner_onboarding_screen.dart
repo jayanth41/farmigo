@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../navigation/app_routes.dart';
 import '../widgets/snackbar_helper.dart';
 import 'add_property_screen.dart';
 
@@ -22,7 +23,70 @@ class _OwnerOnboardingScreenState extends State<OwnerOnboardingScreen> {
   String? _mappedCategory; // what we will store in owners/{uid}/category
   bool _saving = false;
 
-  final List<String> _cities = ['Hyderabad', 'Bengaluru', 'Mumbai', 'Chennai', 'Pune', 'Delhi'];
+  final List<String> _cities = [
+    'Hyderabad',
+    'Bengaluru',
+    'Mumbai',
+    'Chennai',
+    'Pune',
+    'Delhi',
+    'Kolkata',
+    'Ahmedabad',
+    'Jaipur',
+    'Surat',
+    'Lucknow',
+    'Kanpur',
+    'Nagpur',
+    'Indore',
+    'Thane',
+    'Bhopal',
+    'Visakhapatnam',
+    'Patna',
+    'Vadodara',
+    'Ghaziabad',
+    'Ludhiana',
+    'Agra',
+    'Nashik',
+    'Faridabad',
+    'Meerut',
+    'Rajkot',
+    'Kalyan',
+    'Vasai',
+    'Varanasi',
+    'Srinagar',
+    'Aurangabad',
+    'Dhanbad',
+    'Amritsar',
+    'Navi Mumbai',
+    'Allahabad',
+    'Ranchi',
+    'Howrah',
+    'Coimbatore',
+    'Jabalpur',
+    'Gwalior',
+    'Vijayawada',
+    'Jodhpur',
+    'Madurai',
+    'Raipur',
+    'Kota',
+    'Guwahati',
+    'Chandigarh',
+    'Solapur',
+    'Hubli',
+    'Tiruchirappalli',
+    'Bareilly',
+    'Mysuru',
+    'Tiruppur',
+    'Gurgaon',
+    'Aligarh',
+    'Jalandhar',
+    'Bhubaneswar',
+    'Salem',
+    'Warangal',
+    'Guntur',
+    'Noida',
+    'Dehradun'
+  ];
   final List<String> _propertyTypes = ['Farmhouse', 'Villa', 'Hotel', 'Hourly', 'Car'];
 
   @override
@@ -138,7 +202,16 @@ class _OwnerOnboardingScreenState extends State<OwnerOnboardingScreen> {
               Row(
                 children: [
                   GestureDetector(
-                    onTap: () => Navigator.pop(context),
+                    onTap: () async {
+                      final didPop = await Navigator.maybePop(context);
+                      if (!didPop) {
+                        Navigator.pushNamedAndRemoveUntil(
+                          context,
+                          AppRoutes.home,
+                          (route) => false,
+                        );
+                      }
+                    },
                     child: const Icon(
                       Icons.arrow_back_ios_new_rounded,
                       color: Colors.white,
@@ -192,16 +265,89 @@ class _OwnerOnboardingScreenState extends State<OwnerOnboardingScreen> {
                   initialValue: phone,
                   decoration: inputDecoration.copyWith(labelText: 'Phone Number'),
                   keyboardType: TextInputType.phone,
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) {
+                      return 'Phone number required';
+                    }
+                    final cleaned = v.replaceAll(RegExp(r'[^0-9]'), '');
+                    if (cleaned.length != 10) {
+                      return 'Enter valid 10-digit phone number';
+                    }
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 12),
                 TextFormField(controller: _emailController, decoration: inputDecoration.copyWith(labelText: 'Email (optional)')),
                 const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  decoration: inputDecoration.copyWith(labelText: 'City'),
-                  items: _cities.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
-                  initialValue: _selectedCity,
-                  onChanged: (v) => setState(() => _selectedCity = v),
-                  validator: (v) => v == null || v.isEmpty ? 'Please select a city' : null,
+                GestureDetector(
+                  onTap: () async {
+                    final selected = await showModalBottomSheet<String>(
+                      context: context,
+                      isScrollControlled: true,
+                      builder: (_) {
+                        String search = '';
+                        List<String> filtered = List.from(_cities);
+
+                        return StatefulBuilder(
+                          builder: (context, setModalState) {
+                            return Padding(
+                              padding: EdgeInsets.only(
+                                left: 16,
+                                right: 16,
+                                top: 16,
+                                bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  TextField(
+                                    decoration: const InputDecoration(
+                                      hintText: 'Search city...',
+                                      prefixIcon: Icon(Icons.search),
+                                    ),
+                                    onChanged: (v) {
+                                      setModalState(() {
+                                        search = v.toLowerCase();
+                                        filtered = _cities
+                                            .where((c) => c.toLowerCase().contains(search))
+                                            .toList();
+                                      });
+                                    },
+                                  ),
+                                  const SizedBox(height: 12),
+                                  SizedBox(
+                                    height: 300,
+                                    child: ListView.builder(
+                                      itemCount: filtered.length,
+                                      itemBuilder: (_, i) {
+                                        return ListTile(
+                                          title: Text(filtered[i]),
+                                          onTap: () => Navigator.pop(context, filtered[i]),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    );
+
+                    if (selected != null) {
+                      setState(() => _selectedCity = selected);
+                    }
+                  },
+                  child: InputDecorator(
+                    decoration: inputDecoration.copyWith(labelText: 'City'),
+                    child: Text(
+                      _selectedCity ?? 'Select city',
+                      style: TextStyle(
+                        color: _selectedCity == null ? Colors.grey : Colors.black,
+                      ),
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
@@ -232,7 +378,19 @@ class _OwnerOnboardingScreenState extends State<OwnerOnboardingScreen> {
                 ),
                 const SizedBox(height: 20),
                 Row(children: [
-                  Expanded(child: OutlinedButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel'))),
+                  Expanded(
+                      child: OutlinedButton(
+                          onPressed: () async {
+                            final didPop = await Navigator.maybePop(context);
+                            if (!didPop) {
+                              Navigator.pushNamedAndRemoveUntil(
+                                context,
+                                AppRoutes.home,
+                                (route) => false,
+                              );
+                            }
+                          },
+                          child: const Text('Cancel'))),
                   const SizedBox(width: 12),
                   Expanded(
                       child: ElevatedButton(

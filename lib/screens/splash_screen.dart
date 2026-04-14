@@ -41,22 +41,16 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _initializeAndNavigate() async {
-    // Keep a minimal splash duration for UX
-    await Future.delayed(const Duration(milliseconds: 1200));
-
-    if (!mounted) return;
-
     fb.User? user;
 
-    // Ensure Firebase is initialized before touching FirebaseAuth.
     try {
       if (Firebase.apps.isEmpty) {
-        await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform).timeout(const Duration(seconds: 3));
+        await Firebase.initializeApp(
+          options: DefaultFirebaseOptions.currentPlatform,
+        );
       }
     } catch (e) {
-      // If initialization fails or times out, proceed with null user —
-      // the app will navigate to login. We log for debugging.
-      debugPrint('[Splash] Firebase init failed or timed out: $e');
+      debugPrint('[Splash] Firebase init failed: $e');
     }
 
     try {
@@ -66,20 +60,20 @@ class _SplashScreenState extends State<SplashScreen>
       user = null;
     }
 
+    // Ensure splash delay AFTER everything is ready
+    await Future.delayed(const Duration(milliseconds: 1200));
+
     if (!mounted) return;
 
     if (user == null) {
-      Navigator.pushReplacement(
-        context,
+      Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const LoginScreen()),
       );
-      return;
+    } else {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const ModeRouter()),
+      );
     }
-
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const ModeRouter()),
-    );
   }
 
 

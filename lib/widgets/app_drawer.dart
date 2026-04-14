@@ -38,11 +38,10 @@ Future<bool> checkOwnerVerificationStatus({
         doc.exists && (doc.data()?['isOwnerDetailsSubmitted'] == true);
 
     // 🔹 Close drawer on ROOT navigator only (prevents losing context)
-    try {
+  
       if (Navigator.of(context, rootNavigator: true).canPop()) {
         Navigator.of(context, rootNavigator: true).pop();
       }
-    } catch (_) {}
 
   // Very short wait so animations finish (reduced perfs delay)
   await Future.delayed(const Duration(milliseconds: 60));
@@ -142,6 +141,7 @@ class _AppDrawerState extends State<AppDrawer> {
   // Local last-seen copy to avoid flicker while future is loading again.
   Map<String, dynamic>? _lastSeenUserData;
 
+  // ignore: unused_element
   Future<Map<String, dynamic>?> _getUserDocFuture(String? uid) {
     if (uid == null || uid.isEmpty) return Future.value(null);
     if (_userDocFutureCache.containsKey(uid)) return _userDocFutureCache[uid]!;
@@ -172,9 +172,10 @@ class _AppDrawerState extends State<AppDrawer> {
               Navigator.of(ctx).pop();
 
               // Close the drawer if it's open (best-effort)
-              try {
-                Navigator.of(context).pop();
-              } catch (_) {}
+                if (Navigator.of(context).canPop()) {
+                    Navigator.of(context).pop();
+                }
+          
 
               final uid = fb.FirebaseAuth.instance.currentUser?.uid;
 
@@ -211,11 +212,19 @@ class _AppDrawerState extends State<AppDrawer> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final surface = colorScheme.surface;
-    final onSurface = colorScheme.onSurface;
+  final theme = Theme.of(context);
+  final colorScheme = theme.colorScheme;
+  final surface = colorScheme.surface;
+  final onSurface = colorScheme.onSurface;
   final muted = onSurface.withOpacity(0.6);
+
+  // Cache current user and uid to avoid repeated calls during build.
+  final fb.User? currentUser = fb.FirebaseAuth.instance.currentUser;
+  final String? uid = currentUser?.uid;
+
+  // Stream for live user document updates. Null when no signed-in user.
+  final Stream<DocumentSnapshot<Map<String, dynamic>>>? userDocStream =
+    uid != null ? FirebaseFirestore.instance.collection('users').doc(uid).snapshots() : null;
 
     return Drawer(
       width: MediaQuery.of(context).size.width * 0.82,
@@ -228,9 +237,9 @@ class _AppDrawerState extends State<AppDrawer> {
               onTap: () {
                 // Always close the drawer, then navigate directly to Profile.
                 // Remove delegation to parent via `onItemSelected` and label-based routing.
-                try {
+                if (Navigator.of(context).canPop()) {
                   Navigator.of(context).pop();
-                } catch (_) {}
+                }
 
                 try {
                   Navigator.pushNamed(context, AppRoutes.profile);
@@ -299,11 +308,11 @@ class _AppDrawerState extends State<AppDrawer> {
                         // Small filter icon in header for quick access
                         IconButton(
                           icon: Icon(Icons.filter_alt, color: theme.colorScheme.onPrimary),
-                          onPressed: () {
+                            onPressed: () {
                             // Close drawer then open filters
-                            try {
+                            if (Navigator.of(context).canPop()) {
                               Navigator.of(context).pop();
-                            } catch (_) {}
+                            }
                             final cat = Category.all;
                             Navigator.push(
                               context,
@@ -322,148 +331,135 @@ class _AppDrawerState extends State<AppDrawer> {
                       ),
                       child: Row(
                         children: [
-                          Builder(builder: (ctx) {
-                            final fb.User? user = fb.FirebaseAuth.instance.currentUser;
-                            final uid = user?.uid;
+                              StreamBuilder<DocumentSnapshot<Map<String, dynamic>>?>(
+                                stream: userDocStream,
+                                builder: (context, snap) {
+                                  // Build data once and reuse for avatar + name/email.
+                                  final fb.User? user = currentUser;
+                                  final fallback = _lastSeenUserData;
 
-                            if (uid == null) {
-                              return CircleAvatar(
-                                radius: 28,
-                                backgroundColor: surface,
-                                child: Text('U', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: colorScheme.primary)),
-                              );
-                            }
+                                  Map<String, dynamic> data = {};
+                                  if (snap.hasData && snap.data?.data() != null) {
+                                    data = snap.data!.data()!;
+                                    _lastSeenUserData = Map<String, dynamic>.from(data);
+                                  } else if (fallback != null) {
+                                    data = fallback;
+                                  }
 
-                            return FutureBuilder<Map<String, dynamic>?>(
-                              future: _getUserDocFuture(uid),
-                              builder: (context, snap) {
-                                final fb.User? userLocal = fb.FirebaseAuth.instance.currentUser;
+                                  // Fallback order: widget.profile -> firestore data -> _lastSeenUserData -> FirebaseAuth
+                                  final displayName = (widget.profile?['name'] ?? data['name'] ?? user?.displayName ?? '')?.toString() ?? '';
+                                  final email = (widget.profile?['email'] ?? data['email'] ?? _lastSeenUserData?['email'] ?? user?.email)?.toString();
+                                  final photoUrl = (widget.profile?['photoUrl'] ?? data['photoUrl'] ?? _lastSeenUserData?['photoUrl'] ?? user?.photoURL) as String?;
+                                  final avatarLetter = displayName.isNotEmpty ? displayName[0] : (email?.isNotEmpty == true ? email![0] : 'U');
 
-                                // If we have a last-seen copy use it to avoid flicker while loading
-                                final fallback = _lastSeenUserData;
-
-                                if (snap.connectionState == ConnectionState.waiting && fallback == null) {
-                                  return CircleAvatar(
-                                    radius: 28,
-                                    backgroundColor: surface,
-                                    child: const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)),
-                                  );
-                                }
-
-                                final data = snap.data ?? fallback ?? {};
-                                final displayName = (widget.profile?['name'] ?? data['name'] ?? userLocal?.displayName ?? '')?.toString() ?? '';
-                                final email = (userLocal?.email ?? data['email'])?.toString();
-                                final photoUrl = (data['photoUrl'] as String?) ?? userLocal?.photoURL;
-                                final avatarLetter = displayName.isNotEmpty ? displayName[0] : (email?.isNotEmpty == true ? email![0] : 'U');
-
-                                if (photoUrl != null && photoUrl.isNotEmpty) {
-                                  return CircleAvatar(
-                                    radius: 28,
-                                    backgroundColor: surface,
-                                    backgroundImage: NetworkImage(photoUrl),
-                                  );
-                                }
-
-                                return CircleAvatar(
-                                  radius: 28,
-                                  backgroundColor: surface,
-                                  child: Text(
-                                    avatarLetter,
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                      color: colorScheme.primary,
-                                    ),
-                                  ),
-                                );
-                              },
-                            );
-                          }),
-                          const SizedBox(width: 12),
-                                      Expanded(
-                            child: widget.isProfileLoading
-                                ? Text(
-                                    'Loading...',
-                                    style: TextStyle(color: theme.colorScheme.onPrimary.withOpacity(0.9)),
-                                  )
-                                : Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      FutureBuilder<Map<String, dynamic>?>(
-                                        future: _getUserDocFuture(fb.FirebaseAuth.instance.currentUser?.uid ?? ''),
-                                        builder: (context, snap) {
-                                          final fb.User? user = fb.FirebaseAuth.instance.currentUser;
-                                          final fallback = _lastSeenUserData;
-
-                                          if (user == null) {
-                                            return Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  'Guest',
-                                                  style: TextStyle(
-                                                    fontSize: 16,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: theme.colorScheme.onPrimary,
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 4),
-                                                Text(
-                                                  'Please login to continue',
-                                                  style: TextStyle(color: theme.colorScheme.onPrimary.withOpacity(0.9), fontSize: 12),
-                                                ),
-                                              ],
-                                            );
-                                          }
-
-                                          if (snap.connectionState == ConnectionState.waiting && fallback == null) {
-                                            return Row(
-                                              children: [
-                                                const SizedBox(width: 6),
-                                                const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2)),
-                                                const SizedBox(width: 8),
-                                                Text('Loading...', style: TextStyle(color: theme.colorScheme.onPrimary.withOpacity(0.9))),
-                                              ],
-                                            );
-                                          }
-
-                                          final data = snap.data ?? fallback ?? {};
-                                          final displayName = (widget.profile?['name'] ?? data['name'] ?? user.displayName ?? '')?.toString() ?? '';
-                                          final email = (user.email ?? data['email'])?.toString();
-
-                                          // If doc missing, attempt to ensure it's created in background
-                                          final uid = fb.FirebaseAuth.instance.currentUser?.uid;
-                                          if (data.isEmpty && uid != null && uid.isNotEmpty) {
-                                            ensureUserDoc(uid);
-                                          }
-
-                                          return Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                displayName.isNotEmpty ? displayName : 'Guest',
-                                                style: TextStyle(
-                                                  fontSize: 16,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: theme.colorScheme.onPrimary,
-                                                ),
-                                              ),
-                                              if (email != null && email.isNotEmpty)
-                                                Text(email, style: TextStyle(color: theme.colorScheme.onPrimary.withOpacity(0.9), fontSize: 12)),
-                                            ],
-                                          );
-                                        },
+                                  // Avatar widget
+                                  Widget avatarWidget;
+                                  if (snap.connectionState == ConnectionState.waiting && data.isEmpty) {
+                                    avatarWidget = CircleAvatar(
+                                      radius: 28,
+                                      backgroundColor: surface,
+                                      child: const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)),
+                                    );
+                                  } else if (photoUrl != null && photoUrl.isNotEmpty) {
+                                    avatarWidget = CircleAvatar(
+                                      radius: 28,
+                                      backgroundColor: surface,
+                                      backgroundImage: NetworkImage(photoUrl),
+                                    );
+                                  } else {
+                                    avatarWidget = CircleAvatar(
+                                      radius: 28,
+                                      backgroundColor: surface,
+                                      child: Text(
+                                        avatarLetter,
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                          color: colorScheme.primary,
+                                        ),
                                       ),
-                                      // Owner badge removed
+                                    );
+                                  }
+
+                                  // Name/email widget (respect current isProfileLoading behavior)
+                                  Widget nameEmailWidget;
+                                  if (widget.isProfileLoading) {
+                                    nameEmailWidget = Text(
+                                      'Loading...',
+                                      style: TextStyle(color: theme.colorScheme.onPrimary.withOpacity(0.9)),
+                                    );
+                                  } else {
+                                    if (user == null) {
+                                      nameEmailWidget = Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Guest',
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                              color: theme.colorScheme.onPrimary,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            'Please login to continue',
+                                            style: TextStyle(color: theme.colorScheme.onPrimary.withOpacity(0.9), fontSize: 12),
+                                          ),
+                                        ],
+                                      );
+                                    } else {
+                                      // If doc missing, attempt to ensure it's created in background (only once)
+                                      if (data.isEmpty && uid != null && _lastSeenUserData == null) {
+                                        ensureUserDoc(uid);
+                                      }
+
+                                      final resolvedDisplayName = (widget.profile?['name'] ?? data['name'] ?? user.displayName ?? '')?.toString() ?? '';
+                                      final resolvedEmail = (user.email ?? data['email'])?.toString();
+
+                                      nameEmailWidget = Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            resolvedDisplayName.isNotEmpty ? resolvedDisplayName : 'Guest',
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                              color: theme.colorScheme.onPrimary,
+                                            ),
+                                          ),
+                                          if (resolvedEmail != null && resolvedEmail.isNotEmpty)
+                                            Text(
+                                              resolvedEmail,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(color: theme.colorScheme.onPrimary.withOpacity(0.9), fontSize: 12),
+                                            ),
+                                        ],
+                                      );
+                                    }
+                                  }
+
+                                  return Row(
+                                    mainAxisSize: MainAxisSize.min, // keep compact
+                                    children: [
+                                      avatarWidget,
+                                      const SizedBox(width: 12),
+                                      Flexible(
+                                        child: nameEmailWidget,
+                                      ),
                                     ],
-                                  ),
-                          )
+                                  );
+                                },
+                              )
                         ],
-                      ),
-                    )
-                  ],
-                ),
-              ),
+                      ), // end Row
+                    ), // end Container (padded box)
+                  ], // end Column children
+                ), // end Column
+              ), // end Container (header)
             ),
 
             // ===== BODY =====
@@ -472,34 +468,31 @@ class _AppDrawerState extends State<AppDrawer> {
                 padding: const EdgeInsets.all(16),
                 children: [
                   // ===== SWITCH ACCOUNT =====
-                  FutureBuilder<Map<String, dynamic>?>(
-                    future: _getUserDocFuture(fb.FirebaseAuth.instance.currentUser?.uid ?? ''),
+                  StreamBuilder<DocumentSnapshot<Map<String, dynamic>>?>(
+                    stream: userDocStream,
                     builder: (context, snap) {
-                      String activeRole = 'user';
+                      // Maintain fallback order: widget.profile -> firestore data -> _lastSeenUserData -> FirebaseAuth user
+                      Map<String, dynamic> firestoreData = {};
+                      if (snap.hasData && snap.data?.data() != null) {
+                        firestoreData = snap.data!.data()!;
+                        _lastSeenUserData = Map<String, dynamic>.from(firestoreData);
+                      }
+
+                      final String activeRole = (widget.profile?['activeRole'] ?? firestoreData['activeRole'] ?? _lastSeenUserData?['activeRole'] ?? 'user').toString();
                       bool isOwner = false;
 
-                      final data = snap.data ?? _lastSeenUserData ?? {};
-
-                      if (data.isNotEmpty) {
-                        activeRole = (data['activeRole'] ?? 'user').toString();
-
-                        final role = (data['role'] ?? 'user').toString();
-                        final rolesRaw = data['roles'];
-                        List<String> roles = [];
-                        if (rolesRaw is List) {
-                          roles = List<String>.from(rolesRaw);
-                        } else if (rolesRaw is String) {
-                          roles = [rolesRaw];
-                        }
-
-                        // Show switch only if user has owner capability
-                        isOwner = role == 'owner' || roles.contains('farmhouse_owner') || roles.contains('car_owner');
+                      final role = (widget.profile?['role'] ?? firestoreData['role'] ?? _lastSeenUserData?['role'] ?? '').toString();
+                      final rolesRaw = widget.profile?['roles'] ?? firestoreData['roles'] ?? _lastSeenUserData?['roles'];
+                      List<String> roles = [];
+                      if (rolesRaw is List) {
+                        roles = List<String>.from(rolesRaw);
+                      } else if (rolesRaw is String) {
+                        roles = [rolesRaw];
                       }
 
-                      // If user is not owner, don't render this section
-                      if (!isOwner) {
-                        return const SizedBox.shrink();
-                      }
+                      isOwner = role == 'owner' || roles.contains('farmhouse_owner') || roles.contains('car_owner');
+
+                      if (!isOwner) return const SizedBox.shrink();
 
                       return Container(
                         margin: const EdgeInsets.only(bottom: 16),
@@ -525,9 +518,7 @@ class _AppDrawerState extends State<AppDrawer> {
                                     ),
                                   ),
                                   Text(
-                                    activeRole == 'owner'
-                                        ? "Owner Mode"
-                                        : "User Mode",
+                                    activeRole == 'owner' ? "Owner Mode" : "User Mode",
                                     style: TextStyle(
                                       color: colorScheme.onPrimary.withOpacity(0.8),
                                       fontSize: 12,
@@ -540,31 +531,21 @@ class _AppDrawerState extends State<AppDrawer> {
                               value: activeRole == 'owner',
                               activeThumbColor: colorScheme.onPrimary,
                               onChanged: (val) async {
-                                final uid = fb.FirebaseAuth.instance.currentUser?.uid;
                                 if (uid == null) return;
 
                                 final newRole = val ? 'owner' : 'user';
 
-                                await FirebaseFirestore.instance
-                                    .collection('users')
-                                    .doc(uid)
-                                    .update({'activeRole': newRole});
+                                await FirebaseFirestore.instance.collection('users').doc(uid).update({'activeRole': newRole});
 
                                 if (context.mounted) {
                                   showAppSnack(
                                     context,
-                                    newRole == 'owner'
-                                        ? 'Switched to Owner mode'
-                                        : 'Switched to User mode',
+                                    newRole == 'owner' ? 'Switched to Owner mode' : 'Switched to User mode',
                                     isSuccess: true,
                                   );
 
                                   // Reload app root so ModeRouter decides which UI to show
-                                  Navigator.pushNamedAndRemoveUntil(
-                                    context,
-                                    '/',
-                                    (route) => false,
-                                  );
+                                  Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
                                 }
                               },
                             )
@@ -579,9 +560,9 @@ class _AppDrawerState extends State<AppDrawer> {
                     title: Text('Home', style: TextStyle(color: onSurface)),
                     onTap: () {
                       // Close drawer first so the UI is tidy before navigation.
-                      try {
+                      if (Navigator.of(context).canPop()) {
                         Navigator.of(context).pop();
-                      } catch (_) {}
+                      }
 
                       // If parent scaffold wants to handle item selection (e.g.
                       // switch bottom tabs), delegate to it. This avoids
@@ -624,9 +605,9 @@ class _AppDrawerState extends State<AppDrawer> {
                     leading: Icon(Icons.favorite_border, color: onSurface),
                     title: Text('Favorites', style: TextStyle(color: onSurface)),
                     onTap: () {
-                      try {
+                      if (Navigator.of(context).canPop()) {
                         Navigator.of(context).pop();
-                      } catch (_) {}
+                      }
 
                       if (widget.onItemSelected != null && AppRoutes.labelToRoute.containsKey(AppRoutes.labelFavorites)) {
                         Future.microtask(() => widget.onItemSelected!(AppRoutes.labelFavorites));
@@ -645,9 +626,9 @@ class _AppDrawerState extends State<AppDrawer> {
                     leading: Icon(Icons.calendar_month_outlined, color: onSurface),
                     title: Text('My Bookings', style: TextStyle(color: onSurface)),
                     onTap: () {
-                      try {
+                      if (Navigator.of(context).canPop()) {
                         Navigator.of(context).pop();
-                      } catch (_) {}
+                      }
 
                       if (widget.onItemSelected != null && AppRoutes.labelToRoute.containsKey(AppRoutes.labelBookings)) {
                         Future.microtask(() => widget.onItemSelected!(AppRoutes.labelBookings));
@@ -663,33 +644,34 @@ class _AppDrawerState extends State<AppDrawer> {
                     },
                   ),
 
-                  FutureBuilder<Map<String, dynamic>?>(
-                    future: _getUserDocFuture(fb.FirebaseAuth.instance.currentUser?.uid ?? ''),
+                  StreamBuilder<DocumentSnapshot<Map<String, dynamic>>?>(
+                    stream: userDocStream,
                     builder: (context, snap) {
-                      final data = snap.data ?? _lastSeenUserData ?? {};
-                      bool isOwner = false;
-
-                      if (data.isNotEmpty) {
-                        final role = (data['role'] ?? '').toString();
-                        final rolesRaw = data['roles'];
-                        List<String> roles = [];
-                        if (rolesRaw is List) {
-                          roles = List<String>.from(rolesRaw);
-                        } else if (rolesRaw is String) {
-                          roles = [rolesRaw];
-                        }
-
-                        isOwner = role == 'owner' || roles.contains('farmhouse_owner') || roles.contains('car_owner');
+                      Map<String, dynamic> firestoreData = {};
+                      if (snap.hasData && snap.data?.data() != null) {
+                        firestoreData = snap.data!.data()!;
+                        _lastSeenUserData = Map<String, dynamic>.from(firestoreData);
                       }
+
+                      final role = (widget.profile?['role'] ?? firestoreData['role'] ?? _lastSeenUserData?['role'] ?? '').toString();
+                      final rolesRaw = widget.profile?['roles'] ?? firestoreData['roles'] ?? _lastSeenUserData?['roles'];
+                      List<String> roles = [];
+                      if (rolesRaw is List) {
+                        roles = List<String>.from(rolesRaw);
+                      } else if (rolesRaw is String) {
+                        roles = [rolesRaw];
+                      }
+
+                      final bool isOwner = role == 'owner' || roles.contains('farmhouse_owner') || roles.contains('car_owner');
 
                       if (isOwner) {
                         return ListTile(
                           leading: Icon(Icons.dashboard_outlined, color: onSurface),
                           title: Text('Owner Dashboard', style: TextStyle(color: onSurface)),
                           onTap: () {
-                            try {
+                            if (Navigator.of(context).canPop()) {
                               Navigator.of(context).pop();
-                            } catch (_) {}
+                            }
 
                             Navigator.of(context, rootNavigator: true).push(
                               MaterialPageRoute(builder: (_) => const OwnerDashboard()),
@@ -716,9 +698,9 @@ class _AppDrawerState extends State<AppDrawer> {
                     leading: Icon(Icons.settings_outlined, color: onSurface),
                     title: Text('Settings', style: TextStyle(color: onSurface)),
                     onTap: () {
-                      try {
+                      if (Navigator.of(context).canPop()) {
                         Navigator.of(context).pop();
-                      } catch (_) {}
+                      }
                       if (widget.onItemSelected != null && AppRoutes.labelToRoute.containsKey(AppRoutes.labelSettings)) {
                         Future.microtask(() => widget.onItemSelected!(AppRoutes.labelSettings));
                         return;
@@ -730,9 +712,9 @@ class _AppDrawerState extends State<AppDrawer> {
                     leading: Icon(Icons.card_giftcard, color: onSurface),
                     title: Text('Offers & Coupons', style: TextStyle(color: onSurface)),
                     onTap: () {
-                      try {
+                      if (Navigator.of(context).canPop()) {
                         Navigator.of(context).pop();
-                      } catch (_) {}
+                      }
                       if (widget.onItemSelected != null && AppRoutes.labelToRoute.containsKey(AppRoutes.labelOffers)) {
                         Future.microtask(() => widget.onItemSelected!(AppRoutes.labelOffers));
                         return;
@@ -744,9 +726,9 @@ class _AppDrawerState extends State<AppDrawer> {
                     leading: Icon(Icons.help_outline, color: colorScheme.primary),
                     title: Text('Help & Support', style: TextStyle(color: onSurface)),
                     onTap: () {
-                      try {
+                      if (Navigator.of(context).canPop()) {
                         Navigator.of(context).pop();
-                      } catch (_) {}
+                      }
                       if (widget.onItemSelected != null && AppRoutes.labelToRoute.containsKey(AppRoutes.labelHelp)) {
                         Future.microtask(() => widget.onItemSelected!(AppRoutes.labelHelp));
                         return;
@@ -758,9 +740,9 @@ class _AppDrawerState extends State<AppDrawer> {
                     leading: Icon(Icons.info_outline, color: onSurface),
                     title: Text('About Us', style: TextStyle(color: onSurface)),
                     onTap: () {
-                      try {
+                      if (Navigator.of(context).canPop()) {
                         Navigator.of(context).pop();
-                      } catch (_) {}
+                      }
                       Navigator.push(context, MaterialPageRoute(builder: (_) => const AboutUsScreen()));
                     },
                   ),
@@ -768,9 +750,9 @@ class _AppDrawerState extends State<AppDrawer> {
                     leading: Icon(Icons.privacy_tip_outlined, color: onSurface),
                     title: Text('Terms & Privacy Policy', style: TextStyle(color: onSurface)),
                     onTap: () {
-                      try {
+                      if (Navigator.of(context).canPop()) {
                         Navigator.of(context).pop();
-                      } catch (_) {}
+                      }
                       Navigator.push(context, MaterialPageRoute(builder: (_) => const TermsPolicyScreen()));
                     },
                   ),

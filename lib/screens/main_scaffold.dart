@@ -38,6 +38,8 @@ class MainScaffold extends StatefulWidget {
 
 class _MainScaffoldState extends State<MainScaffold> {
   late BottomTab _selectedTab;
+  // Key to control the Scaffold so AppBar's menu can reliably open the drawer.
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
   void initState() {
@@ -96,9 +98,16 @@ class _MainScaffoldState extends State<MainScaffold> {
         .toList();
 
     return Scaffold(
+      key: _scaffoldKey,
       appBar: AppBar(
         title: const Text(''),
         leadingWidth: 70,
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: () {
+            _scaffoldKey.currentState?.openDrawer();
+          },
+        ),
       ),
       drawer: AppDrawer(
         activeItem: AppRoutes.routeToLabel(_bottomTabRoute[_selectedTab]),
