@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:google_sign_in/google_sign_in.dart';
-
+import 'package:google_sign_in/google_sign_in.dart' as g_sign_in;
+import 'package:flutter/services.dart';
 import '../services/user_bootstrap_service.dart';
-
 import 'otp_screen.dart';
 import 'home_screen.dart';
-import '../main.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -15,17 +13,107 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
+/// Reusable premium Google Sign-In button.
+///
+/// Usage: pass [onPressed] callback (nullable) and [isLoading] flag.
+class GoogleSignInButton extends StatelessWidget {
+  final VoidCallback? onPressed;
+  final bool isLoading;
+
+  const GoogleSignInButton({super.key, required this.onPressed, this.isLoading = false});
+
+  @override
+  Widget build(BuildContext context) {
+    const borderColor = Color(0xFFE0E0E0);
+
+    final ButtonStyle style = OutlinedButton.styleFrom(
+      backgroundColor: Colors.white,
+      side: const BorderSide(color: borderColor),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 2,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      minimumSize: const Size.fromHeight(52),
+    );
+
+    return SizedBox(
+      width: double.infinity,
+      height: 52,
+      child: OutlinedButton(
+        onPressed: onPressed,
+        style: style,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Google logo asset on the left. Provide an errorBuilder fallback
+            // so the UI remains intact if the asset isn't available at runtime.
+            Image.asset(
+              'assets/google_logo.png',
+              height: 24,
+              width: 24,
+              fit: BoxFit.contain,
+              semanticLabel: 'Google logo',
+              errorBuilder: (context, error, stackTrace) {
+                // Log the asset loading error to help debugging.
+                debugPrint('Failed to load google_logo.png asset: $error');
+                // Fallback: small colored 'G' badge to mimic Google mark.
+                return Container(
+                  height: 24,
+                  width: 24,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF4285F4),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  alignment: Alignment.center,
+                  child: const Text(
+                    'G',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                    ),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(width: 10),
+            if (isLoading)
+              const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            else
+              const Flexible(
+                child: Text(
+                  'Continue with Google',
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController phoneController = TextEditingController();
   String? errorMessage;
   bool isLoading = false;
 
   bool _isValidPhone(String input) {
-    return RegExp(r'^[0-9]{10}$').hasMatch(input);
+    return RegExp(r'^[6-9][0-9]{9}$').hasMatch(input);
   }
 
   Future<void> sendPhoneOtp() async {
     final phone = phoneController.text.trim();
+    FocusScope.of(context).unfocus();
 
     if (!_isValidPhone(phone)) {
       setState(() {
@@ -48,9 +136,9 @@ class _LoginScreenState extends State<LoginScreen> {
             await UserBootstrapService.ensureUserDoc();
           }
           if (!mounted) return;
-          Navigator.pushReplacement(
-            context,
+          Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(builder: (_) => const HomeScreen()),
+            (route) => false,
           );
         },
         verificationFailed: (e) {
@@ -63,8 +151,7 @@ class _LoginScreenState extends State<LoginScreen> {
           setState(() {
             isLoading = false;
           });
-          Navigator.push(
-            context,
+          Navigator.of(context).push(
             MaterialPageRoute(
               builder: (_) => OTPScreen(
                 value: phone,
@@ -91,18 +178,23 @@ Future<void> signInWithGoogle(BuildContext context) async {
   try {
     // google_sign_in v7.x uses singleton instance with initialize() + authenticate()
     // First, ensure the instance is initialized
-    await GoogleSignIn.instance.initialize();
+    await g_sign_in.GoogleSignIn.instance.initialize();
 
     // Optional: sign out to force account chooser
     try {
-      await GoogleSignIn.instance.signOut();
+      await g_sign_in.GoogleSignIn.instance.signOut();
     } catch (_) {}
 
     // Trigger interactive authentication
-    final account = await GoogleSignIn.instance.authenticate(
+    final account = await g_sign_in.GoogleSignIn.instance.authenticate(
       scopeHint: ['email', 'profile'],
     );
-    if (account == null) return; // user cancelled
+    if (account == null) {
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
+      return;
+    }
 
     // Get idToken from authentication (v7.x API)
     final idToken = account.authentication.idToken;
@@ -123,9 +215,9 @@ Future<void> signInWithGoogle(BuildContext context) async {
     }
 
     if (!context.mounted) return;
-    Navigator.pushReplacement(
-      context,
+    Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const HomeScreen()),
+      (route) => false,
     );
   } catch (e, st) {
     debugPrint('Google Sign-In error: $e\n$st');
@@ -172,6 +264,10 @@ Future<void> signInWithGoogle(BuildContext context) async {
               TextField(
                 controller: phoneController,
                 keyboardType: TextInputType.phone,
+                maxLength: 10,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                ],
                 decoration: InputDecoration(
                   hintText: "", // BLANK placeholder as you asked
                   border: OutlineInputBorder(
@@ -193,15 +289,20 @@ Future<void> signInWithGoogle(BuildContext context) async {
 
               ElevatedButton(
                 onPressed: isLoading ? null : sendPhoneOtp,
-                child: const Text("Send OTP"),
+                child: isLoading
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text("Send OTP"),
               ),
 
               const SizedBox(height: 16),
 
-              OutlinedButton.icon(
+              GoogleSignInButton(
                 onPressed: isLoading ? null : () => signInWithGoogle(context),
-                icon: const Icon(Icons.g_mobiledata),
-                label: const Text("Continue with Google"),
+                isLoading: isLoading,
               ),
 
               const SizedBox(height: 24),

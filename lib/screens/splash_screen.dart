@@ -26,12 +26,12 @@ class _SplashScreenState extends State<SplashScreen>
   void initState() {
     super.initState();
 
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1400));
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1600));
 
     _fadeAnimation = CurvedAnimation(parent: _controller, curve: Curves.easeInOut);
 
     // Slight zoom-in animation (starts a bit smaller and overshoots slightly)
-    _scaleAnimation = Tween<double>(begin: 0.85, end: 1.03).animate(
+    _scaleAnimation = Tween<double>(begin: 0.7, end: 1.1).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeOutBack),
     );
 
@@ -61,7 +61,7 @@ class _SplashScreenState extends State<SplashScreen>
     }
 
     // Ensure splash delay AFTER everything is ready
-    await Future.delayed(const Duration(milliseconds: 1200));
+    await Future.delayed(const Duration(milliseconds: 2200));
 
     if (!mounted) return;
 
@@ -93,13 +93,13 @@ class _SplashScreenState extends State<SplashScreen>
         color: const Color.fromARGB(255, 41, 70, 92),
         child: FadeTransition(
           opacity: _fadeAnimation,
-          child: ScaleTransition(
-            scale: _scaleAnimation,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                FadeTransition(
-                  opacity: _fadeAnimation,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              FadeTransition(
+                opacity: _fadeAnimation,
+                child: ScaleTransition(
+                  scale: _scaleAnimation,
                   child: RichText(
                     textAlign: TextAlign.center,
                     text: TextSpan(
@@ -126,15 +126,27 @@ class _SplashScreenState extends State<SplashScreen>
                     ),
                   ),
                 ),
+              ),
 
-                const SizedBox(height: 28),
+              const SizedBox(height: 28),
 
-                const Text(
-                  'Stay Above Expectations.',
-                  style: TextStyle(color: Color(0xFFB9C5CC), fontSize: 14, fontStyle: FontStyle.italic, fontWeight: FontWeight.w600),
+              const Text(
+                'Stay Above Expectations.',
+                style: TextStyle(
+                  color: Color(0xFFB9C5CC),
+                  fontSize: 14,
+                  fontStyle: FontStyle.italic,
+                  fontWeight: FontWeight.w600,
                 ),
-              ],
-            ),
+              ),
+
+              const SizedBox(height: 24),
+
+              const CircularProgressIndicator(
+                color: Colors.white,
+                strokeWidth: 2,
+              ),
+            ],
           ),
         ),
       ),
