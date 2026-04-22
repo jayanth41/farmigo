@@ -626,12 +626,8 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
         }
 
         // Only go to AddProperty if ZERO properties and account is approved
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!mounted) return;
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const add_screen.AddPropertyScreen()),
-          );
-        });
+        setState(() => _checking = false);
+        await _loadProperties(uid);
         return;
       }
 
@@ -658,7 +654,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
 
           final propsSnap = await firestore
               .collection('properties')
-              .where('ownerId', isEqualTo: uid)
+              .where('userId', isEqualTo: uid)
               .get();
 
           debugPrint('[OwnerDashboard] (multi-role) properties found: ${propsSnap.docs.length}');
@@ -675,26 +671,16 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
           }
 
           // Only go to AddProperty if ZERO properties
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (!mounted) return;
-            Navigator.of(context).pushReplacement(
-                MaterialPageRoute(builder: (_) => const add_screen.AddPropertyScreen()),
-              );
-          });
+          setState(() => _checking = false);
+          await _loadProperties(uid);
           return;
         }
       }
 
       // Fallback: if somehow we reach here, treat as verified owner with no properties
-      debugPrint('[OwnerDashboard] Fallback reached — sending to AddPropertyScreen');
-      if (mounted) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!mounted) return;
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const add_screen.AddPropertyScreen()),
-          );
-        });
-      }
+      debugPrint('[OwnerDashboard] Fallback reached — treat as verified owner with no properties');
+      setState(() => _checking = false);
+      await _loadProperties(uid);
       return;
     } catch (e) {
       debugPrint('[OwnerDashboard] Error in _routeUser: $e');
@@ -734,73 +720,23 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
     }
   }
 
-  /// Query property documents for the given owner UID. This runs multiple
-  /// queries to cope with historical schema differences where owner could be
-  /// stored as 'ownerId', nested 'owner.uid' or as a top-level 'owner'.
+  /// Query property documents for the given owner UID using the correct field.
   Future<List<QueryDocumentSnapshot>> _queryPropertyDocsForOwner(String uid) async {
     final firestore = FirebaseFirestore.instance;
-    final Map<String, QueryDocumentSnapshot> byId = {};
 
     try {
-      // Preferred: ownerId with orderBy
-      try {
-        final snap = await firestore
-            .collection('properties')
-            .where('ownerId', isEqualTo: uid)
-            .orderBy('createdAt', descending: true)
-            .get();
-        for (var d in snap.docs) byId[d.id] = d;
-      } catch (_) {
-        // Fallback to ownerId without orderBy
-        try {
-          final snap = await firestore
-              .collection('properties')
-              .where('ownerId', isEqualTo: uid)
-              .get();
-          for (var d in snap.docs) byId[d.id] = d;
-        } catch (_) {}
-      }
+      final snap = await firestore
+          .collection('properties')
+          .where('userId', isEqualTo: uid) // 🔥 use correct field
+          .get();
 
-      // Query nested owner.uid (documents that store owner as object)
-      try {
-        final snap2 = await firestore
-            .collection('properties')
-            .where('owner.uid', isEqualTo: uid)
-            .get();
-        debugPrint('[OwnerDashboard] query owner.uid -> ${snap2.docs.length}');
-        for (var d in snap2.docs) byId[d.id] = d;
-      } catch (_) {}
+      debugPrint('[OwnerDashboard FIX] properties found using userId: ${snap.docs.length}');
 
-      // Query top-level owner field (string form)
-      try {
-        final snap3 = await firestore
-            .collection('properties')
-            .where('owner', isEqualTo: uid)
-            .get();
-        debugPrint('[OwnerDashboard] query owner -> ${snap3.docs.length}');
-        for (var d in snap3.docs) byId[d.id] = d;
-      } catch (_) {}
-
-      // Some older/alternate schemas use 'userId' or 'createdBy' or 'hostId'
-      for (final field in ['userId', 'createdBy', 'hostId']) {
-        try {
-          final snapX = await firestore.collection('properties').where(field, isEqualTo: uid).get();
-          if (snapX.docs.isNotEmpty) debugPrint('[OwnerDashboard] query $field -> ${snapX.docs.length}');
-          for (var d in snapX.docs) byId[d.id] = d;
-        } catch (_) {}
-      }
-
-      // Some documents store owners as an array field 'owners'
-      try {
-        final snapArr = await firestore.collection('properties').where('owners', arrayContains: uid).get();
-        debugPrint('[OwnerDashboard] query owners arrayContains -> ${snapArr.docs.length}');
-        for (var d in snapArr.docs) byId[d.id] = d;
-      } catch (_) {}
+      return snap.docs;
     } catch (e) {
-      debugPrint('[OwnerDashboard] _queryPropertyDocsForOwner failed: $e');
+      debugPrint('[OwnerDashboard FIX] query failed: $e');
+      return [];
     }
-
-    return byId.values.toList();
   }
 
   Future<void> _populatePropertiesFromDocs(List<QueryDocumentSnapshot> docs) async {
