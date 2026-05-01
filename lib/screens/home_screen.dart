@@ -258,20 +258,17 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         } catch (_) {}
       }
 
-      if (!mounted) return;
-
+      debugPrint("🔥 PROPERTIES COUNT: ${data.length}");
       final newList = List<Map<String, dynamic>>.from(data);
 
       // Avoid unnecessary rebuild if data length hasn’t changed
-      if (_allProperties.length == newList.length) {
-        return;
+      if (mounted) {
+        setState(() {
+          _allProperties = newList;
+          _filteredFarmhouses = newList; // immediate fallback to avoid blank screen
+        });
+        _applyFilters();
       }
-
-      setState(() {
-        _allProperties = newList;
-      });
-
-      _applyFilters();
     });
   }
 
@@ -638,6 +635,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
 
   void _applyFilters() {
+    debugPrint("[FILTER] total properties: ${_allProperties.length}");
+    if (_allProperties.isEmpty) {
+      debugPrint("[FILTER] no properties available");
+      _filteredFarmhouses = [];
+      return;
+    }
     final query = _searchController.text.toLowerCase();
     final selectedState = _selectedState.toLowerCase();
     final selectedCategory = _selectedCategory.toLowerCase();
@@ -651,7 +654,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         selectedCity = locationController.selectedCity.value.toLowerCase();
       } catch (_) {}
 
-      if (selectedCity.isNotEmpty && !location.contains(selectedCity)) {
+      if (selectedCity.isNotEmpty && location.isNotEmpty && !location.contains(selectedCity)) {
         return false;
       }
 
@@ -739,6 +742,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       return true;
     }).toList();
 
+    debugPrint("[FILTER] before sort count: ${result.length}");
+
     switch (_sortOption) {
       case 'Price: Low to High':
         result.sort((a, b) =>
@@ -780,6 +785,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       default:
         break;
     }
+
+    debugPrint("[FILTER] final filtered count: ${result.length}");
 
     if (!mounted) return;
 
@@ -845,6 +852,49 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
 
   Widget _buildBody() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      // Not logged in, show login screen (should not happen, but fallback)
+      return Center(child: Text('Not logged in'));
+    }
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance.collection('users').doc(user.uid).snapshots(),
+      builder: (context, snapshot) {
+        debugPrint('[HomeScreen][StreamBuilder] connectionState: \x1b[33m${snapshot.connectionState}\x1b[0m hasError: ${snapshot.hasError} hasData: ${snapshot.hasData} exists: ${snapshot.hasData && snapshot.data != null && snapshot.data!.exists}');
+        // Show loader only if no data yet, otherwise avoid infinite loading
+        if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          debugPrint('[HomeScreen][StreamBuilder] ERROR: \x1b[31m${snapshot.error}\x1b[0m');
+          return Center(child: Text('Error loading user profile'));
+        }
+        if (!snapshot.hasData) {
+          debugPrint('[HomeScreen][StreamBuilder] No data yet');
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (!snapshot.data!.exists) {
+          debugPrint('[HomeScreen][StreamBuilder] User profile document does not exist');
+          return _userHomeBody(); // fallback instead of blocking UI
+        }
+        final data = snapshot.data!.data() as Map<String, dynamic>?;
+        debugPrint('[HomeScreen][StreamBuilder] user data: $data');
+        final role = data?['activeRole'] ?? 'user';
+        debugPrint('[HomeScreen][StreamBuilder] activeRole: $role');
+        // Only allow 'owner' or 'user' roles
+        if (role == 'owner') {
+          return const OwnerDashboard();
+        } else {
+          // Default: show user home page
+          return _userHomeBody();
+        }
+      },
+    );
+  }
+
+  // Extracted user home body for clarity
+  Widget _userHomeBody() {
     switch (_selectedIndex) {
       case 0:
         return _homePage();
@@ -927,7 +977,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                 Icon(
                                   Icons.location_on_outlined,
                                   size: 14,
-                                  color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.95),
+                                  color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.95),
                                 ),
                                 const SizedBox(width: 6),
                                 Builder(builder: (ctx) {
@@ -938,7 +988,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                       name,
                                       style: TextStyle(
                                         fontSize: 13,
-                                        color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.92),
+                                        color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.92),
                                         fontWeight: FontWeight.w600,
                                       ),
                                     );
@@ -950,7 +1000,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                             name,
                                             style: TextStyle(
                                               fontSize: 13,
-                                              color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.92),
+                                              color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.92),
                                               fontWeight: FontWeight.w600,
                                             ),
                                           );
@@ -962,11 +1012,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                           final val = snap.data;
                                           return Text(
                                             val ?? 'Location unavailable',
-                                            style: TextStyle(
-                                              fontSize: 13,
-                                              color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.92),
-                                              fontWeight: FontWeight.w600,
-                                            ),
+                                              style: TextStyle(
+                                                fontSize: 13,
+                                                color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.92),
+                                                fontWeight: FontWeight.w600,
+                                              ),
                                           );
                                         },
                                       );
@@ -974,7 +1024,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                   }
                                 }),
                                 const SizedBox(width: 6),
-                                Icon(Icons.keyboard_arrow_down, size: 16, color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.95)),
+                                Icon(Icons.keyboard_arrow_down, size: 16, color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.95)),
                               ],
                             ),
                           ),
@@ -1588,7 +1638,18 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       ),
                     ),
                     const SizedBox(height: 8),
-                    PropertiesGrid(properties: _filteredFarmhouses),
+
+                    if (_allProperties.isEmpty)
+                      const Center(
+                        child: Padding(
+                          padding: EdgeInsets.only(top: 40),
+                          child: Text("No properties found"),
+                        ),
+                      )
+                    else
+                      PropertiesGrid(
+                        properties: _filteredFarmhouses
+                      ),
 
 
                   ],
@@ -1660,7 +1721,7 @@ class _GuestProfileView extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.person_outline, size: 72, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
+            Icon(Icons.person_outline, size: 72, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
             const SizedBox(height: 12),
             Text('You are browsing as a guest', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 8),

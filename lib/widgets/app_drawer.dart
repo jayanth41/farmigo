@@ -279,46 +279,36 @@ class _AppDrawerState extends State<AppDrawer> {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        Expanded(
-                          child: RichText(
-                            text: TextSpan(
-                              children: [
-                                TextSpan(
-                                  text: 'SKY',
-                                  style: TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w900,
-                                    color: theme.colorScheme.onPrimary,
-                                    letterSpacing: 1.4,
-                                  ),
-                                ),
-                                TextSpan(
-                                  text: 'BASE',
-                                  style: TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w900,
-                                    color: theme.colorScheme.onPrimary.withOpacity(0.9),
-                                    letterSpacing: 1.4,
-                                  ),
-                                ),
-                              ],
+                        Flexible(
+                          child: Text(
+                            'SKYBASE',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w900,
+                              color: theme.colorScheme.onPrimary,
+                              letterSpacing: 1.4,
                             ),
                           ),
                         ),
                         // Small filter icon in header for quick access
-                        IconButton(
-                          icon: Icon(Icons.filter_alt, color: theme.colorScheme.onPrimary),
+                        SizedBox(
+                          width: 40,
+                          child: IconButton(
+                            icon: Icon(Icons.filter_alt, color: theme.colorScheme.onPrimary),
                             onPressed: () {
-                            // Close drawer then open filters
-                            if (Navigator.of(context).canPop()) {
-                              Navigator.of(context).pop();
-                            }
-                            final cat = Category.all;
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => FiltersScreen(category: cat, initialFilters: {}, onFiltersApplied: (_) {})),
-                            );
-                          },
+                              // Close drawer then open filters
+                              if (Navigator.of(context).canPop()) {
+                                Navigator.of(context).pop();
+                              }
+                              final cat = Category.all;
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (_) => FiltersScreen(category: cat, initialFilters: {}, onFiltersApplied: (_) {})),
+                              );
+                            },
+                          ),
                         ),
                       ],
                     ),
@@ -329,133 +319,132 @@ class _AppDrawerState extends State<AppDrawer> {
                         color: colorScheme.primary.withOpacity(0.12),
                         borderRadius: BorderRadius.circular(16),
                       ),
-                      child: Row(
-                        children: [
-                              StreamBuilder<DocumentSnapshot<Map<String, dynamic>>?>(
-                                stream: userDocStream,
-                                builder: (context, snap) {
-                                  // Build data once and reuse for avatar + name/email.
-                                  final fb.User? user = currentUser;
-                                  final fallback = _lastSeenUserData;
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>?>(
+                          stream: userDocStream,
+                          builder: (context, snap) {
+                            // Build data once and reuse for avatar + name/email.
+                            final fb.User? user = currentUser;
+                            final fallback = _lastSeenUserData;
 
-                                  Map<String, dynamic> data = {};
-                                  if (snap.hasData && snap.data?.data() != null) {
-                                    data = snap.data!.data()!;
-                                    _lastSeenUserData = Map<String, dynamic>.from(data);
-                                  } else if (fallback != null) {
-                                    data = fallback;
-                                  }
+                            Map<String, dynamic> data = {};
+                            if (snap.hasData && snap.data?.data() != null) {
+                              data = snap.data!.data()!;
+                              _lastSeenUserData = Map<String, dynamic>.from(data);
+                            } else if (fallback != null) {
+                              data = fallback;
+                            }
 
-                                  // Fallback order: widget.profile -> firestore data -> _lastSeenUserData -> FirebaseAuth
-                                  final displayName = (widget.profile?['name'] ?? data['name'] ?? user?.displayName ?? '')?.toString() ?? '';
-                                  final email = (widget.profile?['email'] ?? data['email'] ?? _lastSeenUserData?['email'] ?? user?.email)?.toString();
-                                  final photoUrl = (widget.profile?['photoUrl'] ?? data['photoUrl'] ?? _lastSeenUserData?['photoUrl'] ?? user?.photoURL) as String?;
-                                  final avatarLetter = displayName.isNotEmpty ? displayName[0] : (email?.isNotEmpty == true ? email![0] : 'U');
+                            // Fallback order: widget.profile -> firestore data -> _lastSeenUserData -> FirebaseAuth
+                            final displayName = (widget.profile?['name'] ?? data['name'] ?? user?.displayName ?? '')?.toString() ?? '';
+                            final email = (widget.profile?['email'] ?? data['email'] ?? _lastSeenUserData?['email'] ?? user?.email)?.toString();
+                            final photoUrl = (widget.profile?['photoUrl'] ?? data['photoUrl'] ?? _lastSeenUserData?['photoUrl'] ?? user?.photoURL) as String?;
+                            final avatarLetter = displayName.isNotEmpty ? displayName[0] : (email?.isNotEmpty == true ? email![0] : 'U');
 
-                                  // Avatar widget
-                                  Widget avatarWidget;
-                                  if (snap.connectionState == ConnectionState.waiting && data.isEmpty) {
-                                    avatarWidget = CircleAvatar(
-                                      radius: 28,
-                                      backgroundColor: surface,
-                                      child: const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)),
-                                    );
-                                  } else if (photoUrl != null && photoUrl.isNotEmpty) {
-                                    avatarWidget = CircleAvatar(
-                                      radius: 28,
-                                      backgroundColor: surface,
-                                      backgroundImage: NetworkImage(photoUrl),
-                                    );
-                                  } else {
-                                    avatarWidget = CircleAvatar(
-                                      radius: 28,
-                                      backgroundColor: surface,
-                                      child: Text(
-                                        avatarLetter,
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                          color: colorScheme.primary,
-                                        ),
+                            // Avatar widget
+                            Widget avatarWidget;
+                            if (snap.connectionState == ConnectionState.waiting && data.isEmpty) {
+                              avatarWidget = CircleAvatar(
+                                radius: 28,
+                                backgroundColor: surface,
+                                child: const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)),
+                              );
+                            } else if (photoUrl != null && photoUrl.isNotEmpty) {
+                              avatarWidget = CircleAvatar(
+                                radius: 28,
+                                backgroundColor: surface,
+                                backgroundImage: NetworkImage(photoUrl),
+                              );
+                            } else {
+                              avatarWidget = CircleAvatar(
+                                radius: 28,
+                                backgroundColor: surface,
+                                child: Text(
+                                  avatarLetter,
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: colorScheme.primary,
+                                  ),
+                                ),
+                              );
+                            }
+
+                            // Name/email widget (respect current isProfileLoading behavior)
+                            Widget nameEmailWidget;
+                            if (widget.isProfileLoading) {
+                              nameEmailWidget = Text(
+                                'Loading...',
+                                style: TextStyle(color: theme.colorScheme.onPrimary.withOpacity(0.9)),
+                              );
+                            } else {
+                              if (user == null) {
+                                nameEmailWidget = Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Guest',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: theme.colorScheme.onPrimary,
                                       ),
-                                    );
-                                  }
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Please login to continue',
+                                      style: TextStyle(color: theme.colorScheme.onPrimary.withOpacity(0.9), fontSize: 12),
+                                    ),
+                                  ],
+                                );
+                              } else {
+                                // If doc missing, attempt to ensure it's created in background (only once)
+                                if (data.isEmpty && uid != null && _lastSeenUserData == null) {
+                                  ensureUserDoc(uid);
+                                }
 
-                                  // Name/email widget (respect current isProfileLoading behavior)
-                                  Widget nameEmailWidget;
-                                  if (widget.isProfileLoading) {
-                                    nameEmailWidget = Text(
-                                      'Loading...',
-                                      style: TextStyle(color: theme.colorScheme.onPrimary.withOpacity(0.9)),
-                                    );
-                                  } else {
-                                    if (user == null) {
-                                      nameEmailWidget = Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            'Guest',
-                                            style: TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold,
-                                              color: theme.colorScheme.onPrimary,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            'Please login to continue',
-                                            style: TextStyle(color: theme.colorScheme.onPrimary.withOpacity(0.9), fontSize: 12),
-                                          ),
-                                        ],
-                                      );
-                                    } else {
-                                      // If doc missing, attempt to ensure it's created in background (only once)
-                                      if (data.isEmpty && uid != null && _lastSeenUserData == null) {
-                                        ensureUserDoc(uid);
-                                      }
+                                final resolvedDisplayName = (widget.profile?['name'] ?? data['name'] ?? user.displayName ?? '')?.toString() ?? '';
+                                final resolvedEmail = (user.email ?? data['email'])?.toString();
 
-                                      final resolvedDisplayName = (widget.profile?['name'] ?? data['name'] ?? user.displayName ?? '')?.toString() ?? '';
-                                      final resolvedEmail = (user.email ?? data['email'])?.toString();
-
-                                      nameEmailWidget = Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            resolvedDisplayName.isNotEmpty ? resolvedDisplayName : 'Guest',
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold,
-                                              color: theme.colorScheme.onPrimary,
-                                            ),
-                                          ),
-                                          if (resolvedEmail != null && resolvedEmail.isNotEmpty)
-                                            Text(
-                                              resolvedEmail,
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: TextStyle(color: theme.colorScheme.onPrimary.withOpacity(0.9), fontSize: 12),
-                                            ),
-                                        ],
-                                      );
-                                    }
-                                  }
-
-                                  return Row(
-                                    mainAxisSize: MainAxisSize.min, // keep compact
-                                    children: [
-                                      avatarWidget,
-                                      const SizedBox(width: 12),
-                                      Flexible(
-                                        child: nameEmailWidget,
+                                nameEmailWidget = Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      resolvedDisplayName.isNotEmpty ? resolvedDisplayName : 'Guest',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: theme.colorScheme.onPrimary,
                                       ),
-                                    ],
-                                  );
-                                },
-                              )
-                        ],
-                      ), // end Row
+                                    ),
+                                    if (resolvedEmail != null && resolvedEmail.isNotEmpty)
+                                      Text(
+                                        resolvedEmail,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(color: theme.colorScheme.onPrimary.withOpacity(0.9), fontSize: 12),
+                                      ),
+                                  ],
+                                );
+                              }
+                            }
+
+                            return Row(
+                              mainAxisSize: MainAxisSize.max,
+                              children: [
+                                avatarWidget,
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: nameEmailWidget,
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                      ), // end SizedBox
                     ), // end Container (padded box)
                   ], // end Column children
                 ), // end Column

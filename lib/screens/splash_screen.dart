@@ -4,7 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:firebase_core/firebase_core.dart';
 import '../firebase_options.dart';
 import 'login_screen.dart';
-import '../core/mode_router.dart';
+import 'home_screen.dart';
 // Note: keep imports minimal for the splash's one-shot auth check.
 // splash uses named navigation; don't import HomeScreen directly to avoid
 // accidental direct widget pushes.
@@ -71,7 +71,7 @@ class _SplashScreenState extends State<SplashScreen>
       );
     } else {
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const ModeRouter()),
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
       );
     }
   }
