@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class AboutUsScreen extends StatefulWidget {
   const AboutUsScreen({super.key});
@@ -26,27 +27,54 @@ class _AboutUsScreenState extends State<AboutUsScreen> {
       final propsSnap = await FirebaseFirestore.instance.collection('properties').get();
       final bookingsSnap = await FirebaseFirestore.instance.collection('bookings').get();
 
-  final cities = <String>{};
-      final ownersSet = <String>{};
+      final cities = <String>{};
 
       for (final d in propsSnap.docs) {
         final data = d.data();
         final city = (data['city'] ?? data['location'] ?? '')?.toString() ?? '';
-        final ownerId =
-    (data['ownerId'] ?? data['owner'] ?? '').toString().trim();
-
-if (ownerId.isNotEmpty) {
-  ownersSet.add(ownerId);
-}
+        
         if (city.isNotEmpty) cities.add(city);
 
       }
-
+            // 🔥 FIX: Fetch owners from users collection instead of properties
+      final usersSnap = await FirebaseFirestore.instance.collection('users').get();
+      final ownersSet = <String>{};
       final guestsSet = <String>{};
-      for (final d in bookingsSnap.docs) {
+
+      for (final d in usersSnap.docs) {
         final data = d.data();
-        final guestId = (data['guestId'] ?? data['userId'] ?? '')?.toString() ?? '';
-        if (guestId.isNotEmpty) guestsSet.add(guestId);
+
+        // Check role OR roles array
+        final role = data['role'];
+        final roles = data['roles'];
+
+        if (role == 'owner' ||
+            (roles is List && roles.contains('farmhouse_owner'))) {
+          ownersSet.add(d.id);
+        }
+
+        // 🔥 FIX: Happy guests = all non-owner users
+        final roleStr = (role ?? '').toString().toLowerCase();
+
+        bool isOwnerUser = false;
+
+        if (roleStr.contains('owner')) {
+          isOwnerUser = true;
+        }
+
+        if (roles is List) {
+          for (final r in roles) {
+            if (r.toString().toLowerCase().contains('owner')) {
+              isOwnerUser = true;
+              break;
+            }
+          }
+        }
+
+        // If NOT owner → count as happy guest
+        if (!isOwnerUser) {
+          guestsSet.add(d.id);
+        }
       }
 
       setState(() {
@@ -279,7 +307,7 @@ if (ownerId.isNotEmpty) {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        '+91 90000 00000',
+                        '+91 63030 91715',
                         style: const TextStyle(fontSize: 14, color: Colors.white),
                       ),
                     ),
@@ -345,11 +373,27 @@ if (ownerId.isNotEmpty) {
     );
   }
 
-  void _launchEmail(BuildContext context) {
-    // Implement email launch functionality
+  void _launchPhone(BuildContext context) async {
+    final Uri phoneUri = Uri(scheme: 'tel', path: '+916303091715');
+
+    if (await canLaunchUrl(phoneUri)) {
+      await launchUrl(phoneUri);
+    } else {
+      debugPrint('Could not launch dialer');
+    }
   }
 
-  void _launchPhone(BuildContext context) {
-    // Implement phone launch functionality
+  void _launchEmail(BuildContext context) async {
+    final Uri emailUri = Uri(
+      scheme: 'mailto',
+      path: 'support@skybase.com',
+      query: 'subject=Support Request',
+    );
+
+    if (await canLaunchUrl(emailUri)) {
+      await launchUrl(emailUri);
+    } else {
+      debugPrint('Could not launch email');
+    }
   }
 }
